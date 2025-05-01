@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top Panel -->
+        <div class="top-panel">
+            <button id="sandwichButton" class="sandwich-button"></button>
+            <select id="modelSelector" class="model-selector">
+                <option value="" disabled selected>Select a Model</option>
+                <!-- Model options will be populated here -->
+            </select>
+            <!-- Maybe add other top bar elements here later -->
+        </div>
+
+        <!-- Content Area (Side Panel + Main Chat) -->
+        <div class="content-area">
+            <!-- Side Panel -->
+            <div id="sidePanel" class="side-panel">
+                <div class="tab-container">
+                    <button class="tab-button active" data-tab="tab1">Chats</button>
+                    <button class="tab-button" data-tab="tab2">MCP</button>
+                    <button class="tab-button" data-tab="tab3">Models</button>
+                    <button class="tab-button" data-tab="tab4">Settings</button>
+                </div>
+                <div class="tab-content-container">
+                    <div id="tab1" class="tab-content active">
+                        <!-- Content for Tab 1 (empty for now) -->
+                    </div>
+                    <div id="tab2" class="tab-content">
+                        <!-- Content for Tab 2 (empty for now) -->
+                    </div>
+                    <div id="tab3" class="tab-content">
+                        <!-- Content for Tab 3 (empty for now) -->
+                    </div>
+                    <div id="tab4" class="tab-content">
+                        <!-- Content for Tab 4 (empty for now) -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div id="mainChat" class="main-chat">
+                <div id="chatView" class="chat-view">
+                    <!-- Chat messages will appear here -->
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
+                    <button id="sendButton" class="send-button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
