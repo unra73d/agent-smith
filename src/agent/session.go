@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"agentsmith/src/ai"
 	"agentsmith/src/logger"
 	"database/sql"
 	"encoding/json"
@@ -10,24 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type MessageOrigin int
-
-const (
-	MessageOriginUser = 1
-	MessageOriginAI   = 2
-	MessageOriginTool = 3
-)
-
-type Message struct {
-	ID     string        `json:"id"`
-	Origin MessageOrigin `json:"origin"`
-	Text   string        `json:"text"`
-}
-
 type Session struct {
-	ID       string    `json:"id"`
-	Date     time.Time `json:"date"`
-	Messages []Message `json:"messages"`
+	ID       string       `json:"id"`
+	Date     time.Time    `json:"date"`
+	Messages []ai.Message `json:"messages"`
 }
 
 func LoadSessions() []Session {
@@ -53,13 +40,13 @@ func LoadSessions() []Session {
 		// Scan the row data into variables
 		err = rows.Scan(&session.ID, &dateStr, &dataJSON)
 		if err != nil {
-			log.W("Failed to scan session row: %v", err)
+			log.W("Failed to scan session row:", err)
 			continue
 		}
 
 		session.Date, err = time.Parse(time.RFC3339, dateStr)
 		if err != nil {
-			log.W("Failed to parse session date '%s': %v", dateStr, err)
+			log.W("Failed to parse session date: ", dateStr, err)
 			session.Date = time.Time{}
 		}
 
@@ -67,11 +54,11 @@ func LoadSessions() []Session {
 		if dataJSON != "" {
 			err = json.Unmarshal([]byte(dataJSON), &session.Messages)
 			if err != nil {
-				log.W("Failed to unmarshal messages for session %s: %v", session.ID, err)
-				session.Messages = make([]Message, 0) // Initialize empty messages on error
+				log.W("Failed to unmarshal messages for session:", session.ID, err)
+				session.Messages = make([]ai.Message, 0)
 			}
 		} else {
-			session.Messages = make([]Message, 0) // Initialize empty messages if data is empty
+			session.Messages = make([]ai.Message, 0)
 		}
 
 		// Append the successfully loaded session to the slice
@@ -91,7 +78,7 @@ func LoadSessions() []Session {
 }
 
 func NewSession() *Session {
-	session := &Session{uuid.NewString(), time.Now(), make([]Message, 0, 32)}
+	session := &Session{uuid.NewString(), time.Now(), make([]ai.Message, 0, 32)}
 	session.Save()
 	return session
 }
@@ -125,14 +112,21 @@ func (s *Session) Save() error {
 	return err
 }
 
-func (s *Session) AddMessage(origin MessageOrigin, text string) error {
-	newMessage := Message{
+func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
+	newMessage := ai.Message{
 		ID:     uuid.NewString(),
 		Origin: origin,
 		Text:   text,
 	}
 
 	s.Messages = append(s.Messages, newMessage)
+	err := s.Save()
+
+	return err
+}
+
+func (s *Session) AddMessageFromMessage(message *ai.Message) error {
+	s.Messages = append(s.Messages, *message)
 	err := s.Save()
 
 	return err

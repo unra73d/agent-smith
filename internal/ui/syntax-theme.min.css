@@ -1,0 +1,82 @@
+/* VS Code Dark+ like theme for highlight.js */
+pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em
+}
+
+code.hljs {
+    padding: 3px 5px
+}
+
+.hljs {
+    color: #d4d4d4;
+    background: #1e1e1e
+}
+
+.hljs-comment,
+.hljs-quote {
+    color: #6a9955;
+    font-style: italic
+}
+
+.hljs-keyword,
+.hljs-doctag,
+.hljs-formula,
+.hljs-section,
+.hljs-selector-tag,
+.hljs-literal {
+    color: #569cd6
+}
+
+.hljs-deletion,
+.hljs-name,
+.hljs-subst,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-link {
+    color: #9cdcfe
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+    color: #ce9178
+}
+
+.hljs-number {
+    color: #b5cea8
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-title,
+.hljs-built_in {
+    color: #dcdcaa
+}
+
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-type {
+    color: #4ec9b0
+}
+
+.hljs-emphasis {
+    font-style: italic
+}
+
+.hljs-strong {
+    font-weight: 700
+}
+
+.hljs-link {
+    text-decoration: underline
+}

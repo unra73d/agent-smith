@@ -18,7 +18,6 @@ var log = logger.Logger("server", 1, 1, 1)
 
 // --- Configuration ---
 const listenPort = 8008
-const DEBUG = true
 
 func StartServer() {
 	log.D("Starting agent server")
@@ -26,12 +25,16 @@ func StartServer() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	gin.SetMode(gin.DebugMode)
+	if logger.DEBUG == 1 {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(CORSMiddleware)
 
-	if DEBUG {
+	if logger.DEBUG == 1 {
 		router.Use(gin.Logger())
 	}
 
@@ -61,7 +64,7 @@ func StartServer() {
 func initRoutes(router *gin.Engine, server *http.Server) {
 	InitAgentRoutes(router)
 
-	if DEBUG {
+	if logger.DEBUG == 1 {
 		InitDebugRoutes(router, server)
 	}
 }

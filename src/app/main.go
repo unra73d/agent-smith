@@ -19,7 +19,7 @@ func main() {
 
 	godotenv.Load()
 
-	agent.LoadAgent()
+	go agent.LoadAgent()
 
 	// agent api server
 	go server.StartServer()
@@ -57,12 +57,11 @@ func main() {
 	}()
 
 	// --- 3. Setup and Run WebView ---
-	debug := true // Set to true for developer tools
-	w := webview.New(debug)
+	w := webview.New(logger.DEBUG == 1)
 	defer w.Destroy() // Ensure cleanup
 
 	w.SetTitle("Agent Smith")
-	w.SetSize(800, 600, webview.HintNone) // Width, Height, Resize Hint
+	w.SetSize(1000, 800, webview.HintNone) // Width, Height, Resize Hint
 
 	// Navigate the webview to the local server's URL
 	log.D("Navigating WebView to: ", serverURL)

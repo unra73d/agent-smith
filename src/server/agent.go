@@ -8,7 +8,7 @@ import (
 )
 
 /*
-API for getting the session id that is used in sending the chats
+Connect to last session or to session with specific id
 */
 var agentConnectIDURI = "/connect/:id"
 var agentConnectURI = "/connect"
@@ -33,13 +33,23 @@ func agentConnectHandler(c *gin.Context) {
 }
 
 /*
+Get list of available models and active model id
+*/
+var agentListModelsURI = "/models/list"
+
+func agentListModelsHandler(c *gin.Context) {
+	models, id := agent.GetModels()
+	c.JSON(200, map[string]any{"models": models, "activeModelID": id})
+}
+
+/*
 API for sending message to AI directly and get response.
 No tools will be called in response.
 */
 var agentDirectChatURI = "/directchat"
 
 type AgentDirectChatReq struct {
-	SessionID string `json:"session_id" binding:"required"`
+	SessionID string `json:"sessionID" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -63,6 +73,7 @@ func InitAgentRoutes(router *gin.Engine) {
 	{
 		group.GET(agentConnectIDURI, agentConnectHandler)
 		group.GET(agentConnectURI, agentConnectHandler)
+		group.GET(agentListModelsURI, agentListModelsHandler)
 		group.POST(agentDirectChatURI, agentDirectChatHandler)
 	}
 }

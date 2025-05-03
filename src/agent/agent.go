@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"agentsmith/src/ai"
 	"agentsmith/src/logger"
 	"errors"
 )
@@ -10,8 +11,8 @@ import (
 type agent struct {
 	sessions      []Session
 	activeSession *Session
-	models        []Model
-	activeModel   *Model
+	models        []ai.Model
+	activeModel   *ai.Model
 }
 
 var log = logger.Logger("agent", 1, 1, 1)
@@ -19,7 +20,7 @@ var Agent agent
 
 func LoadAgent() {
 	// load models
-	Agent.models = LoadModels()
+	Agent.models = ai.LoadModels()
 	// select active model
 	if len(Agent.models) > 0 {
 		Agent.activeModel = &Agent.models[0]
@@ -31,6 +32,10 @@ func LoadAgent() {
 	if len(Agent.sessions) > 0 {
 		Agent.activeSession = &Agent.sessions[0]
 	}
+}
+
+func GetModels() ([]ai.Model, string) {
+	return Agent.models, Agent.activeModel.ID
 }
 
 func ConnectSession(id string) (*Session, error) {
@@ -65,10 +70,25 @@ func ConnectSession(id string) (*Session, error) {
 }
 
 func DirectChat(sessionID string, message string) (string, error) {
-	Agent.activeSession.AddMessage(MessageOriginUser, message)
+	Agent.activeSession.AddMessage(ai.MessageOriginUser, message)
 
-	response := "received"
-	Agent.activeSession.AddMessage(MessageOriginAI, response)
+	if Agent.activeModel != nil {
+		message, err := Agent.activeModel.Provider.ChatCompletion(
+			Agent.activeSession.Messages,
+			Agent.activeModel,
+			false,
+		)
+		if err != nil {
+			return "", nil
+		}
 
-	return response, nil
+		err = Agent.activeSession.AddMessageFromMessage(message)
+		if err != nil {
+			return "", nil
+		}
+
+		return message.Text, nil
+	} else {
+		return "", errors.New("no model selected")
+	}
 }

@@ -39,9 +39,9 @@ func initDB(c *gin.Context) {
 		data TEXT
 	);`
 
-	// Create the models table
-	createModelsTableSQL := `
-	CREATE TABLE IF NOT EXISTS models (
+	// Create the AI providers table
+	createAIProvidersTableSQL := `
+	CREATE TABLE IF NOT EXISTS providers (
 		name TEXT PRIMARY KEY,
 		api_url TEXT,
 		api_key TEXT,
@@ -53,8 +53,8 @@ func initDB(c *gin.Context) {
 	_, err = db.Exec(createSessionsTableSQL)
 	log.CheckW(err, "Failed to create sessions table")
 
-	_, err = db.Exec(createModelsTableSQL)
-	log.CheckW(err, "Failed to create models table")
+	_, err = db.Exec(createAIProvidersTableSQL)
+	log.CheckW(err, "Failed to create AI providers table")
 
 	log.D("SQLite DB initialized")
 	c.JSON(200, map[string]string{"error": ""})

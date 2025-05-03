@@ -32,15 +32,19 @@ body {
 
     .sandwich-button {
         margin-right: 10px;
-        padding: 5px;
         cursor: pointer;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e3e3e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='3' y1='12' x2='21' y2='12'/%3E%3Cline x1='3' y1='6' x2='21' y2='6'/%3E%3Cline x1='3' y1='18' x2='21' y2='18'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-size: contain;
+        background: none;
         width: 24px;
         height: 24px;
         border: none;
+        font-size: 24px;
+        color: #e3e3e3;
         background-color: transparent;
+        line-height: 1;
+    }
+
+    .sandwich-button::before {
+        content: '☰';
     }
 
     .model-selector {
@@ -83,9 +87,9 @@ body {
     position: relative;
 
     &.side-panel-open {
-      .side-panel {
-        width: 250px;
-      }
+        .side-panel {
+            width: 300px;
+        }
     }
 
     .side-panel {
@@ -145,7 +149,6 @@ body {
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        height: 100%;
         overflow: hidden;
         transition: margin-left 0.3s ease;
 
@@ -153,25 +156,55 @@ body {
             flex-grow: 1;
             overflow-y: auto;
             padding: 10px;
+            min-height: 0;
 
             .message {
                 margin-bottom: 12px;
                 padding: 10px 12px;
-                max-width: 85%;
                 word-wrap: break-word;
                 border-radius: 8px;
                 border: 1px solid transparent;
                 color: #e3e3e3;
+                white-space: pre-wrap;
+
+                ul,
+                ol {
+                    margin: 8px 0 8px 20px;
+                    padding-left: 20px;
+                }
+
+                li {
+                    margin-bottom: 4px;
+                }
+
+                strong {
+                    font-weight: bold;
+                }
+
+                em {
+                    font-style: italic;
+                }
+
+                a {
+                    color: #8ab4f8;
+                    text-decoration: none;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
 
                 &.user {
                     background-color: #313335;
                     margin-left: auto;
+                    width: fit-content;
+                    max-width: 60%;
                 }
 
                 &.assistant {
-                    background-color: #1e1f20;
+                    margin-left: auto;
                     margin-right: auto;
-                    border: 1px solid #3c4043;
+                    max-width: 85%;
                 }
 
                 &.tool {
@@ -180,6 +213,7 @@ body {
                     border: 1px dashed #5f6368;
                     font-size: 0.9em;
                     color: #bdc1c6;
+                    max-width: 85%;
                 }
 
                 &.error {
@@ -205,45 +239,44 @@ body {
                 pre {
                     background-color: #282c34;
                     color: #abb2bf;
-                    padding: 12px;
+                    padding: 6px;
                     border-radius: 4px;
                     overflow-x: auto;
                     border: 1px solid #3c4043;
                     margin: 8px 0;
+                    white-space: pre;
 
                     code {
                         background-color: transparent;
                         padding: 0;
                         border-radius: 0;
                         color: inherit;
+                        font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                        font-size: 0.7em;
+                        white-space: inherit;
                     }
-                }
-
-                code {
-                    font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-                    font-size: 0.9em;
-                    background-color: #282c34;
-                    padding: 2px 4px;
-                    border-radius: 3px;
-                    color: #abb2bf;
                 }
 
                 table {
                     border-collapse: collapse;
-                    width: 100%;
+                    width: auto;
+                    max-width: 100%;
                     margin: 10px 0;
                     border: 1px solid #3c4043;
                     background-color: #1e1f20;
+                    font-size: 0.95em;
 
-                    th, td {
+                    th,
+                    td {
                         border: 1px solid #3c4043;
-                        padding: 8px;
+                        padding: 8px 10px;
                         text-align: left;
                         color: #e3e3e3;
                     }
 
                     th {
                         background-color: #313335;
+                        font-weight: bold;
                     }
                 }
 
@@ -254,57 +287,104 @@ body {
                     margin-top: 8px;
                     border: 1px solid #3c4043;
                     border-radius: 4px;
+                    background-color: #fff;
+                }
+
+                .thinking-block {
+                    margin: 4px 0;
+                    color: #bdc1c6;
+                    font-size: 0.9em;
+                    white-space: nowrap;
+                }
+
+                .thinking-summary {
+                    padding: 3px 8px;
+                    cursor: pointer;
+                    background-color: #313335;
+                    border-radius: 4px 4px 0 0;
+                    position: relative;
+                    -webkit-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
+                }
+
+                .thinking-summary::before {
+                    content: '⟩';
+                    display: inline-block;
+                    margin-right: 6px;
+                    font-size: 0.8em;
+                    transition: transform 0.2s ease-in-out;
+                }
+
+                .thinking-block.open>.thinking-summary::before {
+                    transform: rotate(90deg);
+                }
+
+                .thinking-content {
+                    padding: 4px 8px;
+                    white-space: wrap;
+                    background-color: #1f2021;
+                    color: #868889;
+                }
+
+                .thinking-block:not(.open)>.thinking-content {
+                    display: none;
+                }
+
+                .thinking-block:not(.open)>.thinking-summary {
+                    border-bottom: none;
+                    border-radius: 4px;
                 }
             }
         }
+    }
 
-        .chat-input-area {
+    .chat-input-area {
+        display: flex;
+        padding: 10px 15px;
+        background-color: #1e1f20;
+        border-top: 1px solid #3c4043;
+
+        .chat-input {
+            flex-grow: 1;
+            padding: 10px;
+            resize: none;
+            overflow-y: hidden;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            max-height: 150px;
+            background-color: #313335;
+            color: #e3e3e3;
+            border: 1px solid #3c4043;
+            border-radius: 6px;
+
+            &::placeholder {
+                color: #888a8f;
+            }
+        }
+
+        .send-button {
+            margin-left: 10px;
+            padding: 0 15px;
+            cursor: pointer;
+            background-color: #8ab4f8;
+            color: #131314;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
             display: flex;
-            padding: 10px 15px;
-            background-color: #1e1f20;
-            border-top: 1px solid #3c4043;
+            align-items: center;
+            justify-content: center;
 
-            .chat-input {
-                flex-grow: 1;
-                padding: 10px;
-                resize: none;
-                overflow-y: hidden;
-                font-family: inherit;
-                font-size: inherit;
-                line-height: 1.5;
-                max-height: 150px;
-                background-color: #313335;
-                color: #e3e3e3;
-                border: 1px solid #3c4043;
-                border-radius: 6px;
-
-                &::placeholder {
-                    color: #888a8f;
-                }
+            &::before {
+                content: "➤";
+                margin-right: 5px;
+                font-size: 1.2em;
             }
 
-            .send-button {
-                margin-left: 10px;
-                padding: 0 15px;
-                cursor: pointer;
-                background-color: #8ab4f8;
-                color: #131314;
-                border: none;
-                border-radius: 6px;
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-
-                &::before {
-                    content: "➤";
-                    margin-right: 5px;
-                    font-size: 1.2em;
-                }
-
-                &:hover {
-                    opacity: 0.9;
-                }
+            &:hover {
+                opacity: 0.9;
             }
         }
     }
