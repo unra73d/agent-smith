@@ -61,7 +61,7 @@ func main() {
 	defer w.Destroy() // Ensure cleanup
 
 	w.SetTitle("Agent Smith")
-	w.SetSize(1000, 800, webview.HintNone) // Width, Height, Resize Hint
+	w.SetSize(1000, 800, webview.HintNone)
 
 	// Navigate the webview to the local server's URL
 	log.D("Navigating WebView to: ", serverURL)

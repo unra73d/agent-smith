@@ -12,36 +12,60 @@
     <div class="app-container">
         <!-- Top Panel -->
         <div class="top-panel">
-            <button id="sandwichButton" class="sandwich-button"></button>
+            <!-- Tab Buttons moved here -->
+            <div class="top-tab-container">
+                <button class="top-tab-button" data-tab="tab1" title="Settings">
+                    <img src="icons/settings.svg" alt="Settings">
+                </button>
+                <button class="top-tab-button" data-tab="tab2" title="Chat sessions">
+                    <img src="icons/message-square.svg" alt="Chats">
+                </button>
+                <button class="top-tab-button" data-tab="tab3" title="MCP">
+                    <img src="icons/server.svg" alt="MCP">
+                </button>
+                <button class="top-tab-button" data-tab="tab4" title="Models">
+                    <img src="icons/database.svg" alt="Models">
+                </button>
+                <button class="top-tab-button" data-tab="tab5" title="Agent profiles">
+                     <img src="icons/users.svg" alt="Agents">
+                 </button>
+            </div>
             <select id="modelSelector" class="model-selector">
                 <option value="" disabled selected>Select a Model</option>
                 <!-- Model options will be populated here -->
             </select>
-            <!-- Maybe add other top bar elements here later -->
+            <!-- Sandwich button removed -->
         </div>
 
         <!-- Content Area (Side Panel + Main Chat) -->
         <div class="content-area">
             <!-- Side Panel -->
             <div id="sidePanel" class="side-panel">
-                <div class="tab-container">
-                    <button class="tab-button active" data-tab="tab1">Chats</button>
-                    <button class="tab-button" data-tab="tab2">MCP</button>
-                    <button class="tab-button" data-tab="tab3">Models</button>
-                    <button class="tab-button" data-tab="tab4">Settings</button>
-                </div>
                 <div class="tab-content-container">
-                    <div id="tab1" class="tab-content active">
-                        <!-- Content for Tab 1 (empty for now) -->
+                    <div id="tab1" class="tab-content">
+                        <div class="tab-content-header">
+                            <span class="tab-content-title">Settings</span>
+                        </div>
                     </div>
                     <div id="tab2" class="tab-content">
-                        <!-- Content for Tab 2 (empty for now) -->
+                        <div class="tab-content-header">
+                            <span class="tab-content-title">Chat sessions</span>
+                        </div>
                     </div>
                     <div id="tab3" class="tab-content">
-                        <!-- Content for Tab 3 (empty for now) -->
+                        <div class="tab-content-header">
+                            <span class="tab-content-title">MCP servers & tools</span>
+                        </div>
                     </div>
                     <div id="tab4" class="tab-content">
-                        <!-- Content for Tab 4 (empty for now) -->
+                        <div class="tab-content-header">
+                            <span class="tab-content-title">Models</span>
+                        </div>
+                    </div>
+                    <div id="tab5" class="tab-content">
+                        <div class="tab-content-header">
+                            <span class="tab-content-title">Agents</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -62,7 +86,6 @@
     <script src="marked.min.js"></script>
     <script src="highlight.min.js"></script>
     <script src="app.js"></script>
-    <script src="chat.js"></script>
 </body>
 
 </html>

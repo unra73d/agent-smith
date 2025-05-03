@@ -15,6 +15,7 @@ type Session struct {
 	ID       string       `json:"id"`
 	Date     time.Time    `json:"date"`
 	Messages []ai.Message `json:"messages"`
+	Summary  string       `json:"summary"`
 }
 
 func LoadSessions() []Session {
