@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/tmaxmax/go-sse v0.10.0
 	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	resty.dev/v3 v3.0.0-beta.2
 )

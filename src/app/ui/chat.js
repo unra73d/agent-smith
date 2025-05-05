@@ -137,6 +137,39 @@ async function sendMessage() {
     }
 }
 
+async function sendMessageStreaming() {
+    const messageText = chatInput.value.trim();
+    if (!messageText) {
+        return;
+    }
+    if (!currentSessionId) {
+        appendMessage("Error: Not connected to agent. Cannot send message.", "error");
+        return;
+    }
+
+    // 1. Display user message in chatView
+    appendMessage(messageText, 'user');
+
+    // 2. Clear input and reset height
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatInput.style.overflowY = 'hidden';
+    chatInput.focus();
+
+    // 3. Create a new assistant message element for streaming
+    const assistantMessageElement = document.createElement('div');
+    assistantMessageElement.classList.add('message', 'assistant');
+    chatView.appendChild(assistantMessageElement);
+
+    // 4. Initiate SSE connection
+    await apiDirectChatStreaming(currentSessionId, messageText, (chunk) => {
+        // Append each chunk to the assistant message element
+        assistantMessageElement.innerHTML += chunk;
+        applySyntaxHighlighting(assistantMessageElement);
+        scrollToBottom();
+    });
+}
+
 const initialHeight = chatInput.scrollHeight;
 
 chatInput.addEventListener('input', () => {
@@ -157,11 +190,12 @@ chatInput.addEventListener('blur', () => {
     }
 });
 
-chatInput.addEventListener('keydown', (event) => {
+chatInput.addEventListener('keydown', async (event) => {
     // Check for Enter key without Shift modifier
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        sendMessage();
+        // sendMessage();
+        sendMessageStreaming();
     }
 });
 

@@ -3,12 +3,16 @@ package ai
 
 import (
 	"agentsmith/src/logger"
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/tmaxmax/go-sse"
 	"resty.dev/v3"
 )
 
@@ -35,6 +39,7 @@ type IAPIProvider interface {
 	Test() error
 	ListModels() ([]Model, error)
 	ChatCompletion(messages []Message, model *Model, toolUse bool) (*Message, error)
+	ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error
 }
 
 type APIProvider struct {
@@ -245,6 +250,76 @@ func (self *OpenAIProvider) ChatCompletion(messages []Message, model *Model, too
 	return &Message{res.ID, MessageOriginAI, res.Choices[0].Message.Content}, nil
 }
 
+type OpenAIStreamChatResponseChoice struct {
+	Index int `json:"index"`
+	Delta struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	} `json:"delta"`
+	Logprobs     interface{} `json:"logprobs"`
+	FinishReason interface{} `json:"finish_reason"`
+}
+
+type OpenAIStreamChatResponse struct {
+	ID                string                           `json:"id"`
+	Object            string                           `json:"object"`
+	Created           int                              `json:"created"`
+	Model             string                           `json:"model"`
+	SystemFingerprint string                           `json:"system_fingerprint"`
+	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
+}
+
+func (self *OpenAIProvider) ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) (err error) {
+	log.D("OpenAI chat completion streaming")
+	url := self.apiURL + "/chat/completions"
+
+	bodyMessages := make([]map[string]string, len(messages))
+	for i, message := range messages {
+		bodyMessages[i] = map[string]string{
+			"role":    string(message.Origin),
+			"content": message.Text,
+		}
+	}
+	body := map[string]any{
+		"model":    model.ID,
+		"messages": bodyMessages,
+		"stream":   true,
+	}
+	bodyJSON, err := json.Marshal(body)
+	log.CheckW(err, "Failed to pack chat content into json")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	r, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(bodyJSON))
+	r = r.WithContext(ctx)
+
+	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {
+		r.Header.Add("Authorization", "Bearer "+self.apiKey)
+	}
+	r.Header.Add("Content-Type", "application/json")
+
+	conn := sse.NewConnection(r)
+
+	conn.SubscribeMessages(func(e sse.Event) {
+		logger.BreakOnError()
+		log.D(e.Data)
+		if e.Data != "[DONE]" {
+			var response OpenAIStreamChatResponse
+			err := json.Unmarshal([]byte(e.Data), &response)
+			log.CheckE(err, nil, "Failed to parse JSON response from chat completion_tokens")
+			log.D(response.Choices[0].Delta.Content)
+			writeCh <- response.Choices[0].Delta.Content
+		} else {
+			cancel()
+		}
+
+	})
+
+	err = conn.Connect()
+	log.CheckW(err, "Failed to call completions api")
+
+	return err
+}
+
 func (self *GoogleAIProvider) Test() error { return nil }
 
 func (self *GoogleAIProvider) ListModels() ([]Model, error) {
@@ -253,4 +328,8 @@ func (self *GoogleAIProvider) ListModels() ([]Model, error) {
 
 func (self *GoogleAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (*Message, error) {
 	return &Message{"", MessageOriginAI, "Message received"}, nil
+}
+
+func (self *GoogleAIProvider) ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error {
+	return nil
 }

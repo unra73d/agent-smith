@@ -3,6 +3,8 @@ package server
 import (
 	"agentsmith/src/agent"
 	"agentsmith/src/logger"
+	"io"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -113,6 +115,49 @@ func agentDirectChatHandler(c *gin.Context) {
 	}
 }
 
+/*
+API for sending message to AI directly and get response as SSE events.
+No tools will be called in response.
+*/
+var directChatStreamURI = "/directchat/stream"
+
+type directChatStreamReq struct {
+	SessionID string `json:"sessionID" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+}
+
+func agentDirectChatStreamHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req directChatStreamReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	streamCh := make(chan string)
+	streamDoneCh := make(chan bool)
+
+	go agent.DirectChatStreaming(req.SessionID, req.Message, streamCh, streamDoneCh)
+
+	// blocking call
+	c.Stream(func(w io.Writer) bool {
+		for {
+			select {
+			case msg := <-streamCh:
+				w.Write([]byte(msg))
+				c.Writer.Flush()
+			case <-streamDoneCh:
+				log.D("Stream finalized")
+				c.Status(200)
+				return false
+			case <-time.After(10 * time.Second):
+				log.W("Stream message timed out")
+				c.Status(500)
+				return false
+			}
+		}
+	})
+}
+
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
@@ -126,5 +171,6 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listModelsURI, listModelsHandler)
 
 		group.POST(directChatURI, agentDirectChatHandler)
+		group.POST(directChatStreamURI, agentDirectChatStreamHandler)
 	}
 }

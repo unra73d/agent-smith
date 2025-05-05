@@ -1,7 +1,7 @@
-async function apiConnectSession(id){
+async function apiConnectSession(id) {
     try {
         url = 'http://localhost:8008/agent/sessions/connect'
-        if (id != undefined){
+        if (id != undefined) {
             urls = `http://localhost:8008/agent/sessions/connect/${id}`
         }
         const response = await fetch(url, {
@@ -26,7 +26,7 @@ async function apiConnectSession(id){
     }
 }
 
-async function apiCreateSession(){
+async function apiCreateSession() {
     try {
         const response = await fetch('http://localhost:8008/agent/sessions/new');
         if (!response.ok) {
@@ -46,7 +46,7 @@ async function apiCreateSession(){
     }
 }
 
-async function apiDeleteSession(sessionId){
+async function apiDeleteSession(sessionId) {
     try {
         const response = await fetch(`http://localhost:8008/agent/sessions/delete/${sessionId}`);
         if (!response.ok) {
@@ -55,7 +55,7 @@ async function apiDeleteSession(sessionId){
 
         const data = await response.json();
 
-        if (data.activeSession && data.activeSession.id && data.activeSession.messages && Array.isArray(data.activeSession.messages)){
+        if (data.activeSession && data.activeSession.id && data.activeSession.messages && Array.isArray(data.activeSession.messages)) {
             return data.activeSession
         } else {
             return null
@@ -66,7 +66,7 @@ async function apiDeleteSession(sessionId){
     }
 }
 
-async function apiListSessions(){
+async function apiListSessions() {
     try {
         const response = await fetch('http://localhost:8008/agent/sessions/list');
         if (!response.ok) {
@@ -85,11 +85,34 @@ async function apiListSessions(){
     }
 }
 
-function apiDirectChat(){
+function apiDirectChat() {
 
 }
 
-async function apiListModels(){
+async function apiDirectChatStreaming(sessionID, message, onMessage) {
+    try {
+        const response = await fetch('http://localhost:8008/agent/directchat/stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                "sessionID": sessionID,
+                "message": message
+            })
+        })
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            onMessage(responseMessage)
+        }
+    } catch (error) {
+        console.error("Failed to initiate streaming:", error);
+    }
+}
+
+async function apiListModels() {
     try {
         const response = await fetch('http://localhost:8008/agent/models/list');
         if (!response.ok) {

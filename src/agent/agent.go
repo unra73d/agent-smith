@@ -6,6 +6,7 @@ import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
 	"errors"
+	"time"
 )
 
 type agent struct {
@@ -111,8 +112,43 @@ func DeleteSession(id string) (*Session, error) {
 	return deletedSession, nil
 }
 
-func DirectChat(sessionID string, message string) (string, error) {
-	Agent.activeSession.AddMessage(ai.MessageOriginUser, message)
+func DirectChatStreaming(sessionID string, query string, streamCh chan string, streamDoneCh chan bool) {
+	Agent.activeSession.AddMessage(ai.MessageOriginUser, query)
+
+	if Agent.activeModel != nil {
+		modelResponseCh := make(chan string)
+		modelDoneCh := make(chan bool)
+		go func() {
+			for {
+				select {
+				case msg := <-modelResponseCh:
+					streamCh <- msg
+				case <-modelDoneCh:
+					return
+				case <-time.After(60 * time.Second):
+					return
+				}
+			}
+		}()
+
+		err := Agent.activeSession.AddMessage(ai.MessageOriginAI, "")
+		log.CheckW(err, "Failed to add new message in agent")
+
+		Agent.activeModel.Provider.ChatCompletionStream(
+			Agent.activeSession.Messages,
+			Agent.activeModel,
+			false,
+			modelResponseCh,
+		)
+		modelDoneCh <- true
+		streamDoneCh <- true
+	}
+}
+
+func DirectChat(sessionID string, query string) (response string, err error) {
+	logger.BreakOnError()
+	response = ""
+	Agent.activeSession.AddMessage(ai.MessageOriginUser, query)
 
 	if Agent.activeModel != nil {
 		message, err := Agent.activeModel.Provider.ChatCompletion(
@@ -120,17 +156,14 @@ func DirectChat(sessionID string, message string) (string, error) {
 			Agent.activeModel,
 			false,
 		)
-		if err != nil {
-			return "", nil
-		}
+		log.CheckE(err, nil, "Failed to get completion for message")
 
 		err = Agent.activeSession.AddMessageFromMessage(message)
-		if err != nil {
-			return "", nil
-		}
+		log.CheckE(err, nil, "Failed to store new message in agent")
 
-		return message.Text, nil
+		response = message.Text
 	} else {
-		return "", errors.New("no model selected")
+		err = errors.New("no model selected")
 	}
+	return
 }
