@@ -105,7 +105,7 @@ async function apiDirectChatStreaming(sessionID, message, onMessage) {
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            onMessage(responseMessage)
+            onMessage(value)
         }
     } catch (error) {
         console.error("Failed to initiate streaming:", error);

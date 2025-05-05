@@ -122,8 +122,10 @@ func DirectChatStreaming(sessionID string, query string, streamCh chan string, s
 			for {
 				select {
 				case msg := <-modelResponseCh:
+					Agent.activeSession.UpdateLastMessage(msg)
 					streamCh <- msg
 				case <-modelDoneCh:
+					Agent.activeSession.Save()
 					return
 				case <-time.After(60 * time.Second):
 					return

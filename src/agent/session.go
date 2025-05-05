@@ -144,3 +144,11 @@ func (s *Session) AddMessageFromMessage(message *ai.Message) error {
 
 	return err
 }
+
+func (s *Session) UpdateLastMessage(newText string) {
+	if len(s.Messages) > 0 {
+		message := &s.Messages[len(s.Messages)-1]
+		message.Text = message.Text + newText
+	}
+
+}

@@ -425,43 +425,49 @@ body {
                     color: #bdc1c6;
                     font-size: 0.9em;
                     white-space: nowrap;
+                    
+                    .thinking-summary {
+                        padding: 3px 8px;
+                        cursor: pointer;
+                        background-color: #313335;
+                        border-radius: 4px 4px 0 0;
+                        position: relative;
+                    }
+    
+                    .thinking-summary::before {
+                        content: '⟩';
+                        display: inline-block;
+                        margin-right: 6px;
+                        font-size: 0.8em;
+                        transition: transform 0.2s ease-in-out;
+                    }
+    
+                    .thinking-content {
+                        padding: 4px 8px;
+                        white-space: wrap;
+                        background-color: #1f2021;
+                        color: #868889;
+                    }
+
+                    &.open>.thinking-summary::before {
+                        transform: rotate(90deg);
+                    }
+    
+                    &:not(.open)>.thinking-content {
+                        display: none;
+                    }
+    
+                    &:not(.open)>.thinking-summary {
+                        border-bottom: none;
+                        border-radius: 4px;
+                    }
                 }
 
-                .thinking-summary {
-                    padding: 3px 8px;
-                    cursor: pointer;
-                    background-color: #313335;
-                    border-radius: 4px 4px 0 0;
-                    position: relative;
-                }
-
-                .thinking-summary::before {
-                    content: '⟩';
-                    display: inline-block;
-                    margin-right: 6px;
-                    font-size: 0.8em;
-                    transition: transform 0.2s ease-in-out;
-                }
-
-                .thinking-block.open>.thinking-summary::before {
-                    transform: rotate(90deg);
-                }
-
-                .thinking-content {
-                    padding: 4px 8px;
-                    white-space: wrap;
-                    background-color: #1f2021;
-                    color: #868889;
-                }
-
-                .thinking-block:not(.open)>.thinking-content {
+                .thinking-block:has(.thinking-content-empty){
                     display: none;
                 }
 
-                .thinking-block:not(.open)>.thinking-summary {
-                    border-bottom: none;
-                    border-radius: 4px;
-                }
+                
             }
         }
     }

@@ -301,17 +301,14 @@ func (self *OpenAIProvider) ChatCompletionStream(messages []Message, model *Mode
 
 	conn.SubscribeMessages(func(e sse.Event) {
 		logger.BreakOnError()
-		log.D(e.Data)
 		if e.Data != "[DONE]" {
 			var response OpenAIStreamChatResponse
 			err := json.Unmarshal([]byte(e.Data), &response)
 			log.CheckE(err, nil, "Failed to parse JSON response from chat completion_tokens")
-			log.D(response.Choices[0].Delta.Content)
 			writeCh <- response.Choices[0].Delta.Content
 		} else {
 			cancel()
 		}
-
 	})
 
 	err = conn.Connect()

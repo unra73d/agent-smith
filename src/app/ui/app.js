@@ -101,9 +101,6 @@ topTabButtons.forEach(button => {
     button.addEventListener('click', handleTopTabClick);
 });
 
-// --- Send Button Logic ---
-sendButton.addEventListener('click', sendMessage);
-
 async function populateModelSelector() {
     data = await apiListModels()
     if(data){
@@ -262,8 +259,6 @@ async function handleSessionClick(event) {
                     let messageType = message.origin;
                     if (message.text) {
                         appendMessage(message.text, messageType);
-                    } else {
-                        console.warn("Message missing text:", message);
                     }
                 });
                 scrollToBottom();

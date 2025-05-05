@@ -22,21 +22,21 @@ function confirmDialog(message) {
         const cleanup = () => {
             confirmYesBtn.removeEventListener('click', yesListener);
             confirmNoBtn.removeEventListener('click', noListener);
-            confirmOverlay.removeEventListener('click', backgroundClickListener); // Remove background click listener
+            confirmOverlay.removeEventListener('click', backgroundClickListener); 
             confirmOverlay.style.display = 'none';
         };
 
         // Close dialog if clicking outside the dialog box
         const backgroundClickListener = (event) => {
             if (event.target === confirmOverlay) {
-                noListener(); // Treat clicking outside as "No"
+                noListener();
             }
         };
 
         // Add listeners
         confirmYesBtn.addEventListener('click', yesListener);
         confirmNoBtn.addEventListener('click', noListener);
-        confirmOverlay.addEventListener('click', backgroundClickListener); // Add background click listener
+        confirmOverlay.addEventListener('click', backgroundClickListener);
 
     });
 }
@@ -87,5 +87,13 @@ function initShortcuts(){
         }
     });
 }
+
+function splitStringBySearchText(inputString, searchText) {
+    const index = inputString.indexOf(searchText);
+    if (index === -1) {
+      return [inputString, ''];
+    }
+    return [inputString.slice(0, index), inputString.slice(index + searchText.length)];
+  }
 
 initShortcuts();
