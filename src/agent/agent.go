@@ -45,6 +45,7 @@ func GetSessions() ([]Session, string) {
 func CreateSession() *Session {
 	session := newSession()
 	Agent.sessions = append(Agent.sessions, *session)
+	Agent.activeSession = session
 	return session
 }
 

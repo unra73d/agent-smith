@@ -204,7 +204,6 @@ body {
 
                 .session-list {
                     padding: 10px;
-                    /* background-color: #1e1f20; */
                     overflow-y: auto;
                     max-height: calc(100% - 100px);
                 }
@@ -218,6 +217,7 @@ body {
                     margin-bottom: 10px;
                     cursor: pointer;
                     transition: background-color 0.2s ease;
+                    transition: border 0.2s ease;
 
                     &:hover{
                         background-color: #2a2b2d;
@@ -225,6 +225,14 @@ body {
                         .delete-icon {
                             display: block;
                         }
+                    }
+
+                    &.active {
+                        background-color: #262729;
+                        border-left: 3px solid #ffffff;
+                        padding-left: 7px;
+                        border-top-left-radius: 0px;
+                        border-bottom-left-radius: 0px;
                     }
 
                     .session-summary {

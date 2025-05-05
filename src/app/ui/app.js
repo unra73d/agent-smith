@@ -7,6 +7,17 @@ const topTabButtons = document.querySelectorAll('.top-tab-button');
 var currentSessionId = null;
 var currentActiveTabId = null;
 
+function updateSessionHighlight(activeSessionId) {
+    const sessionItems = document.querySelectorAll('.session-item');
+    sessionItems.forEach(item => {
+        if (item.getAttribute('data-id') === activeSessionId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
     const clickedButton = event.currentTarget;
@@ -52,8 +63,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     session = await apiConnectSession()
     if(session){
-        currentSessionId = session.id
-        chatChangeSession(session)
+        currentSessionId = session.id;
+        chatChangeSession(session);
+        updateSessionHighlight(currentSessionId);
     }
 
     // --- Set initial active tab state based on HTML ---
@@ -75,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const correspondingButton = document.querySelector(`.top-tab-button[data-tab="${currentActiveTabId}"`);
             if (correspondingButton) {
                 correspondingButton.classList.add('active');
-                contentArea.classList.add('side-panel-open'); // Open panel if content is active
+                contentArea.classList.add('side-panel-open');
             }
         } else {
             // If no button and no content is active, ensure panel is closed.
@@ -146,10 +158,11 @@ async function populateSessions() {
             item.addEventListener('click', handleSessionClick);
         });
 
-        // Add event listeners for delete icons
         document.querySelectorAll('.delete-icon').forEach(icon => {
             icon.addEventListener('click', handleDeleteSession);
         });
+
+        updateSessionHighlight(currentSessionId);
     }
 }
 
@@ -170,6 +183,7 @@ async function handleDeleteSession(event) {
                 console.log("Deleted the active session. Resetting chat view and connection.");
                 currentSessionId = activeSession.id;
                 chatChangeSession(activeSession);
+                updateSessionHighlight(currentSessionId);
             }
             if (sessionItem) {
                 sessionItem.remove();
@@ -182,38 +196,35 @@ async function handleDeleteSession(event) {
 
 // Function to create a new chat session
 async function createNewSession() {
-    try {
-        const response = await fetch('http://localhost:8008/agent/sessions/new');
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
+    const session = await apiCreateSession();
 
-        if (data && data.session && data.session.id && data.session.summary && data.session.date) {
-            console.log("New session created:", data);
+    if (session) {
+        console.log("New session created and connected:", session.id);
 
-            // Create a new session item
-            const sessionItem = document.createElement('div');
-            sessionItem.classList.add('session-item');
-            sessionItem.setAttribute("data-id", data.session.id);
+        currentSessionId = session.id;
+        chatChangeSession(session);
 
-            const summary = data.summary ? data.summary : 'New chat';
-            sessionItem.innerHTML = `
-                <span class="session-summary">${summary}</span>
-                <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${data.id}">
-            `;
+        // Create and add the new session item to the UI list
+        const sessionList = document.getElementById('sessionList');
+        const sessionItem = document.createElement('div');
 
-            // Insert the new session item at the top of the session list
-            const sessionList = document.getElementById('sessionList');
-            sessionList.insertBefore(sessionItem, sessionList.firstChild);
+        sessionItem.classList.add('session-item');
+        sessionItem.setAttribute("data-id", session.id);
 
-            // Add event listener for the delete icon
-            sessionItem.querySelector('.delete-icon').addEventListener('click', handleDeleteSession);
-        } else {
-            console.error("Invalid data structure received for new session:", data);
-        }
-    } catch (error) {
-        console.error("Failed to create new session:", error);
+        const summary = session.summary ? session.summary : 'New chat';
+        sessionItem.innerHTML = `
+            <span class="session-summary">${summary}</span>
+            <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${session.id}">
+        `;
+        sessionList.insertBefore(sessionItem, sessionList.firstChild);
+
+        sessionItem.addEventListener('click', handleSessionClick);
+        sessionItem.querySelector('.delete-icon').addEventListener('click', handleDeleteSession);
+
+        updateSessionHighlight(currentSessionId);
+
+    } else {
+        appendMessage("Error: Could not create new session.", "error");
     }
 }
 
@@ -240,6 +251,7 @@ async function handleSessionClick(event) {
         if (data && data.session && data.session.id) {
             currentSessionId = data.session.id;
             console.log("Connected to session:", currentSessionId);
+            updateSessionHighlight(currentSessionId)
 
             // Clear chat view
             chatView.innerHTML = '';

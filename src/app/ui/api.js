@@ -26,8 +26,24 @@ async function apiConnectSession(id){
     }
 }
 
-function apiCreateSession(){
+async function apiCreateSession(){
+    try {
+        const response = await fetch('http://localhost:8008/agent/sessions/new');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
 
+        if (data && data.session && data.session.id && data.session.summary && data.session.date) {
+            return data.session
+        } else {
+            console.error("Invalid data structure received for new session:", data);
+            return null
+        }
+    } catch (error) {
+        console.error("Failed to create new session:", error);
+        return null
+    }
 }
 
 async function apiDeleteSession(sessionId){
