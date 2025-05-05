@@ -14,21 +14,21 @@
         <div class="top-panel">
             <!-- Tab Buttons moved here -->
             <div class="top-tab-container">
-                <button class="top-tab-button" data-tab="tab1" title="Settings">
+                <button class="top-tab-button img-button" data-tab="tab1" title="Settings">
                     <img src="icons/settings.svg" alt="Settings">
                 </button>
-                <button class="top-tab-button" data-tab="tab2" title="Chat sessions">
+                <button class="top-tab-button img-button" data-tab="tab2" title="Chat sessions">
                     <img src="icons/message-square.svg" alt="Chats">
                 </button>
-                <button class="top-tab-button" data-tab="tab3" title="MCP">
+                <button class="top-tab-button img-button" data-tab="tab3" title="MCP">
                     <img src="icons/server.svg" alt="MCP">
                 </button>
-                <button class="top-tab-button" data-tab="tab4" title="Models">
+                <button class="top-tab-button img-button" data-tab="tab4" title="Models">
                     <img src="icons/database.svg" alt="Models">
                 </button>
-                <button class="top-tab-button" data-tab="tab5" title="Agent profiles">
-                     <img src="icons/users.svg" alt="Agents">
-                 </button>
+                <button class="top-tab-button img-button" data-tab="tab5" title="Agent profiles">
+                    <img src="icons/users.svg" alt="Agents">
+                </button>
             </div>
             <select id="modelSelector" class="model-selector">
                 <option value="" disabled selected>Select a Model</option>
@@ -50,6 +50,15 @@
                     <div id="tab2" class="tab-content">
                         <div class="tab-content-header">
                             <span class="tab-content-title">Chat sessions</span>
+                        </div>
+                        <div class="session-controls">
+                            <input type="text" id="filterInput" class="filter-input"
+                                placeholder="Filter chats...">
+                            <img src="icons/reload.svg" alt="Reload" class="reload-icon img-button" id="reloadSessions">
+                            <img src="icons/plus.svg" alt="New Session" class="plus-icon img-button" id="newSession">
+                        </div>
+                        <div id="sessionList" class="session-list">
+                            <!-- Session items will be dynamically inserted here -->
                         </div>
                     </div>
                     <div id="tab3" class="tab-content">
@@ -83,8 +92,21 @@
         </div>
     </div>
 
+    <div id="confirmOverlay" class="confirm-overlay" style="display: none;">
+        <div id="confirmDialog" class="confirm-dialog">
+            <p id="confirmMessage"></p>
+            <div class="confirm-buttons">
+                <button id="confirmYes">Yes</button>
+                <button id="confirmNo">No</button>
+            </div>
+        </div>
+    </div>
+
     <script src="marked.min.js"></script>
     <script src="highlight.min.js"></script>
+    <script src="util.js"></script>
+    <script src="api.js"></script>
+    <script src="chat.js"></script>
     <script src="app.js"></script>
 </body>
 

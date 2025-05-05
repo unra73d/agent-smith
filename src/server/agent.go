@@ -10,17 +10,17 @@ import (
 /*
 Connect to last session or to session with specific id
 */
-var agentConnectIDURI = "/connect/:id"
-var agentConnectURI = "/connect"
+var connectIDURI = "/sessions/connect/:id"
+var connectURI = "/sessions/connect"
 
-type AgentConnectReq struct {
+type ConnectSessionReq struct {
 	ID string `uri:"id" binding:"omitempty"`
 }
 
-func agentConnectHandler(c *gin.Context) {
+func connectSessionHandler(c *gin.Context) {
 	defer logger.BreakOnError()
 
-	var req AgentConnectReq
+	var req ConnectSessionReq
 	err := c.BindUri(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
@@ -33,11 +33,56 @@ func agentConnectHandler(c *gin.Context) {
 }
 
 /*
+Get list of chat sessions
+*/
+var listSessionsURI = "/sessions/list"
+
+func listSessionsHandler(c *gin.Context) {
+	sessions, id := agent.GetSessions()
+	c.JSON(200, map[string]any{"sessions": sessions, "activeSessionlID": id})
+}
+
+/*
+Create new session
+*/
+var createSessionURI = "/sessions/new"
+
+func createSessionHandler(c *gin.Context) {
+	session := agent.CreateSession()
+	c.JSON(200, map[string]any{"session": session})
+}
+
+/*
+Delete session by id
+*/
+var deleteSessionURI = "/sessions/delete/:id"
+
+type DeleteSessionReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func deleteSessionHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req DeleteSessionReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	session, err := agent.DeleteSession(req.ID)
+	if err != nil {
+		c.JSON(500, map[string]any{"activeSession": nil, "error": err})
+	} else {
+		c.JSON(200, map[string]any{"activeSession": session, "error": nil})
+	}
+
+}
+
+/*
 Get list of available models and active model id
 */
-var agentListModelsURI = "/models/list"
+var listModelsURI = "/models/list"
 
-func agentListModelsHandler(c *gin.Context) {
+func listModelsHandler(c *gin.Context) {
 	models, id := agent.GetModels()
 	c.JSON(200, map[string]any{"models": models, "activeModelID": id})
 }
@@ -46,9 +91,9 @@ func agentListModelsHandler(c *gin.Context) {
 API for sending message to AI directly and get response.
 No tools will be called in response.
 */
-var agentDirectChatURI = "/directchat"
+var directChatURI = "/directchat"
 
-type AgentDirectChatReq struct {
+type directChatReq struct {
 	SessionID string `json:"sessionID" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
@@ -56,7 +101,7 @@ type AgentDirectChatReq struct {
 func agentDirectChatHandler(c *gin.Context) {
 	defer logger.BreakOnError()
 
-	var req AgentDirectChatReq
+	var req directChatReq
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
@@ -71,9 +116,15 @@ func agentDirectChatHandler(c *gin.Context) {
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
-		group.GET(agentConnectIDURI, agentConnectHandler)
-		group.GET(agentConnectURI, agentConnectHandler)
-		group.GET(agentListModelsURI, agentListModelsHandler)
-		group.POST(agentDirectChatURI, agentDirectChatHandler)
+		group.GET(connectIDURI, connectSessionHandler)
+		group.GET(connectURI, connectSessionHandler)
+
+		group.GET(listSessionsURI, listSessionsHandler)
+		group.GET(createSessionURI, createSessionHandler)
+		group.GET(deleteSessionURI, deleteSessionHandler)
+
+		group.GET(listModelsURI, listModelsHandler)
+
+		group.POST(directChatURI, agentDirectChatHandler)
 	}
 }

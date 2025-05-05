@@ -38,13 +38,23 @@ func GetModels() ([]ai.Model, string) {
 	return Agent.models, Agent.activeModel.ID
 }
 
+func GetSessions() ([]Session, string) {
+	return Agent.sessions, Agent.activeSession.ID
+}
+
+func CreateSession() *Session {
+	session := newSession()
+	Agent.sessions = append(Agent.sessions, *session)
+	return session
+}
+
 func ConnectSession(id string) (*Session, error) {
 	var res *Session = nil
 	var err error = nil
 	if id == "" {
 		if len(Agent.sessions) == 0 {
 			// if there are no sessions in array, create it, add to sessions array and return id
-			newSess := NewSession()
+			newSess := newSession()
 			Agent.sessions = append(Agent.sessions, *newSess)
 			Agent.activeSession = newSess
 			res = newSess
@@ -55,18 +65,49 @@ func ConnectSession(id string) (*Session, error) {
 			res = lastSession
 		}
 	} else {
+		// if there is no session found with this id, return error
+		err = errors.New("session not found")
 		// if id is not nil then search for that session and return its id
 		for i := range Agent.sessions {
 			if Agent.sessions[i].ID == id {
 				Agent.activeSession = &Agent.sessions[i]
 				res = &Agent.sessions[i]
+				err = nil
+				break
 			}
 		}
-		// if there is no session found with this id, return error
-		err = errors.New("session not found")
+
 	}
 
 	return res, err
+}
+
+func DeleteSession(id string) (*Session, error) {
+	var deletedSession *Session
+
+	for i, session := range Agent.sessions {
+		if session.ID == id {
+			deletedSession = &Agent.sessions[i]
+			deletedSession.Delete()
+			Agent.sessions = append(Agent.sessions[:i], Agent.sessions[i+1:]...)
+			break
+		}
+	}
+
+	if deletedSession == nil {
+		log.E("trying to delete non existing session", id)
+		return nil, errors.New("session not found")
+	}
+
+	if len(Agent.sessions) == 0 {
+		Agent.sessions = append(Agent.sessions, *newSession())
+	}
+
+	if Agent.activeSession != nil && Agent.activeSession.ID == id {
+		Agent.activeSession = &Agent.sessions[len(Agent.sessions)-1]
+	}
+
+	return deletedSession, nil
 }
 
 func DirectChat(sessionID string, message string) (string, error) {

@@ -4,20 +4,25 @@ import (
 	"agentsmith/src/agent"
 	"agentsmith/src/logger"
 	"agentsmith/src/server"
+	"embed"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
-	"github.com/joho/godotenv"
 	webview "github.com/webview/webview_go"
 )
 
 var log = logger.Logger("main", 1, 1, 1)
 
+//go:embed ui/*
+var uiFS embed.FS
+
 func main() {
 	defer logger.BreakOnError()
 
-	godotenv.Load()
+	os.Setenv("AS_BACKEND_PORT", "8008")
+	os.Setenv("AS_AGENT_DB_FILE", "app.db")
 
 	go agent.LoadAgent()
 
@@ -35,9 +40,9 @@ func main() {
 	// }
 	// exePath := filepath.Dir(ex)
 	// Use relative path for development, switch to exePath for bundled app
-	uiDir := "./internal/ui" // Or: filepath.Join(exePath, "ui") for bundled app
-	log.D("Serving static files from: ", uiDir)
-	fs := http.FileServer(http.Dir(uiDir))
+	// uiDir := "./ui" // Or: filepath.Join(exePath, "ui") for bundled app
+	//log.D("Serving static files from: ", uiFS)
+	fs := http.FileServer(http.FS(uiFS))
 	// Serve everything under / that isn't an API route
 	mux.Handle("/", fs)
 
@@ -47,7 +52,7 @@ func main() {
 	log.CheckE(err, nil, "Failed to bind UI port")
 
 	serverAddr := listener.Addr().String()
-	serverURL := fmt.Sprintf("http://%s", serverAddr)
+	serverURL := fmt.Sprintf("http://%s/ui/", serverAddr)
 	log.D("UI server starting on: ", serverAddr)
 
 	// Start the server in a goroutine so it doesn't block the WebView

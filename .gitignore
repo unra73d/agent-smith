@@ -3,3 +3,9 @@ go.sum
 app.db
 .DS_Store
 models.json
+build
+src/ui/dist
+node_modules
+wailsjs
+package-lock.json
+package.json.md5

@@ -72,14 +72,14 @@ func LoadSessions() []Session {
 	}
 
 	if len(sessions) == 0 {
-		sessions = append(sessions, *NewSession())
+		sessions = append(sessions, *newSession())
 	}
 	log.D("Loaded sessions from DB:", len(sessions))
 	return sessions
 }
 
-func NewSession() *Session {
-	session := &Session{uuid.NewString(), time.Now(), make([]ai.Message, 0, 32)}
+func newSession() *Session {
+	session := &Session{uuid.NewString(), time.Now(), make([]ai.Message, 0, 32), "New chat"}
 	session.Save()
 	return session
 }
@@ -107,10 +107,22 @@ func (s *Session) Save() error {
 	dateStr := s.Date.Format(time.RFC3339)
 
 	_, err = db.Exec(query, s.ID, dateStr, string(messagesJSON))
-	log.CheckE(err, nil, "Failed to update session DB")
+	log.CheckW(err, "Failed to update session DB")
 
 	log.D("Saved session", s.ID)
 	return err
+}
+
+func (s *Session) Delete() {
+	log.D("Deleting session from ", os.Getenv("AS_AGENT_DB_FILE"))
+	defer logger.BreakOnError()
+
+	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	log.CheckE(err, nil, "Failed to open DB")
+	defer db.Close()
+
+	query := "DELETE FROM sessions WHERE session_id=?"
+	db.Exec(query, s.ID)
 }
 
 func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {

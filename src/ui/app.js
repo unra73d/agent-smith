@@ -192,10 +192,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("App loaded. Attempting to connect to agent...");
 
     populateModelSelector();
+    populateSessions();
 
     // --- Connect to agent (existing code) ---
     try {
-        const response = await fetch('http://localhost:8008/agent/connect', {
+        const response = await fetch('http://localhost:8008/agent/sessions/connect', {
             method: 'GET',
             headers: { 'Accept': 'application/json' },
         });
@@ -394,3 +395,96 @@ async function populateModelSelector() {
         modelSelector.innerHTML = '<option value="" disabled selected>Error loading models</option>';
     }
 }
+
+async function populateSessions() {
+    try {
+        const response = await fetch('http://localhost:8008/agent/sessions/list');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data && data.sessions && Array.isArray(data.sessions)) {
+            const sessionList = document.getElementById('sessionList');
+            sessionList.innerHTML = ''; // Clear existing sessions
+
+            data.sessions.forEach(session => {
+                const sessionItem = document.createElement('div');
+                sessionItem.classList.add('session-item');
+
+                const summary = session.summary ? session.summary : 'New chat';
+                sessionItem.innerHTML = `
+                    <span class="session-summary">${summary}</span>
+                    <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${session.id}">
+                `;
+
+                sessionList.appendChild(sessionItem);
+            });
+
+            // Add event listeners for delete icons
+            document.querySelectorAll('.delete-icon').forEach(icon => {
+                icon.addEventListener('click', handleDeleteSession);
+            });
+        } else {
+            console.error("Invalid data structure received for sessions:", data);
+        }
+    } catch (error) {
+        console.error("Failed to fetch sessions:", error);
+    }
+}
+
+// Function to handle deleting a session
+async function handleDeleteSession(event) {
+    const sessionId = event.currentTarget.getAttribute('data-id');
+    if (confirm('Are you sure you want to delete this session?')) {
+        try {
+            const response = await fetch(`http://localhost:8008/agent/sessions/delete/${sessionId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            populateSessions(); // Refresh the session list
+        } catch (error) {
+            console.error("Failed to delete session:", error);
+        }
+    }
+}
+
+// Function to create a new chat session
+async function createNewSession() {
+    try {
+        const response = await fetch('http://localhost:8008/agent/sessions/new');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data && data.session && data.session.id && data.session.summary && data.session.date) {
+            console.log("New session created:", data);
+
+            // Create a new session item
+            const sessionItem = document.createElement('div');
+            sessionItem.classList.add('session-item');
+
+            const summary = data.summary ? data.summary : 'New chat';
+            sessionItem.innerHTML = `
+                <span class="session-summary">${summary}</span>
+                <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${data.id}">
+            `;
+
+            // Insert the new session item at the top of the session list
+            const sessionList = document.getElementById('sessionList');
+            sessionList.insertBefore(sessionItem, sessionList.firstChild);
+
+            // Add event listener for the delete icon
+            sessionItem.querySelector('.delete-icon').addEventListener('click', handleDeleteSession);
+        } else {
+            console.error("Invalid data structure received for new session:", data);
+        }
+    } catch (error) {
+        console.error("Failed to create new session:", error);
+    }
+}
+
+// Add event listeners for the new UI elements
+document.getElementById('reloadSessions').addEventListener('click', populateSessions);
+document.getElementById('newSession').addEventListener('click', createNewSession);
