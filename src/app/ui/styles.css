@@ -114,6 +114,18 @@ body {
     }
 }
 
+@keyframes border-animation{
+    0%{
+        border-color: #313335;
+    }
+    50%{
+        border-color: #131314;
+    }
+    100%{
+        border-color: #313335;
+    }
+}
+
 .content-area {
     display: flex;
     flex-grow: 1;
@@ -429,11 +441,17 @@ body {
                     .thinking-summary {
                         padding: 3px 8px;
                         cursor: pointer;
-                        background-color: #313335;
+                        background-color: transparent;
                         border-radius: 4px 4px 0 0;
                         position: relative;
+                        border: 1px solid #313335;
+                        width: 120px;
+
+                        &.in-progress{
+                            animation: border-animation 2s linear infinite;
+                        }
                     }
-    
+
                     .thinking-summary::before {
                         content: '⟩';
                         display: inline-block;
@@ -444,21 +462,20 @@ body {
     
                     .thinking-content {
                         padding: 4px 8px;
-                        white-space: wrap;
-                        background-color: #1f2021;
-                        color: #868889;
+                        background-color: #161617;
+                        color: #6f7071;
+                        white-space: pre-wrap;
                     }
 
                     &.open>.thinking-summary::before {
                         transform: rotate(90deg);
                     }
-    
+
                     &:not(.open)>.thinking-content {
                         display: none;
                     }
     
                     &:not(.open)>.thinking-summary {
-                        border-bottom: none;
                         border-radius: 4px;
                     }
                 }

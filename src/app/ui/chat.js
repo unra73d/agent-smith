@@ -1,5 +1,6 @@
 const chatInput = document.getElementById('chatInput');
 const chatView = document.getElementById('chatView');
+const sendButton = document.getElementById('sendButton');
 
 function applySyntaxHighlighting(element) {
     element.querySelectorAll('pre code').forEach((block) => {
@@ -9,11 +10,15 @@ function applySyntaxHighlighting(element) {
     });
 }
 
-function setAssistantMessageContent(messageElement, thinkElement, content){
+function setAssistantMessageContent(messageElement, thinkElement, thinkSummary, content){
     try {
         if(content.includes('<think>') && ! content.includes('</think>')){
+            thinkSummary.classList.add('in-progress')
             content += '</think>'
+        } else {
+            thinkSummary.classList.remove('in-progress')
         }
+
         thinkContent = content.match(/<think>([\s\S]*?)<\/think>/)
         if (thinkContent.length == 2){
             trimThinking = thinkContent[1].trim()
@@ -45,19 +50,19 @@ function scrollToBottom() {
 
 function initAssisstantMessageElement(messageElement){
     messageElement.innerHTML = `<div class="thinking-block">
-        <div class="thinking-summary">🤔 Thinking...</div>
+        <div class="thinking-summary">🧠 Thinking...</div>
         <div class="thinking-content thinking-content-empty"></div>
     </div>
     <div class="message-content"></div>`;
 
     const thinkBlock = messageElement.querySelector('.thinking-block');
-    const summary = messageElement.querySelector('.thinking-summary');
+    const thinkSummary = messageElement.querySelector('.thinking-summary');
     const thinkContent = messageElement.querySelector('.thinking-content');
     const messageContent = messageElement.querySelector('.message-content');
-    summary.addEventListener('click', () => {
+    thinkSummary.addEventListener('click', () => {
         thinkBlock.classList.toggle('open');
     });
-    return {thinkContent, messageContent}
+    return {messageContent, thinkContent, thinkSummary}
 }
 
 function appendMessage(content, type) {
@@ -65,8 +70,8 @@ function appendMessage(content, type) {
     messageElement.classList.add('message', type);
 
     if (type === 'assistant') {
-        const {thinkContent, messageContent} = initAssisstantMessageElement(messageElement)
-        setAssistantMessageContent(messageContent, thinkContent, content)
+        const {messageContent, thinkContent, thinkSummary} = initAssisstantMessageElement(messageElement)
+        setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content)
     } else {
         messageElement.textContent = content;
     }
@@ -90,14 +95,22 @@ async function sendMessageStreaming() {
 
     const assistantMessageElement = document.createElement('div');
     assistantMessageElement.classList.add('message', 'assistant');
-    const {thinkContent, messageContent} = initAssisstantMessageElement(assistantMessageElement)
+    const {messageContent, thinkContent, thinkSummary} = initAssisstantMessageElement(assistantMessageElement)
     chatView.appendChild(assistantMessageElement);
+
+    scrollToBottom();
 
     content = ''
     await apiDirectChatStreaming(currentSessionId, messageText, (chunk) => {
+        const isScrolledToBottom = chatView.scrollHeight - chatView.scrollTop <= chatView.clientHeight + 1;
+        
         content += chunk
-        setAssistantMessageContent(messageContent, thinkContent, content)
+        setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content)
         applySyntaxHighlighting(assistantMessageElement);
+        
+        if (isScrolledToBottom) {
+            scrollToBottom();
+        }
     });
 }
 
