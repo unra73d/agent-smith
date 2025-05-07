@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/tmaxmax/go-sse"
@@ -38,7 +39,7 @@ type IAPIProvider interface {
 
 	Test() error
 	ListModels() ([]Model, error)
-	ChatCompletion(messages []Message, model *Model, toolUse bool) (*Message, error)
+	ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error)
 	ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error
 }
 
@@ -189,33 +190,33 @@ func (self *OpenAIProvider) ListModels() ([]Model, error) {
 	return models, nil
 }
 
-type ChatCompletionMessage struct {
+type OpenAIChatCompletionMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type ChatCompletionChoice struct {
-	Index        int                   `json:"index"`
-	FinishReason string                `json:"finish_reason"`
-	Message      ChatCompletionMessage `json:"message"`
+type OpenAIChatCompletionChoice struct {
+	Index        int                         `json:"index"`
+	FinishReason string                      `json:"finish_reason"`
+	Message      OpenAIChatCompletionMessage `json:"message"`
 }
 
-type ChatCompletionUsage struct {
+type OpenAIChatCompletionUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
 }
 
 type OpenAIChatCompletionRes struct {
-	ID                string                 `json:"id"`
-	Created           int64                  `json:"created"`
-	Model             string                 `json:"model"`
-	Choices           []ChatCompletionChoice `json:"choices"`
-	Usage             ChatCompletionUsage    `json:"usage"`
-	SystemFingerprint string                 `json:"system_fingerprint"`
+	ID                string                       `json:"id"`
+	Created           int64                        `json:"created"`
+	Model             string                       `json:"model"`
+	Choices           []OpenAIChatCompletionChoice `json:"choices"`
+	Usage             OpenAIChatCompletionUsage    `json:"usage"`
+	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (*Message, error) {
+func (self *OpenAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error) {
 	log.D("OpenAI chat completion")
 	url := self.apiURL + "/chat/completions"
 
@@ -227,27 +228,19 @@ func (self *OpenAIProvider) ChatCompletion(messages []Message, model *Model, too
 		r.Header.Add("Authorization", "Bearer "+self.apiKey)
 	}
 
-	bodyMessages := make([]map[string]string, len(messages))
-	for i, message := range messages {
-		bodyMessages[i] = map[string]string{
-			"role":    string(message.Origin),
-			"content": message.Text,
-		}
-	}
-
 	r.SetBody(map[string]any{
 		"model":    model.ID,
-		"messages": bodyMessages,
+		"messages": prepareMessages(messages),
 	})
 	res := &OpenAIChatCompletionRes{}
 	r.SetResult(res)
 	_, err := r.Post(url)
 
 	if err != nil || len(res.Choices) == 0 {
-		return nil, err
+		return "", err
 	}
 
-	return &Message{res.ID, MessageOriginAI, res.Choices[0].Message.Content}, nil
+	return res.Choices[0].Message.Content, nil
 }
 
 type OpenAIStreamChatResponseChoice struct {
@@ -273,16 +266,9 @@ func (self *OpenAIProvider) ChatCompletionStream(messages []Message, model *Mode
 	log.D("OpenAI chat completion streaming")
 	url := self.apiURL + "/chat/completions"
 
-	bodyMessages := make([]map[string]string, len(messages))
-	for i, message := range messages {
-		bodyMessages[i] = map[string]string{
-			"role":    string(message.Origin),
-			"content": message.Text,
-		}
-	}
 	body := map[string]any{
 		"model":    model.ID,
-		"messages": bodyMessages,
+		"messages": prepareMessages(messages),
 		"stream":   true,
 	}
 	bodyJSON, err := json.Marshal(body)
@@ -323,10 +309,36 @@ func (self *GoogleAIProvider) ListModels() ([]Model, error) {
 	return []Model{}, nil
 }
 
-func (self *GoogleAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (*Message, error) {
-	return &Message{"", MessageOriginAI, "Message received"}, nil
+func (self *GoogleAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error) {
+	return "Message received", nil
 }
 
 func (self *GoogleAIProvider) ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error {
 	return nil
+}
+
+var thinkTags = []string{"think", "thinking"}
+
+func cutThinking(text string) string {
+	for _, tag := range thinkTags {
+		if strings.HasPrefix(text, "<"+tag+">") {
+			pos := strings.Index(text, "</"+tag+">")
+			if pos != -1 {
+				text = text[pos+len("</"+tag+">"):]
+			}
+			break
+		}
+	}
+	return text
+}
+
+func prepareMessages(messages []Message) *[]map[string]string {
+	bodyMessages := make([]map[string]string, len(messages))
+	for i, message := range messages {
+		bodyMessages[i] = map[string]string{
+			"role":    string(message.Origin),
+			"content": strings.TrimSpace(cutThinking(message.Text)),
+		}
+	}
+	return &bodyMessages
 }

@@ -4,6 +4,7 @@ import (
 	"agentsmith/src/agent"
 	"agentsmith/src/logger"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -107,7 +108,7 @@ func agentDirectChatHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	response, err := agent.DirectChat(req.SessionID, req.Message)
+	response, err := agent.DirectChat(req.SessionID, strings.TrimSpace(req.Message))
 	if err != nil {
 		c.JSON(500, map[string]string{"error": "Unknown error"})
 	} else {
@@ -136,7 +137,7 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.DirectChatStreaming(req.SessionID, req.Message, streamCh, streamDoneCh)
+	go agent.DirectChatStreaming(req.SessionID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {

@@ -335,9 +335,15 @@ body {
                     max-width: 85%;
                     border-left: 1px solid #313335;
                     border-radius: 0px;
+                    white-space: nowrap;
+                    padding: 0px 12px;
                     -webkit-user-select: auto;
                     -moz-user-select: auto;
                     -ms-user-select: auto;
+
+                    .message-content{
+                        white-space: pre-wrap;
+                    }
                 }
 
                 &.tool {
@@ -436,7 +442,6 @@ body {
                     margin: 4px 0;
                     color: #bdc1c6;
                     font-size: 0.9em;
-                    white-space: nowrap;
                     
                     .thinking-summary {
                         padding: 3px 8px;

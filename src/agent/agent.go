@@ -137,7 +137,7 @@ func DirectChatStreaming(sessionID string, query string, streamCh chan string, s
 		log.CheckW(err, "Failed to add new message in agent")
 
 		Agent.activeModel.Provider.ChatCompletionStream(
-			Agent.activeSession.Messages,
+			Agent.activeSession.Messages[:len(Agent.activeSession.Messages)-1],
 			Agent.activeModel,
 			false,
 			modelResponseCh,
@@ -160,10 +160,10 @@ func DirectChat(sessionID string, query string) (response string, err error) {
 		)
 		log.CheckE(err, nil, "Failed to get completion for message")
 
-		err = Agent.activeSession.AddMessageFromMessage(message)
+		err = Agent.activeSession.AddMessage(ai.MessageOriginAI, message)
 		log.CheckE(err, nil, "Failed to store new message in agent")
 
-		response = message.Text
+		response = message
 	} else {
 		err = errors.New("no model selected")
 	}

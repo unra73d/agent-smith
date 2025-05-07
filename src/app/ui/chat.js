@@ -27,7 +27,7 @@ function setAssistantMessageContent(messageElement, thinkElement, thinkSummary, 
                 thinkElement.classList.remove('thinking-content-empty')
             }
         }
-        processedContent = content.replace(/<think>([\s\S]*?)<\/think>/g, '');
+        processedContent = content.replace(/<think>([\s\S]*?)<\/think>/g, '').trim();
 
         const htmlContent = marked.parse(processedContent, {
             gfm: true,

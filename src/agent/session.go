@@ -126,17 +126,12 @@ func (s *Session) Delete() {
 }
 
 func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
-	newMessage := &ai.Message{
+	message := &ai.Message{
 		ID:     uuid.NewString(),
 		Origin: origin,
 		Text:   text,
 	}
-	err := s.AddMessageFromMessage(newMessage)
 
-	return err
-}
-
-func (s *Session) AddMessageFromMessage(message *ai.Message) error {
 	s.Messages = append(s.Messages, *message)
 	s.Date = time.Now()
 	err := s.Save()
