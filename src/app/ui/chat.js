@@ -81,6 +81,7 @@ function appendMessage(content, type) {
 }
 
 async function sendMessageStreaming() {
+    touchSession()
     const messageText = chatInput.value.trim();
     if (!messageText) {
         return;
@@ -101,7 +102,7 @@ async function sendMessageStreaming() {
     scrollToBottom();
 
     content = ''
-    await apiDirectChatStreaming(currentSessionId, messageText, (chunk) => {
+    await apiDirectChatStreaming(currentSession.id, messageText, (chunk) => {
         const isScrolledToBottom = chatView.scrollHeight - chatView.scrollTop <= chatView.clientHeight + 1;
         
         content += chunk

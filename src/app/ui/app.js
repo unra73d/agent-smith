@@ -2,6 +2,7 @@ const tabContents = document.querySelectorAll('.tab-content');
 const contentArea = document.querySelector('.content-area');
 const modelSelector = document.getElementById('modelSelector');
 const topTabButtons = document.querySelectorAll('.top-tab-button');
+var currentActiveTabId = null;
 
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
@@ -46,13 +47,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateModelSelector();
     populateSessions();
 
-    session = await apiConnectSession()
-    if(session){
-        currentSessionId = session.id;
-        chatChangeSession(session);
-        updateSessionHighlight(currentSessionId);
-    }
-
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');
     if (initiallyActiveButton) {
@@ -89,14 +83,14 @@ topTabButtons.forEach(button => {
 async function populateModelSelector() {
     data = await apiListModels()
     if(data){
-        modelSelector.innerHTML = '<option value="" disabled>Select a Model</option>'; // Keep placeholder
+        modelSelector.innerHTML = '<option value="" disabled>Select a Model</option>';
 
         let activeModelFound = false;
         data.models.forEach(model => {
             const option = document.createElement('option');
             option.value = model.id;
             option.textContent = model.name;
-            if (model.id === data.activeModelID) {
+            if (!activeModelFound) {
                 option.selected = true;
                 activeModelFound = true;
             }
@@ -113,4 +107,8 @@ async function populateModelSelector() {
     } else {
         modelSelector.innerHTML = '<option value="" disabled selected>Error loading models</option>';
     }
+}
+
+function getSelectedModelId() {
+    return modelSelector.value;
 }

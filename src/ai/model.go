@@ -6,10 +6,10 @@ type Model struct {
 	Provider IAPIProvider
 }
 
-func LoadModels() []Model {
+func LoadModels() []*Model {
 	log.D("Loading models")
 
-	models := make([]Model, 0, 32)
+	models := make([]*Model, 0, 32)
 
 	providers := LoadProviders()
 	for _, provider := range providers {

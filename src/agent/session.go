@@ -12,16 +12,16 @@ import (
 )
 
 type Session struct {
-	ID       string       `json:"id"`
-	Date     time.Time    `json:"date"`
-	Messages []ai.Message `json:"messages"`
-	Summary  string       `json:"summary"`
+	ID       string        `json:"id"`
+	Date     time.Time     `json:"date"`
+	Messages []*ai.Message `json:"messages"`
+	Summary  string        `json:"summary"`
 }
 
-func LoadSessions() []Session {
+func LoadSessions() []*Session {
 	log.D("Loading sessions from", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
-	sessions := make([]Session, 0)
+	sessions := make([]*Session, 0, 32)
 
 	// Open a connection to the SQLite database
 	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
@@ -56,14 +56,14 @@ func LoadSessions() []Session {
 			err = json.Unmarshal([]byte(dataJSON), &session.Messages)
 			if err != nil {
 				log.W("Failed to unmarshal messages for session:", session.ID, err)
-				session.Messages = make([]ai.Message, 0)
+				session.Messages = make([]*ai.Message, 0)
 			}
 		} else {
-			session.Messages = make([]ai.Message, 0)
+			session.Messages = make([]*ai.Message, 0)
 		}
 
 		// Append the successfully loaded session to the slice
-		sessions = append(sessions, session)
+		sessions = append(sessions, &session)
 	}
 
 	// Check for errors during row iteration
@@ -71,16 +71,12 @@ func LoadSessions() []Session {
 		log.E("Error iterating session rows: %v", err)
 	}
 
-	if len(sessions) == 0 {
-		sessions = append(sessions, *newSession())
-	}
 	log.D("Loaded sessions from DB:", len(sessions))
 	return sessions
 }
 
 func newSession() *Session {
-	session := &Session{uuid.NewString(), time.Now(), make([]ai.Message, 0, 32), "New chat"}
-	session.Save()
+	session := &Session{uuid.NewString(), time.Now(), make([]*ai.Message, 0, 32), "New chat"}
 	return session
 }
 
@@ -132,7 +128,7 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
 		Text:   text,
 	}
 
-	s.Messages = append(s.Messages, *message)
+	s.Messages = append(s.Messages, message)
 	s.Date = time.Now()
 	err := s.Save()
 
@@ -141,7 +137,7 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
 
 func (s *Session) UpdateLastMessage(newText string) {
 	if len(s.Messages) > 0 {
-		message := &s.Messages[len(s.Messages)-1]
+		message := s.Messages[len(s.Messages)-1]
 		message.Text = message.Text + newText
 	}
 

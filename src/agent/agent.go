@@ -7,125 +7,85 @@ import (
 	"agentsmith/src/logger"
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type agent struct {
-	sessions      []Session
-	activeSession *Session
-	models        []ai.Model
-	activeModel   *ai.Model
+	sessions     map[string]*Session
+	models       map[string]*ai.Model
+	flashSession *Session
 }
 
 var log = logger.Logger("agent", 1, 1, 1)
-var Agent agent
+var Agent = agent{
+	sessions: make(map[string]*Session),
+	models:   make(map[string]*ai.Model),
+}
 
 func LoadAgent() {
 	// load models
-	Agent.models = ai.LoadModels()
-	// select active model
-	if len(Agent.models) > 0 {
-		Agent.activeModel = &Agent.models[0]
+	modelList := ai.LoadModels()
+	for _, model := range modelList {
+		Agent.models[uuid.NewString()] = model
 	}
 
 	// load historical sessions
-	Agent.sessions = LoadSessions()
-	// select active session
-	if len(Agent.sessions) > 0 {
-		Agent.activeSession = &Agent.sessions[0]
+	sessionList := LoadSessions()
+	for _, session := range sessionList {
+		Agent.sessions[session.ID] = session
 	}
+
+	// create global 'flash' session
+	Agent.flashSession = newSession()
 }
 
-func GetModels() ([]ai.Model, string) {
-	return Agent.models, Agent.activeModel.ID
+func GetModels() map[string]*ai.Model {
+	return Agent.models
 }
 
-func GetSessions() ([]Session, string) {
-	return Agent.sessions, Agent.activeSession.ID
+func GetSessions() map[string]*Session {
+	return Agent.sessions
 }
 
 func CreateSession() *Session {
 	session := newSession()
-	Agent.sessions = append(Agent.sessions, *session)
-	Agent.activeSession = session
+	session.Save()
+	Agent.sessions[session.ID] = session
 	return session
 }
 
-func ConnectSession(id string) (*Session, error) {
-	var res *Session = nil
-	var err error = nil
-	if id == "" {
-		if len(Agent.sessions) == 0 {
-			// if there are no sessions in array, create it, add to sessions array and return id
-			newSess := newSession()
-			Agent.sessions = append(Agent.sessions, *newSess)
-			Agent.activeSession = newSess
-			res = newSess
-		} else {
-			// get the last session
-			lastSession := &Agent.sessions[len(Agent.sessions)-1]
-			Agent.activeSession = lastSession
-			res = lastSession
-		}
+func DeleteSession(id string) error {
+	if session, ok := Agent.sessions[id]; ok {
+		session.Delete()
+		delete(Agent.sessions, id)
+		return nil
 	} else {
-		// if there is no session found with this id, return error
-		err = errors.New("session not found")
-		// if id is not nil then search for that session and return its id
-		for i := range Agent.sessions {
-			if Agent.sessions[i].ID == id {
-				Agent.activeSession = &Agent.sessions[i]
-				res = &Agent.sessions[i]
-				err = nil
-				break
-			}
-		}
-
-	}
-
-	return res, err
-}
-
-func DeleteSession(id string) (*Session, error) {
-	var deletedSession *Session
-
-	for i, session := range Agent.sessions {
-		if session.ID == id {
-			deletedSession = &Agent.sessions[i]
-			deletedSession.Delete()
-			Agent.sessions = append(Agent.sessions[:i], Agent.sessions[i+1:]...)
-			break
-		}
-	}
-
-	if deletedSession == nil {
 		log.E("trying to delete non existing session", id)
-		return nil, errors.New("session not found")
+		return errors.New("session not found")
 	}
 
-	if len(Agent.sessions) == 0 {
-		Agent.sessions = append(Agent.sessions, *newSession())
-	}
-
-	if Agent.activeSession != nil && Agent.activeSession.ID == id {
-		Agent.activeSession = &Agent.sessions[len(Agent.sessions)-1]
-	}
-
-	return deletedSession, nil
 }
 
-func DirectChatStreaming(sessionID string, query string, streamCh chan string, streamDoneCh chan bool) {
-	Agent.activeSession.AddMessage(ai.MessageOriginUser, query)
+func DirectChatStreaming(sessionID string, modelID string, query string, streamCh chan string, streamDoneCh chan bool) {
+	if model, ok := Agent.models[modelID]; ok {
+		session, permanentSession := Agent.sessions[sessionID]
+		if !permanentSession {
+			session = Agent.flashSession
+		}
 
-	if Agent.activeModel != nil {
 		modelResponseCh := make(chan string)
 		modelDoneCh := make(chan bool)
 		go func() {
 			for {
 				select {
 				case msg := <-modelResponseCh:
-					Agent.activeSession.UpdateLastMessage(msg)
+					session.UpdateLastMessage(msg)
 					streamCh <- msg
 				case <-modelDoneCh:
-					Agent.activeSession.Save()
+					if permanentSession {
+						session.Save()
+					}
 					return
 				case <-time.After(60 * time.Second):
 					return
@@ -133,39 +93,47 @@ func DirectChatStreaming(sessionID string, query string, streamCh chan string, s
 			}
 		}()
 
-		err := Agent.activeSession.AddMessage(ai.MessageOriginAI, "")
+		session.AddMessage(ai.MessageOriginUser, query)
+		err := session.AddMessage(ai.MessageOriginAI, "")
 		log.CheckW(err, "Failed to add new message in agent")
 
-		Agent.activeModel.Provider.ChatCompletionStream(
-			Agent.activeSession.Messages[:len(Agent.activeSession.Messages)-1],
-			Agent.activeModel,
+		model.Provider.ChatCompletionStream(
+			session.Messages[:len(session.Messages)-1],
+			model,
 			false,
 			modelResponseCh,
 		)
 		modelDoneCh <- true
 		streamDoneCh <- true
+	} else {
+		log.E("Model not found")
+		streamDoneCh <- false
 	}
 }
 
-func DirectChat(sessionID string, query string) (response string, err error) {
+func DirectChat(sessionID string, modelID string, query string) (response string, err error) {
 	logger.BreakOnError()
 	response = ""
-	Agent.activeSession.AddMessage(ai.MessageOriginUser, query)
 
-	if Agent.activeModel != nil {
-		message, err := Agent.activeModel.Provider.ChatCompletion(
-			Agent.activeSession.Messages,
-			Agent.activeModel,
+	if model, ok := Agent.models[modelID]; ok {
+		session, permanentSession := Agent.sessions[sessionID]
+		if !permanentSession {
+			session = Agent.flashSession
+		}
+
+		message, err := model.Provider.ChatCompletion(
+			session.Messages,
+			model,
 			false,
 		)
 		log.CheckE(err, nil, "Failed to get completion for message")
 
-		err = Agent.activeSession.AddMessage(ai.MessageOriginAI, message)
+		err = session.AddMessage(ai.MessageOriginAI, message)
 		log.CheckE(err, nil, "Failed to store new message in agent")
 
 		response = message
 	} else {
-		err = errors.New("no model selected")
+		err = errors.New("model not selected")
 	}
 	return
 }

@@ -11,38 +11,17 @@ import (
 )
 
 /*
-Connect to last session or to session with specific id
-*/
-var connectIDURI = "/sessions/connect/:id"
-var connectURI = "/sessions/connect"
-
-type ConnectSessionReq struct {
-	ID string `uri:"id" binding:"omitempty"`
-}
-
-func connectSessionHandler(c *gin.Context) {
-	defer logger.BreakOnError()
-
-	var req ConnectSessionReq
-	err := c.BindUri(&req)
-	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
-
-	res, err := agent.ConnectSession(req.ID)
-	if err != nil {
-		c.JSON(500, map[string]string{"error": "Session with requested id does not exist"})
-	} else {
-		c.JSON(200, map[string]any{"session": res, "error": ""})
-	}
-}
-
-/*
 Get list of chat sessions
 */
 var listSessionsURI = "/sessions/list"
 
 func listSessionsHandler(c *gin.Context) {
-	sessions, id := agent.GetSessions()
-	c.JSON(200, map[string]any{"sessions": sessions, "activeSessionlID": id})
+	sessionMap := agent.GetSessions()
+	sessionList := make([]*agent.Session, 0, len(sessionMap))
+	for _, val := range sessionMap {
+		sessionList = append(sessionList, val)
+	}
+	c.JSON(200, map[string]any{"sessions": sessionList})
 }
 
 /*
@@ -71,11 +50,11 @@ func deleteSessionHandler(c *gin.Context) {
 	err := c.BindUri(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	session, err := agent.DeleteSession(req.ID)
+	err = agent.DeleteSession(req.ID)
 	if err != nil {
-		c.JSON(500, map[string]any{"activeSession": nil, "error": err})
+		c.JSON(500, map[string]any{"error": err})
 	} else {
-		c.JSON(200, map[string]any{"activeSession": session, "error": nil})
+		c.JSON(200, map[string]any{"error": nil})
 	}
 
 }
@@ -86,8 +65,15 @@ Get list of available models and active model id
 var listModelsURI = "/models/list"
 
 func listModelsHandler(c *gin.Context) {
-	models, id := agent.GetModels()
-	c.JSON(200, map[string]any{"models": models, "activeModelID": id})
+	modelMap := agent.GetModels()
+	modelList := make([]map[string]any, 0, len(modelMap))
+	for key, val := range modelMap {
+		modelList = append(modelList, map[string]any{
+			"name": val.Name,
+			"id":   key,
+		})
+	}
+	c.JSON(200, map[string]any{"models": modelList})
 }
 
 /*
@@ -98,6 +84,7 @@ var directChatURI = "/directchat"
 
 type directChatReq struct {
 	SessionID string `json:"sessionID" binding:"required"`
+	ModelID   string `json:"modelID" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -108,7 +95,7 @@ func agentDirectChatHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	response, err := agent.DirectChat(req.SessionID, strings.TrimSpace(req.Message))
+	response, err := agent.DirectChat(req.SessionID, req.ModelID, strings.TrimSpace(req.Message))
 	if err != nil {
 		c.JSON(500, map[string]string{"error": "Unknown error"})
 	} else {
@@ -124,6 +111,7 @@ var directChatStreamURI = "/directchat/stream"
 
 type directChatStreamReq struct {
 	SessionID string `json:"sessionID" binding:"required"`
+	ModelID   string `json:"modelID" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -137,7 +125,7 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.DirectChatStreaming(req.SessionID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+	go agent.DirectChatStreaming(req.SessionID, req.ModelID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {
@@ -150,7 +138,7 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 				log.D("Stream finalized")
 				c.Status(200)
 				return false
-			case <-time.After(10 * time.Second):
+			case <-time.After(100 * time.Second):
 				log.W("Stream message timed out")
 				c.Status(500)
 				return false
@@ -162,9 +150,6 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
-		group.GET(connectIDURI, connectSessionHandler)
-		group.GET(connectURI, connectSessionHandler)
-
 		group.GET(listSessionsURI, listSessionsHandler)
 		group.GET(createSessionURI, createSessionHandler)
 		group.GET(deleteSessionURI, deleteSessionHandler)

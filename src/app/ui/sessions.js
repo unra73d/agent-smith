@@ -1,30 +1,36 @@
-var currentSessionId = null;
-var currentActiveTabId = null;
+var currentSession = null;
+var sessions = []
 
 // Function to handle deleting a session
 async function handleDeleteSession(event) {
     event.stopPropagation(); // Prevent triggering session load if clicking on the icon within the item
     const sessionItem = event.currentTarget.closest('.session-item'); // Find the parent session item
     const sessionId = event.currentTarget.getAttribute('data-id');
+    const currentSessionId = currentSession.id
 
     // Use the custom confirm dialog
     const confirmed = await confirmDialog('Are you sure you want to delete this chat session? This action cannot be undone.');
 
     if (confirmed) {
-        activeSession = await apiDeleteSession(sessionId)
+        await apiDeleteSession(sessionId)
+        sessionItem.remove();
+        for(i in sessions){
+            if(sessions[i] == currentSession){
+                sessions.splice(i, 1)
+                break
+            }
+        }
 
-        if(activeSession){
-            if(activeSession.id != currentSessionId){
-                console.log("Deleted the active session. Resetting chat view and connection.");
-                currentSessionId = activeSession.id;
-                chatChangeSession(activeSession);
-                updateSessionHighlight(currentSessionId);
+        if(currentSessionId == sessionId){
+            console.log("Deleted the active session. Resetting chat view and connection.");
+            if (sessions.length == 0){
+                createNewSession();
+            } else {
+                currentSession = sessions[0];
+                chatChangeSession(currentSession);
+                updateSessionHighlight(currentSession);
             }
-            if (sessionItem) {
-                sessionItem.remove();
-            }
-        } else {
-            appendMessage("Failed to deleted session", "error")
+            
         }
     }
 }
@@ -36,7 +42,8 @@ async function createNewSession() {
     if (session) {
         console.log("New session created and connected:", session.id);
 
-        currentSessionId = session.id;
+        sessions.unshift(session)
+        currentSession = session;
         chatChangeSession(session);
 
         // Create and add the new session item to the UI list
@@ -56,7 +63,7 @@ async function createNewSession() {
         sessionItem.addEventListener('click', handleSessionClick);
         sessionItem.querySelector('.delete-icon').addEventListener('click', handleDeleteSession);
 
-        updateSessionHighlight(currentSessionId);
+        updateSessionHighlight(currentSession);
 
     } else {
         appendMessage("Error: Could not create new session.", "error");
@@ -67,6 +74,7 @@ async function populateSessions() {
     sessions = await apiListSessions()
 
     if(sessions){
+        sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
         const sessionList = document.getElementById('sessionList');
         sessionList.innerHTML = '';
 
@@ -92,14 +100,20 @@ async function populateSessions() {
             icon.addEventListener('click', handleDeleteSession);
         });
 
-        updateSessionHighlight(currentSessionId);
+        if(sessions.length > 0){
+            currentSession = sessions[0]
+        }
+
+        selectSession(currentSession.id);
+    } else {
+        sessions = []
     }
 }
 
-function updateSessionHighlight(activeSessionId) {
+function updateSessionHighlight() {
     const sessionItems = document.querySelectorAll('.session-item');
     sessionItems.forEach(item => {
-        if (item.getAttribute('data-id') === activeSessionId) {
+        if (item.getAttribute('data-id') === currentSession.id) {
             item.classList.add('active');
         } else {
             item.classList.remove('active');
@@ -111,49 +125,51 @@ function updateSessionHighlight(activeSessionId) {
 document.getElementById('reloadSessions').addEventListener('click', populateSessions);
 document.getElementById('newSession').addEventListener('click', createNewSession);
 
-async function handleSessionClick(event) {
+function selectSession(sessionId){
+    for (i in sessions){
+        if(sessions[i].id == sessionId){
+            currentSession = sessions[i]
+            break
+        }
+    }
+    updateSessionHighlight()
+
+    if(currentSession != null){
+        chatChangeSession(currentSession)
+    }
+}
+
+function handleSessionClick(event) {
     const sessionItem = event.currentTarget;
     const sessionId = sessionItem.getAttribute('data-id');
+    selectSession(sessionId)
+}
 
-    try {
-        const response = await fetch(`http://localhost:8008/agent/sessions/connect/${sessionId}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-        });
+function touchSession() {
+    if (currentSession) {
+        // Find the index of the current session in the sessions array
+        const currentIndex = sessions.findIndex(session => session.id === currentSession.id);
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+        // If the current session is not the first in the list
+        if (currentIndex > 0) {
+            // Move the current session to the beginning of the sessions array
+            sessions.splice(currentIndex, 1);
+            sessions.unshift(currentSession);
+
+            // Update the current session's date to now
+            currentSession.date = new Date().toISOString();
+
+            // Update the session list in the UI
+            const sessionList = document.getElementById('sessionList');
+            const sessionItems = sessionList.querySelectorAll('.session-item');
+            sessionItems.forEach(item => {
+                if (item.getAttribute('data-id') === currentSession.id) {
+                    sessionList.insertBefore(item, sessionList.firstChild);
+                }
+            });
+
+            // Update the highlight to reflect the new order
+            updateSessionHighlight();
         }
-
-        const data = await response.json();
-
-        if (data && data.session && data.session.id) {
-            currentSessionId = data.session.id;
-            console.log("Connected to session:", currentSessionId);
-            updateSessionHighlight(currentSessionId)
-
-            // Clear chat view
-            chatView.innerHTML = '';
-
-            // Replace messages in chat view with the new session's messages
-            if (data.session.messages && Array.isArray(data.session.messages)) {
-                data.session.messages.forEach(message => {
-                    let messageType = message.origin;
-                    if (message.text) {
-                        appendMessage(message.text, messageType);
-                    }
-                });
-                scrollToBottom();
-            } else {
-                appendMessage("Connected, but no previous messages found.", "system");
-            }
-        } else {
-            appendMessage("Error: Could not establish a session ID.", "error");
-            currentSessionId = null;
-        }
-    } catch (error) {
-        console.error("Failed to connect to session:", error);
-        appendMessage(`Error connecting to session: ${error.message}`, "error");
-        currentSessionId = null;
     }
 }

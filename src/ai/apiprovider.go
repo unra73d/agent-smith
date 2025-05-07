@@ -38,9 +38,9 @@ type IAPIProvider interface {
 	Type() APIType
 
 	Test() error
-	ListModels() ([]Model, error)
-	ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error)
-	ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error
+	ListModels() ([]*Model, error)
+	ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error)
+	ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) error
 }
 
 type APIProvider struct {
@@ -160,7 +160,7 @@ type OpenAIModelListRes struct {
 	Data []map[string]any `json:"data"`
 }
 
-func (self *OpenAIProvider) ListModels() ([]Model, error) {
+func (self *OpenAIProvider) ListModels() ([]*Model, error) {
 	log.D("Loading OpenAI models")
 	url := self.apiURL + "/models"
 
@@ -180,11 +180,13 @@ func (self *OpenAIProvider) ListModels() ([]Model, error) {
 		return nil, err
 	}
 
-	models := make([]Model, len(list.Data))
-	for i, model := range list.Data {
-		models[i].ID = model["id"].(string)
-		models[i].Name = model["id"].(string)
-		models[i].Provider = self
+	models := make([]*Model, len(list.Data))
+	for i, config := range list.Data {
+		models[i] = &Model{
+			ID:       config["id"].(string),
+			Name:     self.name + ": " + config["id"].(string),
+			Provider: self,
+		}
 	}
 
 	return models, nil
@@ -216,7 +218,7 @@ type OpenAIChatCompletionRes struct {
 	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error) {
+func (self *OpenAIProvider) ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error) {
 	log.D("OpenAI chat completion")
 	url := self.apiURL + "/chat/completions"
 
@@ -262,7 +264,7 @@ type OpenAIStreamChatResponse struct {
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
 }
 
-func (self *OpenAIProvider) ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) (err error) {
+func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) (err error) {
 	log.D("OpenAI chat completion streaming")
 	url := self.apiURL + "/chat/completions"
 
@@ -305,15 +307,15 @@ func (self *OpenAIProvider) ChatCompletionStream(messages []Message, model *Mode
 
 func (self *GoogleAIProvider) Test() error { return nil }
 
-func (self *GoogleAIProvider) ListModels() ([]Model, error) {
-	return []Model{}, nil
+func (self *GoogleAIProvider) ListModels() ([]*Model, error) {
+	return []*Model{}, nil
 }
 
-func (self *GoogleAIProvider) ChatCompletion(messages []Message, model *Model, toolUse bool) (string, error) {
+func (self *GoogleAIProvider) ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error) {
 	return "Message received", nil
 }
 
-func (self *GoogleAIProvider) ChatCompletionStream(messages []Message, model *Model, toolUse bool, writeCh chan string) error {
+func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) error {
 	return nil
 }
 
@@ -332,7 +334,7 @@ func cutThinking(text string) string {
 	return text
 }
 
-func prepareMessages(messages []Message) *[]map[string]string {
+func prepareMessages(messages []*Message) *[]map[string]string {
 	bodyMessages := make([]map[string]string, len(messages))
 	for i, message := range messages {
 		bodyMessages[i] = map[string]string{

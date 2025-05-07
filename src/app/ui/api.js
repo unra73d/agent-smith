@@ -1,31 +1,3 @@
-async function apiConnectSession(id) {
-    try {
-        url = 'http://localhost:8008/agent/sessions/connect'
-        if (id != undefined) {
-            urls = `http://localhost:8008/agent/sessions/connect/${id}`
-        }
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.session && data.session.id) {
-            return data.session
-        } else {
-            return null
-        }
-    } catch (error) {
-        console.error("Failed to connect:", error);
-        return null
-    }
-}
-
 async function apiCreateSession() {
     try {
         const response = await fetch('http://localhost:8008/agent/sessions/new');
@@ -54,15 +26,8 @@ async function apiDeleteSession(sessionId) {
         }
 
         const data = await response.json();
-
-        if (data.activeSession && data.activeSession.id && data.activeSession.messages && Array.isArray(data.activeSession.messages)) {
-            return data.activeSession
-        } else {
-            return null
-        }
     } catch (error) {
         console.error("Failed to delete session:", error);
-        return null
     }
 }
 
@@ -98,6 +63,7 @@ async function apiDirectChatStreaming(sessionID, message, onMessage) {
             },
             body: JSON.stringify({
                 "sessionID": sessionID,
+                "modelID": getSelectedModelId(),
                 "message": message
             })
         })
@@ -120,7 +86,7 @@ async function apiListModels() {
         }
         const data = await response.json();
 
-        if (data && data.models && data.activeModelID !== undefined) {
+        if (data && data.models) {
             return data
         } else {
             console.error("Invalid data structure received for models:", data);
