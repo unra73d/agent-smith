@@ -12,6 +12,7 @@ class ChatView extends HTMLElement {
         styles.innerHTML = `
         @import url('global.css');
         @import url('components/chat/chat.css');
+        @import url('components/chat/syntax-theme.min.css');
         `
         shadowRoot.appendChild(styles)
 

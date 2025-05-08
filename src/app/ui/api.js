@@ -54,15 +54,37 @@ function apiDirectChat() {
 
 }
 
-async function apiDirectChatStreaming(sessionID, message, onMessage) {
+var genRequests = new Map()
+document.addEventListener('loading:generation-started', (e)=>{
+    sessionId = e.detail.sessionId
+    if( genRequests.has(sessionId) ){
+        genRequests.get(sessionId).abort()
+        genRequests.delete(sessionId)
+    }
+    genRequests.set(sessionId, e.detail.controller)
+})
+
+document.addEventListener('loading:generation-cancel', (e)=>{
+    sessionId = e.detail.sessionId
+    if( genRequests.has(sessionId) ){
+        genRequests.get(sessionId).abort()
+        genRequests.delete(sessionId)
+    }
+})
+
+async function apiDirectChatStreaming(sessionId, message, onMessage) {
+    let controller = new AbortController()
+    sendEvent('loading:generation-started', {sessionId: sessionId, controller: controller})
+
     try {
         const response = await fetch('http://localhost:8008/agent/directchat/stream', {
+            signal: controller.signal,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                "sessionID": sessionID,
+                "sessionID": sessionId,
                 "modelID": getSelectedModelId(),
                 "roleID": getSelectedRoleId(),
                 "message": message
@@ -77,6 +99,7 @@ async function apiDirectChatStreaming(sessionID, message, onMessage) {
     } catch (error) {
         console.error("Failed to initiate streaming:", error);
     }
+    sendEvent('loading:generation-stopped', {sessionId: sessionId})
 }
 
 async function apiListModels() {
