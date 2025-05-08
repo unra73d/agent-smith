@@ -1,6 +1,7 @@
 const chatInput = document.getElementById('chatInput');
 const chatView = document.getElementById('chatView');
 const sendButton = document.getElementById('sendButton');
+let chatSession = null
 
 function applySyntaxHighlighting(element) {
     element.querySelectorAll('pre code').forEach((block) => {
@@ -10,8 +11,26 @@ function applySyntaxHighlighting(element) {
     });
 }
 
+function onLastMessageUpdate (sessionId){
+    if(chatSession && chatSession.id == sessionId && chatSession.messages && chatSession.messages.length > 0){
+        try{
+            const messageElement = [...document.querySelectorAll('.message.assistant')].slice(-1)[0]
+            const thinkSummary = messageElement.querySelector('.thinking-summary');
+            const thinkContent = messageElement.querySelector('.thinking-content');
+            const messageContent = messageElement.querySelector('.message-content')
+            setAssistantMessageContent(messageContent, thinkContent, thinkSummary, chatSession.messages[chatSession.messages.length-1].text)
+        } catch {
+            console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId}`)
+        }
+    }
+}
+
+document.addEventListener('chat:last-message-update', e=>onLastMessageUpdate(e.detail.sessionId))
+
 function setAssistantMessageContent(messageElement, thinkElement, thinkSummary, content){
     try {
+        let isScrolledToBottom = chatView.scrollHeight - chatView.scrollTop <= (chatView.clientHeight + 30)
+
         if(content.includes('<think>') && ! content.includes('</think>')){
             thinkSummary.classList.add('in-progress')
             content += '</think>'
@@ -20,7 +39,7 @@ function setAssistantMessageContent(messageElement, thinkElement, thinkSummary, 
         }
 
         thinkContent = content.match(/<think>([\s\S]*?)<\/think>/)
-        if (thinkContent.length == 2){
+        if (thinkContent && thinkContent.length == 2){
             trimThinking = thinkContent[1].trim()
             if (trimThinking){
                 thinkElement.textContent = thinkContent[1]
@@ -38,8 +57,13 @@ function setAssistantMessageContent(messageElement, thinkElement, thinkSummary, 
         messageElement.innerHTML = htmlContent;
 
         applySyntaxHighlighting(messageElement);
+        
+        if (isScrolledToBottom) {
+            scrollToBottom()
+        }
 
     } catch (e) {
+        console.error(e)
         messageElement.textContent = content;
     }
 }
@@ -81,12 +105,16 @@ function appendMessage(content, type) {
 }
 
 async function sendMessageStreaming() {
-    touchSession()
+    sendEvent('sessions:touch')
     const messageText = chatInput.value.trim();
     if (!messageText) {
         return;
     }
 
+    chatSession.messages.push({
+        text: messageText,
+        origin: 'user'
+    })
     appendMessage(messageText, 'user');
 
     chatInput.value = '';
@@ -98,20 +126,24 @@ async function sendMessageStreaming() {
     assistantMessageElement.classList.add('message', 'assistant');
     const {messageContent, thinkContent, thinkSummary} = initAssisstantMessageElement(assistantMessageElement)
     chatView.appendChild(assistantMessageElement);
+    chatSession.messages.push({
+        text: '',
+        origin: 'assistant'
+    })
 
     scrollToBottom();
 
-    content = ''
-    await apiDirectChatStreaming(currentSession.id, messageText, (chunk) => {
-        const isScrolledToBottom = chatView.scrollHeight - chatView.scrollTop <= chatView.clientHeight + 1;
+    apiDirectChatStreaming(currentSession.id, messageText, (chunk) => {
+        // const isScrolledToBottom = chatView.scrollHeight - chatView.scrollTop <= chatView.clientHeight + 1;
         
-        content += chunk
-        setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content)
-        applySyntaxHighlighting(assistantMessageElement);
+        updateLastMessage(currentSession.id, chunk)
         
-        if (isScrolledToBottom) {
-            scrollToBottom();
-        }
+        // setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content)
+        // applySyntaxHighlighting(assistantMessageElement);
+        
+        // if (isScrolledToBottom) {
+        //     scrollToBottom();
+        // }
     });
 }
 
@@ -142,6 +174,7 @@ chatInput.addEventListener('keydown', async (event) => {
 });
 
 function chatChangeSession(session){
+    chatSession = session
     if (session.messages && Array.isArray(session.messages)) {
         chatView.innerHTML = '';
         session.messages.forEach(message => {

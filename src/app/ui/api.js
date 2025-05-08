@@ -87,7 +87,7 @@ async function apiListModels() {
         const data = await response.json();
 
         if (data && data.models) {
-            return data
+            return data.models
         } else {
             console.error("Invalid data structure received for models:", data);
             return null

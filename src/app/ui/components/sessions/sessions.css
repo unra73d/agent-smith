@@ -1,0 +1,45 @@
+
+
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    transition: border 0.2s ease;
+
+    &:hover{
+        background-color: #2a2b2d;
+
+        .delete-icon {
+            display: block;
+        }
+    }
+
+    &.active {
+        background-color: #262729;
+        border-left: 3px solid #ffffff;
+        padding-left: 7px;
+        border-top-left-radius: 0px;
+        border-bottom-left-radius: 0px;
+    }
+
+    .session-summary {
+        flex-grow: 1;
+        color: #e3e3e3;
+        font-size: 0.95em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .delete-icon {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        display: none;
+    }
+}

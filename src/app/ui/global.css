@@ -1,0 +1,17 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.img-button{
+    filter: sepia(6%) brightness(57%);
+
+    &:hover {
+        filter: sepia(0%) brightness(100%);
+    }
+
+    &.active {
+        filter: sepia(0%) brightness(100%);
+    }
+}

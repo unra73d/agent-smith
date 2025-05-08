@@ -3,6 +3,8 @@ const contentArea = document.querySelector('.content-area');
 const modelSelector = document.getElementById('modelSelector');
 const topTabButtons = document.querySelectorAll('.top-tab-button');
 var currentActiveTabId = null;
+var currentSession = null;
+var sessions = []
 
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
@@ -45,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("App loaded. Attempting to connect to agent...");
 
     populateModelSelector();
-    populateSessions();
+    sendEvent('sessions:reload')
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');
@@ -81,12 +83,13 @@ topTabButtons.forEach(button => {
 });
 
 async function populateModelSelector() {
-    data = await apiListModels()
-    if(data){
+    models = await apiListModels()
+    if(models){
         modelSelector.innerHTML = '<option value="" disabled>Select a Model</option>';
+        models.sort((a, b) => a.name.localeCompare(b.name));
 
         let activeModelFound = false;
-        data.models.forEach(model => {
+        models.forEach(model => {
             const option = document.createElement('option');
             option.value = model.id;
             option.textContent = model.name;
@@ -111,4 +114,22 @@ async function populateModelSelector() {
 
 function getSelectedModelId() {
     return modelSelector.value;
+}
+
+function updateLastMessage(sessionId, message){
+    for(let session of sessions){
+        if (session.id == sessionId){
+            if(!session.messages){
+                console.error("Trying to update last message in empty message array")
+                return
+            }
+
+            session.messages[session.messages.length-1].text += message
+            sendEvent('chat:last-message-update', {sessionId: sessionId})
+            break
+        }
+    }
+}
+
+function addMessage(sessionId, message){
 }

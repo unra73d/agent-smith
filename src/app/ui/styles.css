@@ -1,8 +1,4 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+@import url('global.css');
 
 body {
     font-family: sans-serif;
@@ -21,18 +17,6 @@ body {
     flex-direction: column;
     height: 100%;
     background-color: #131314;
-}
-
-.img-button{
-    filter: sepia(6%) brightness(57%);
-
-    &:hover {
-        filter: sepia(0%) brightness(100%);
-    }
-
-    &.active {
-        filter: sepia(0%) brightness(100%);
-    }
 }
 
 .top-panel {
@@ -153,7 +137,6 @@ body {
         .tab-content-container {
             flex-grow: 1;
             overflow-y: auto;
-            /* padding: 10px; */
             background-color: #1e1f20;
 
             .tab-content {
@@ -219,52 +202,6 @@ body {
                     overflow-y: auto;
                     max-height: calc(100% - 100px);
                 }
-
-                .session-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    cursor: pointer;
-                    transition: background-color 0.2s ease;
-                    transition: border 0.2s ease;
-
-                    &:hover{
-                        background-color: #2a2b2d;
-
-                        .delete-icon {
-                            display: block;
-                        }
-                    }
-
-                    &.active {
-                        background-color: #262729;
-                        border-left: 3px solid #ffffff;
-                        padding-left: 7px;
-                        border-top-left-radius: 0px;
-                        border-bottom-left-radius: 0px;
-                    }
-
-                    .session-summary {
-                        flex-grow: 1;
-                        color: #e3e3e3;
-                        font-size: 0.95em;
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                    }
-
-                    .delete-icon {
-                        width: 16px;
-                        height: 16px;
-                        cursor: pointer;
-                        display: none;
-                    }
-                }
-
-                
             }
         }
     }

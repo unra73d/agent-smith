@@ -94,6 +94,11 @@ function splitStringBySearchText(inputString, searchText) {
       return [inputString, ''];
     }
     return [inputString.slice(0, index), inputString.slice(index + searchText.length)];
-  }
+}
+
+function sendEvent(name, data={}){
+    e = new CustomEvent(name, {detail: data});
+    document.dispatchEvent(e)
+}
 
 initShortcuts();
