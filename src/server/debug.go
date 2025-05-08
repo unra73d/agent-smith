@@ -49,12 +49,22 @@ func initDB(c *gin.Context) {
 		additional_params TEXT
 	);`
 
+	// Create the roles table
+	createRolesTableSQL := `
+	CREATE TABLE IF NOT EXISTS roles (
+		id TEXT PRIMARY KEY,
+		data TEXT
+	);`
+
 	// Execute the SQL statements to create the tables
 	_, err = db.Exec(createSessionsTableSQL)
 	log.CheckW(err, "Failed to create sessions table")
 
 	_, err = db.Exec(createAIProvidersTableSQL)
 	log.CheckW(err, "Failed to create AI providers table")
+
+	_, err = db.Exec(createRolesTableSQL)
+	log.CheckW(err, "Failed to create roles table")
 
 	log.D("SQLite DB initialized")
 	c.JSON(200, map[string]string{"error": ""})

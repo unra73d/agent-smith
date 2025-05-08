@@ -60,7 +60,7 @@ func deleteSessionHandler(c *gin.Context) {
 }
 
 /*
-Get list of available models and active model id
+Get list of available models
 */
 var listModelsURI = "/models/list"
 
@@ -85,6 +85,7 @@ var directChatURI = "/directchat"
 type directChatReq struct {
 	SessionID string `json:"sessionID" binding:"required"`
 	ModelID   string `json:"modelID" binding:"required"`
+	RoleID    string `json:"roleID"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -95,7 +96,7 @@ func agentDirectChatHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	response, err := agent.DirectChat(req.SessionID, req.ModelID, strings.TrimSpace(req.Message))
+	response, err := agent.DirectChat(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message))
 	if err != nil {
 		c.JSON(500, map[string]string{"error": "Unknown error"})
 	} else {
@@ -104,7 +105,7 @@ func agentDirectChatHandler(c *gin.Context) {
 }
 
 /*
-API for sending message to AI directly and get response as SSE events.
+API for sending message to AI directly and get response as streamed chunks.
 No tools will be called in response.
 */
 var directChatStreamURI = "/directchat/stream"
@@ -112,6 +113,7 @@ var directChatStreamURI = "/directchat/stream"
 type directChatStreamReq struct {
 	SessionID string `json:"sessionID" binding:"required"`
 	ModelID   string `json:"modelID" binding:"required"`
+	RoleID    string `json:"roleID"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -125,7 +127,7 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.DirectChatStreaming(req.SessionID, req.ModelID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+	go agent.DirectChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {
@@ -147,6 +149,26 @@ func agentDirectChatStreamHandler(c *gin.Context) {
 	})
 }
 
+/*
+Get list of available roles
+*/
+var listRolesURI = "/roles/list"
+
+func listRolesHandler(c *gin.Context) {
+	roleMap := agent.GetRoles()
+	roleList := make([]map[string]any, 0, len(roleMap))
+	for key, val := range roleMap {
+		roleList = append(roleList, map[string]any{
+			"name":               val.Config.Name,
+			"generalInstruction": val.Config.GeneralInstruction,
+			"role":               val.Config.Role,
+			"style":              val.Config.Style,
+			"id":                 key,
+		})
+	}
+	c.JSON(200, map[string]any{"roles": roleList})
+}
+
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
@@ -158,5 +180,7 @@ func InitAgentRoutes(router *gin.Engine) {
 
 		group.POST(directChatURI, agentDirectChatHandler)
 		group.POST(directChatStreamURI, agentDirectChatStreamHandler)
+
+		group.GET(listRolesURI, listRolesHandler)
 	}
 }

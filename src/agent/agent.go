@@ -15,12 +15,14 @@ type agent struct {
 	sessions     map[string]*Session
 	models       map[string]*ai.Model
 	flashSession *Session
+	roles        map[string]*Role
 }
 
 var log = logger.Logger("agent", 1, 1, 1)
 var Agent = agent{
 	sessions: make(map[string]*Session),
 	models:   make(map[string]*ai.Model),
+	roles:    make(map[string]*Role),
 }
 
 func LoadAgent() {
@@ -38,6 +40,12 @@ func LoadAgent() {
 
 	// create global 'flash' session
 	Agent.flashSession = newSession()
+
+	// load roles
+	roleList := LoadRoles()
+	for _, role := range roleList {
+		Agent.roles[role.ID] = role
+	}
 }
 
 func GetModels() map[string]*ai.Model {
@@ -46,6 +54,10 @@ func GetModels() map[string]*ai.Model {
 
 func GetSessions() map[string]*Session {
 	return Agent.sessions
+}
+
+func GetRoles() map[string]*Role {
+	return Agent.roles
 }
 
 func CreateSession() *Session {
@@ -64,14 +76,20 @@ func DeleteSession(id string) error {
 		log.E("trying to delete non existing session", id)
 		return errors.New("session not found")
 	}
-
 }
 
-func DirectChatStreaming(sessionID string, modelID string, query string, streamCh chan string, streamDoneCh chan bool) {
+func DirectChatStreaming(sessionID string, modelID string, roleID string, query string, streamCh chan string, streamDoneCh chan bool) {
 	if model, ok := Agent.models[modelID]; ok {
 		session, permanentSession := Agent.sessions[sessionID]
 		if !permanentSession {
 			session = Agent.flashSession
+		}
+
+		sysPrompt := ""
+		if role, ok := Agent.roles[roleID]; ok {
+			sysPrompt = "## General instruction: \n" + role.Config.GeneralInstruction +
+				"## Role and personality: \n" + role.Config.Role +
+				"## Text style and tone: \n" + role.Config.Style
 		}
 
 		modelResponseCh := make(chan string)
@@ -99,6 +117,7 @@ func DirectChatStreaming(sessionID string, modelID string, query string, streamC
 
 		model.Provider.ChatCompletionStream(
 			session.Messages[:len(session.Messages)-1],
+			sysPrompt,
 			model,
 			false,
 			modelResponseCh,
@@ -111,7 +130,7 @@ func DirectChatStreaming(sessionID string, modelID string, query string, streamC
 	}
 }
 
-func DirectChat(sessionID string, modelID string, query string) (response string, err error) {
+func DirectChat(sessionID string, modelID string, roleID string, query string) (response string, err error) {
 	logger.BreakOnError()
 	response = ""
 
@@ -121,8 +140,16 @@ func DirectChat(sessionID string, modelID string, query string) (response string
 			session = Agent.flashSession
 		}
 
+		sysPrompt := ""
+		if role, ok := Agent.roles[roleID]; ok {
+			sysPrompt = "## General instruction: \n" + role.Config.GeneralInstruction +
+				"## Role and personality: \n" + role.Config.Role +
+				"## Text style and tone: \n" + role.Config.Style
+		}
+
 		message, err := model.Provider.ChatCompletion(
 			session.Messages,
+			sysPrompt,
 			model,
 			false,
 		)

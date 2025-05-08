@@ -39,8 +39,8 @@ type IAPIProvider interface {
 
 	Test() error
 	ListModels() ([]*Model, error)
-	ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error)
-	ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) error
+	ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error)
+	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) error
 }
 
 type APIProvider struct {
@@ -218,7 +218,7 @@ type OpenAIChatCompletionRes struct {
 	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error) {
+func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error) {
 	log.D("OpenAI chat completion")
 	url := self.apiURL + "/chat/completions"
 
@@ -232,7 +232,7 @@ func (self *OpenAIProvider) ChatCompletion(messages []*Message, model *Model, to
 
 	r.SetBody(map[string]any{
 		"model":    model.ID,
-		"messages": prepareMessages(messages),
+		"messages": prepareMessages(messages, sysPrompt),
 	})
 	res := &OpenAIChatCompletionRes{}
 	r.SetResult(res)
@@ -264,13 +264,13 @@ type OpenAIStreamChatResponse struct {
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
 }
 
-func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) (err error) {
+func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) (err error) {
 	log.D("OpenAI chat completion streaming")
 	url := self.apiURL + "/chat/completions"
 
 	body := map[string]any{
 		"model":    model.ID,
-		"messages": prepareMessages(messages),
+		"messages": prepareMessages(messages, sysPrompt),
 		"stream":   true,
 	}
 	bodyJSON, err := json.Marshal(body)
@@ -311,11 +311,11 @@ func (self *GoogleAIProvider) ListModels() ([]*Model, error) {
 	return []*Model{}, nil
 }
 
-func (self *GoogleAIProvider) ChatCompletion(messages []*Message, model *Model, toolUse bool) (string, error) {
+func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error) {
 	return "Message received", nil
 }
 
-func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, model *Model, toolUse bool, writeCh chan string) error {
+func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) error {
 	return nil
 }
 
@@ -334,10 +334,15 @@ func cutThinking(text string) string {
 	return text
 }
 
-func prepareMessages(messages []*Message) *[]map[string]string {
-	bodyMessages := make([]map[string]string, len(messages))
+func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string {
+
+	bodyMessages := make([]map[string]string, len(messages)+1)
+	bodyMessages[0] = map[string]string{
+		"role":    "system",
+		"content": sysPrompt,
+	}
 	for i, message := range messages {
-		bodyMessages[i] = map[string]string{
+		bodyMessages[i+1] = map[string]string{
 			"role":    string(message.Origin),
 			"content": strings.TrimSpace(cutThinking(message.Text)),
 		}

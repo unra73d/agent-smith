@@ -80,7 +80,7 @@ func newSession() *Session {
 	return session
 }
 
-func (s *Session) Save() error {
+func (s *Session) Save() (err error) {
 	log.D("Saving session to ", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
 
@@ -106,7 +106,7 @@ func (s *Session) Save() error {
 	log.CheckW(err, "Failed to update session DB")
 
 	log.D("Saved session", s.ID)
-	return err
+	return
 }
 
 func (s *Session) Delete() {

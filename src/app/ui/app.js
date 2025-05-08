@@ -1,6 +1,7 @@
 const tabContents = document.querySelectorAll('.tab-content');
 const contentArea = document.querySelector('.content-area');
 const modelSelector = document.getElementById('modelSelector');
+const roleSelector = document.getElementById('roleSelector');
 const topTabButtons = document.querySelectorAll('.top-tab-button');
 var currentActiveTabId = null;
 var currentSession = null;
@@ -46,7 +47,8 @@ function handleTopTabClick(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("App loaded. Attempting to connect to agent...");
 
-    populateModelSelector();
+    populateModelSelector()
+    populateRoleSelector()
     sendEvent('sessions:reload')
 
     // --- Set initial active tab state based on HTML ---
@@ -114,6 +116,44 @@ async function populateModelSelector() {
 
 function getSelectedModelId() {
     return modelSelector.value;
+}
+
+function getSelectedRoleId() {
+    return roleSelector.value;
+}
+
+async function populateRoleSelector() {
+    const roles = await apiListRoles()
+    if (roles && roles.length > 0) {
+        roleSelector.innerHTML = '<option value="" disabled>Select a Role</option>';
+        roles.sort((a, b) => a.name.localeCompare(b.name));
+
+        let activeRoleFound = false;
+        roles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.id;
+            option.textContent = role.name;
+            if (!activeRoleFound) {
+                option.selected = true;
+                activeRoleFound = true;
+            }
+            roleSelector.appendChild(option);
+        });
+
+        // If the active role wasn't in the list or no active role was specified, select the placeholder
+        if (!activeRoleFound) {
+            const placeholder = roleSelector.querySelector('option[disabled]');
+            if (placeholder) {
+                placeholder.selected = true;
+            }
+        }
+    } else {
+        roleSelector.innerHTML = '<option value="" disabled selected>Default role</option>';
+    }
+}
+
+function getSelectedRoleId() {
+    return roleSelector.value;
 }
 
 function updateLastMessage(sessionId, message){

@@ -26,20 +26,22 @@
                 <button class="top-tab-button img-button" data-tab="tab4" title="Models">
                     <img src="icons/database.svg" alt="Models">
                 </button>
-                <button class="top-tab-button img-button" data-tab="tab5" title="Agent profiles">
-                    <img src="icons/users.svg" alt="Agents">
+                <button class="top-tab-button img-button" data-tab="tab5" title="Roles">
+                    <img src="icons/users.svg" alt="Roles">
                 </button>
             </div>
             <select id="modelSelector" class="model-selector">
                 <option value="" disabled selected>Select a Model</option>
                 <!-- Model options will be populated here -->
             </select>
-            <!-- Sandwich button removed -->
+            <select id="roleSelector" class="role-selector">
+                <option value="" disabled selected>Select a Role</option>
+                <!-- Role options will be populated here -->
+            </select>
         </div>
 
         <!-- Content Area (Side Panel + Main Chat) -->
         <div class="content-area">
-            <!-- Side Panel -->
             <div id="sidePanel" class="side-panel">
                 <div class="tab-content-container">
                     <div id="tab1" class="tab-content">
@@ -71,7 +73,7 @@
                     </div>
                     <div id="tab5" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">Agents</span>
+                            <span class="tab-content-title">Roles</span>
                         </div>
                     </div>
                 </div>

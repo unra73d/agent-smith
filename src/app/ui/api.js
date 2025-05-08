@@ -64,6 +64,7 @@ async function apiDirectChatStreaming(sessionID, message, onMessage) {
             body: JSON.stringify({
                 "sessionID": sessionID,
                 "modelID": getSelectedModelId(),
+                "roleID": getSelectedRoleId(),
                 "message": message
             })
         })
@@ -93,7 +94,27 @@ async function apiListModels() {
             return null
         }
     } catch (error) {
-        console.error("Failed to populate model selector:", error);
+        console.error("Failed to list models:", error);
+        return null
+    }
+}
+
+async function apiListRoles(){
+    try {
+        const response = await fetch('http://localhost:8008/agent/roles/list');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data && data.roles) {
+            return data.roles
+        } else {
+            console.error("Invalid data structure received for roles:", data);
+            return null
+        }
+    } catch (error) {
+        console.error("Failed to list roles:", error);
         return null
     }
 }

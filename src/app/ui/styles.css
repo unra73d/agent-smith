@@ -65,8 +65,9 @@ body {
         }
     }
 
-    .model-selector {
-        min-width: 450px;
+    .model-selector,
+    .role-selector {
+        min-width: 150px;
         padding: 8px 12px;
         background-color: #313335;
         color: #e3e3e3;
@@ -75,7 +76,7 @@ body {
         margin-left: auto;
         margin-right: auto;
         font-family: inherit;
-        font-size: 0.95em;
+        font-size: 0.8em;
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
@@ -201,8 +202,6 @@ body {
         transition: margin-left 0.3s ease;
         height: 100%;
     }
-
-    
 }
 
 .confirm-overlay {
