@@ -23,8 +23,14 @@ class ChatView extends HTMLElement {
         const chatInputArea = document.createElement('div')
         chatInputArea.classList.add('chat-input-area')
         chatInputArea.innerHTML = `
-                    <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
-                    <button id="sendButton" class="send-button" onclick="sendMessage('chat:send')">Send</button>
+            <div class="chat-input-container">
+                <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
+            </div>
+            <div class="chat-button-container">
+                <button id="sendButton" class="send-button img-button" onclick="sendEvent('chat:send')">
+                    <img src="icons/send.svg" alt="Send">
+                </button>
+            </div>
         `
         shadowRoot.appendChild(chatInputArea)
         this.chatInput = chatInputArea.querySelector('#chatInput')
@@ -34,12 +40,16 @@ class ChatView extends HTMLElement {
         document.addEventListener('chat:change-session', e => this.changeSession(e.detail.session))
 
         this.chatInput.addEventListener('input', () => {
+            let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15)
             this.chatInput.style.height = 'auto';
             const scrollHeight = this.chatInput.scrollHeight;
             const maxHeight = 150;
 
             this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
             this.chatInput.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
+            if(isScrolledToBottom){
+                this.scrollToBottom()
+            }
         });
 
         this.chatInput.addEventListener('blur', () => {

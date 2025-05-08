@@ -237,57 +237,72 @@ body{
 
 .chat-input-area {
     display: flex;
+    flex-direction: column;
     background-color: #1e1f20;
-
     width: 85%;
     margin: 4px auto 20px auto;
     border: 1px solid #3c4043;
     border-radius: 8px;
-    align-items: flex-end;
     padding: 5px;
     position: relative;
-
-    .chat-input {
+    .chat-input-container {
         flex-grow: 1;
-        padding: 10px;
-        overflow-y: auto;
-        font-family: inherit;
-        font-size: inherit;
-        line-height: 1.5;
-        background-color: transparent;
-        color: #e3e3e3;
-        border: none;
-        border-radius: 6px;
-        outline: none;
-        cursor: text;
-        min-height: 40px;
-        max-height: 25vh;
-        resize: none;
+        width: 100%;
 
-        &::placeholder {
-            color: #888a8f;
+        .chat-input {
+            width: 100%;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            background-color: transparent;
+            color: #e3e3e3;
+            border: none;
+            border-radius: 6px;
+            outline: none;
+            cursor: text;
+            min-height: 40px;
+            max-height: 25vh;
+            resize: none;
+            padding-bottom: 0;
+
+            &::placeholder {
+                color: #888a8f;
+            }
         }
     }
 
-    .send-button {
-        margin-left: 10px;
-        padding: 0 15px;
-        cursor: pointer;
-        background-color: #313335;
-        color: #e3e3e3;
-        border: none;
-        border-radius: 6px;
-        font-weight: 500;
+    .chat-button-container {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 40px;
-        align-self: flex-end;
-        margin-bottom: 0;
+        justify-content: flex-end;
+        margin-top: 5px;
 
+        .send-button {
+            margin-left: 10px;
+            padding: 0;
+            cursor: pointer;
+            background-color: transparent;
+            color: #e3e3e3;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 30px;
+            width: 30px;
+            align-self: flex-end;
+            margin-bottom: 0;
 
-        &:hover {
-            opacity: 0.9;
+            &:hover {
+                opacity: 0.9;
+            }
+
+            img {
+                width: 20px;
+                height: 20px;
+            }
         }
     }
 }
