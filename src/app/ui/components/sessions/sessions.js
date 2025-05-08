@@ -2,7 +2,7 @@
 
 class SessionList extends HTMLElement {
     constructor() {
-        super();
+        super()
         const shadowRoot = this.attachShadow({mode: 'open'})
         
         const styles = document.createElement('style');
@@ -14,7 +14,6 @@ class SessionList extends HTMLElement {
 
         this.list = document.createElement('div')
         shadowRoot.appendChild(this.list)
-        this.items = []
 
         this.populateSessions = this.populateSessions.bind(this)
         this.createNewSession = this.createNewSession.bind(this)
@@ -41,10 +40,8 @@ class SessionList extends HTMLElement {
 
         if(front){
             this.list.insertBefore(sessionItem, this.list.firstChild);
-            this.items.unshift(sessionItem)
         } else {
             this.list.appendChild(sessionItem);
-            this.items.push(sessionItem)
         }
 
         sessionItem.addEventListener('click', e=>this.selectSession(session.id))
@@ -97,7 +94,7 @@ class SessionList extends HTMLElement {
                     this.createNewSession();
                 } else {
                     currentSession = sessions[0];
-                    chatChangeSession(currentSession);
+                    sendEvent('chat:change-session', {session: currentSession})
                     this.updateSessionHighlight(currentSession);
                 }
                 
@@ -140,9 +137,9 @@ class SessionList extends HTMLElement {
             }
         }
         this.updateSessionHighlight()
-    
+
         if(currentSession != null){
-            chatChangeSession(currentSession)
+            sendEvent('chat:change-session', {session: currentSession})
         }
     }
 

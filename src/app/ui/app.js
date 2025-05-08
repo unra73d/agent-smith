@@ -125,7 +125,7 @@ function updateLastMessage(sessionId, message){
             }
 
             session.messages[session.messages.length-1].text += message
-            sendEvent('chat:last-message-update', {sessionId: sessionId})
+            sendEvent('chat:last-message-update', {sessionId:sessionId})
             break
         }
     }
