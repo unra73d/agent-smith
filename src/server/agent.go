@@ -65,15 +65,8 @@ Get list of available models
 var listModelsURI = "/models/list"
 
 func listModelsHandler(c *gin.Context) {
-	modelMap := agent.GetModels()
-	modelList := make([]map[string]any, 0, len(modelMap))
-	for key, val := range modelMap {
-		modelList = append(modelList, map[string]any{
-			"name": val.Name,
-			"id":   key,
-		})
-	}
-	c.JSON(200, map[string]any{"models": modelList})
+	models := agent.GetModels()
+	c.JSON(200, map[string]any{"models": models})
 }
 
 /*
@@ -169,6 +162,26 @@ func listRolesHandler(c *gin.Context) {
 	c.JSON(200, map[string]any{"roles": roleList})
 }
 
+/*
+Get list of available MCP servers
+*/
+var listMCPServersURI = "/mcp/list"
+
+func listMCPServersHandler(c *gin.Context) {
+	serversMap := agent.GetMCPServers()
+	serversList := make([]map[string]any, 0, len(serversMap))
+	for _, val := range serversMap {
+		serversList = append(serversList, map[string]any{
+			"name":      val.Name,
+			"transport": val.Transport,
+			"url":       val.URL,
+			"command":   val.Command,
+			"args":      val.Args,
+		})
+	}
+	c.JSON(200, map[string]any{"mcpServers": serversList})
+}
+
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
@@ -182,5 +195,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.POST(directChatStreamURI, agentDirectChatStreamHandler)
 
 		group.GET(listRolesURI, listRolesHandler)
+
+		group.GET(listMCPServersURI, listMCPServersHandler)
 	}
 }

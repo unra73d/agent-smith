@@ -7,6 +7,15 @@ var currentActiveTabId = null;
 var currentSession = null;
 var sessions = []
 
+var Storage = {
+    models: [],
+    sessions: [],
+    roles: [],
+    currentSession: null
+}
+
+monitor(Storage, 'currentSession', 'chat:change-session')
+
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
     const clickedButton = event.currentTarget;

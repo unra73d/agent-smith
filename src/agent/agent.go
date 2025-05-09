@@ -5,6 +5,7 @@ package agent
 import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
+	"agentsmith/src/tools"
 	"errors"
 	"time"
 
@@ -13,23 +14,25 @@ import (
 
 type agent struct {
 	sessions     map[string]*Session
-	models       map[string]*ai.Model
+	apiProviders map[string]ai.IAPIProvider
 	flashSession *Session
 	roles        map[string]*Role
+	mcps         map[string]*tools.MCPServer
 }
 
 var log = logger.Logger("agent", 1, 1, 1)
 var Agent = agent{
-	sessions: make(map[string]*Session),
-	models:   make(map[string]*ai.Model),
-	roles:    make(map[string]*Role),
+	sessions:     make(map[string]*Session),
+	apiProviders: make(map[string]ai.IAPIProvider),
+	roles:        make(map[string]*Role),
+	mcps:         make(map[string]*tools.MCPServer),
 }
 
 func LoadAgent() {
-	// load models
-	modelList := ai.LoadModels()
-	for _, model := range modelList {
-		Agent.models[uuid.NewString()] = model
+	// load api providers
+	providerList := ai.LoadProviders()
+	for _, provider := range providerList {
+		Agent.apiProviders[uuid.NewString()] = provider
 	}
 
 	// load historical sessions
@@ -48,8 +51,12 @@ func LoadAgent() {
 	}
 }
 
-func GetModels() map[string]*ai.Model {
-	return Agent.models
+func GetModels() []*ai.Model {
+	models := make([]*ai.Model, 0, 32)
+	for _, apiProvider := range Agent.apiProviders {
+		models = append(models, apiProvider.Models()...)
+	}
+	return models
 }
 
 func GetSessions() map[string]*Session {
@@ -58,6 +65,10 @@ func GetSessions() map[string]*Session {
 
 func GetRoles() map[string]*Role {
 	return Agent.roles
+}
+
+func GetMCPServers() map[string]*tools.MCPServer {
+	return Agent.mcps
 }
 
 func CreateSession() *Session {
@@ -79,7 +90,8 @@ func DeleteSession(id string) error {
 }
 
 func DirectChatStreaming(sessionID string, modelID string, roleID string, query string, streamCh chan string, streamDoneCh chan bool) {
-	if model, ok := Agent.models[modelID]; ok {
+	model := findModel(modelID)
+	if model != nil {
 		session, permanentSession := Agent.sessions[sessionID]
 		if !permanentSession {
 			session = Agent.flashSession
@@ -134,7 +146,8 @@ func DirectChat(sessionID string, modelID string, roleID string, query string) (
 	logger.BreakOnError()
 	response = ""
 
-	if model, ok := Agent.models[modelID]; ok {
+	model := findModel(modelID)
+	if model != nil {
 		session, permanentSession := Agent.sessions[sessionID]
 		if !permanentSession {
 			session = Agent.flashSession
@@ -163,4 +176,15 @@ func DirectChat(sessionID string, modelID string, roleID string, query string) (
 		err = errors.New("model not selected")
 	}
 	return
+}
+
+func findModel(modelID string) *ai.Model {
+	for _, provider := range Agent.apiProviders {
+		for _, model := range provider.Models() {
+			if model.ID == modelID {
+				return model
+			}
+		}
+	}
+	return nil
 }

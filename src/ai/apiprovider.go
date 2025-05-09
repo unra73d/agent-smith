@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -36,9 +35,10 @@ type IAPIProvider interface {
 	URL() string
 	APIKey() string
 	Type() APIType
+	Models() []*Model
 
 	Test() error
-	ListModels() ([]*Model, error)
+	LoadModels() error
 	ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error)
 	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) error
 }
@@ -48,12 +48,14 @@ type APIProvider struct {
 	apiURL  string
 	apiKey  string
 	apiType APIType
+	models  []*Model
 }
 
-func (self *APIProvider) Name() string   { return self.name }
-func (self *APIProvider) URL() string    { return self.apiURL }
-func (self *APIProvider) APIKey() string { return self.apiKey }
-func (self *APIProvider) Type() APIType  { return self.apiType }
+func (self *APIProvider) Name() string     { return self.name }
+func (self *APIProvider) URL() string      { return self.apiURL }
+func (self *APIProvider) APIKey() string   { return self.apiKey }
+func (self *APIProvider) Type() APIType    { return self.apiType }
+func (self *APIProvider) Models() []*Model { return self.models }
 
 type OpenAIProvider struct {
 	APIProvider
@@ -64,18 +66,17 @@ type GoogleAIProvider struct {
 }
 
 func NewProvider(apiType APIType, name string, url string, apiKey string) (IAPIProvider, error) {
-	basicProvider := APIProvider{name, url, apiKey, apiType}
+	basicProvider := APIProvider{name, url, apiKey, apiType, make([]*Model, 0, 16)}
 
+	var provider IAPIProvider
 	switch apiType {
 	case APITypeOpenAI, APITypeLMStudio, APITypeOpenAICompatible, APITypeOllama:
-		provider := &OpenAIProvider{basicProvider}
-		return provider, provider.Test()
+		provider = &OpenAIProvider{basicProvider}
 	case APITypeGoogle:
-		provider := &GoogleAIProvider{basicProvider}
-		return provider, provider.Test()
+		provider = &GoogleAIProvider{basicProvider}
 	}
-
-	return nil, errors.New("unknown provider")
+	err := provider.LoadModels()
+	return provider, err
 }
 
 func LoadProviders() []IAPIProvider {
@@ -160,7 +161,7 @@ type OpenAIModelListRes struct {
 	Data []map[string]any `json:"data"`
 }
 
-func (self *OpenAIProvider) ListModels() ([]*Model, error) {
+func (self *OpenAIProvider) LoadModels() error {
 	log.D("Loading OpenAI models")
 	url := self.apiURL + "/models"
 
@@ -177,19 +178,19 @@ func (self *OpenAIProvider) ListModels() ([]*Model, error) {
 	_, err := r.Get(url)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	models := make([]*Model, len(list.Data))
+	self.models = make([]*Model, len(list.Data))
 	for i, config := range list.Data {
-		models[i] = &Model{
+		self.models[i] = &Model{
 			ID:       config["id"].(string),
 			Name:     self.name + ": " + config["id"].(string),
 			Provider: self,
 		}
 	}
 
-	return models, nil
+	return nil
 }
 
 type OpenAIChatCompletionMessage struct {
@@ -307,8 +308,8 @@ func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt 
 
 func (self *GoogleAIProvider) Test() error { return nil }
 
-func (self *GoogleAIProvider) ListModels() ([]*Model, error) {
-	return []*Model{}, nil
+func (self *GoogleAIProvider) LoadModels() error {
+	return nil
 }
 
 func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error) {

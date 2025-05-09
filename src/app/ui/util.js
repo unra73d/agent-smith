@@ -22,7 +22,7 @@ function confirmDialog(message) {
         const cleanup = () => {
             confirmYesBtn.removeEventListener('click', yesListener);
             confirmNoBtn.removeEventListener('click', noListener);
-            confirmOverlay.removeEventListener('click', backgroundClickListener); 
+            confirmOverlay.removeEventListener('click', backgroundClickListener);
             confirmOverlay.style.display = 'none';
         };
 
@@ -40,7 +40,7 @@ function confirmDialog(message) {
 
     });
 }
-function initShortcuts(){
+function initShortcuts() {
     document.addEventListener('keydown', (event) => {
         const isModifier = event.metaKey || event.ctrlKey;
 
@@ -91,14 +91,53 @@ function initShortcuts(){
 function splitStringBySearchText(inputString, searchText) {
     const index = inputString.indexOf(searchText);
     if (index === -1) {
-      return [inputString, ''];
+        return [inputString, ''];
     }
     return [inputString.slice(0, index), inputString.slice(index + searchText.length)];
 }
 
-function sendEvent(name, data={}){
-    e = new CustomEvent(name, {detail: data});
+function sendEvent(name, data = {}) {
+    e = new CustomEvent(name, { detail: data });
     document.dispatchEvent(e)
 }
+
+function observe(obj, eventName) {
+    const topLevelObject = obj;
+
+    const handler = {
+        set(target, property, value) {
+            if (typeof value === 'object' && value !== null) {
+                value = observe(value, eventName);
+            }
+            target[property] = value;
+            sendEvent(eventName, obj)
+            return true;
+        },
+        get(target, property) {
+            const value = target[property];
+            if (typeof value === 'object' && value !== null) {
+                return observe(value, eventName);
+            }
+            return value;
+        }
+    };
+
+    return new Proxy(obj, handler);
+}
+
+function monitor(obj, prop, eventName) {
+    let value = obj[prop]
+    Object.defineProperty(obj, prop, {
+      get: function() {
+        return value;
+      },
+      set: function(newValue) {
+        value = newValue;
+        sendEvent(eventName, value)
+      },
+      enumerable: true,
+      configurable: true
+    });
+  }
 
 initShortcuts();

@@ -56,6 +56,17 @@ func initDB(c *gin.Context) {
 		data TEXT
 	);`
 
+	// Create the mcp table
+	createMCPTableSQL := `
+	CREATE TABLE IF NOT EXISTS mcp (
+		id TEXT PRIMARY KEY,
+		name TEXT,
+		transport TEXT,
+		url TEXT,
+		command TEXT,
+		args TEXT
+	);`
+
 	// Execute the SQL statements to create the tables
 	_, err = db.Exec(createSessionsTableSQL)
 	log.CheckW(err, "Failed to create sessions table")
@@ -65,6 +76,9 @@ func initDB(c *gin.Context) {
 
 	_, err = db.Exec(createRolesTableSQL)
 	log.CheckW(err, "Failed to create roles table")
+
+	_, err = db.Exec(createMCPTableSQL)
+	log.CheckW(err, "Failed to create mcp table")
 
 	log.D("SQLite DB initialized")
 	c.JSON(200, map[string]string{"error": ""})

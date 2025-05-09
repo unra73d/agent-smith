@@ -230,8 +230,6 @@ body{
         .thinking-block:has(.thinking-content-empty) {
             display: none;
         }
-
-
     }
 }
 
