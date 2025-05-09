@@ -48,29 +48,29 @@ class List extends HTMLElement {
     }
 
     async populateSessions(){
-        sessions = await apiListSessions()
+        Storage.sessions = await apiListSessions()
 
-        if(sessions){
-            sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        if(Storage.sessions){
+            Storage.sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
             this.list.innerHTML = ''
 
-            for (let session of sessions) {
+            for (let session of Storage.sessions) {
                 this.appendSession(session)
             }
 
-            if(sessions.length > 0){
-                currentSession = sessions[0]
+            if(Storage.sessions.length > 0){
+                Storage.currentSession = Storage.sessions[0]
             }
 
-            this.selectSession(currentSession.id);
+            this.selectSession(Storage.currentSession.id);
         } else {
-            sessions = []
+            Storage.sessions = []
         }
     }
 
     async handleDeleteSession(e, sessionItem, sessionId){
         e.stopPropagation()
-        const currentSessionId = currentSession.id
+        const Storage.currentSessionId = Storage.currentSession.id
 
         // Use the custom confirm dialog
         const confirmed = await confirmDialog('Are you sure you want to delete this chat session? This action cannot be undone.');
@@ -80,21 +80,21 @@ class List extends HTMLElement {
             
             this.list.removeChild(sessionItem)
 
-            for(let i in sessions){
-                if(sessions[i] == currentSession){
-                    sessions.splice(i, 1)
+            for(let i in Storage.sessions){
+                if(Storage.sessions[i] == Storage.currentSession){
+                    Storage.sessions.splice(i, 1)
                     break
                 }
             }
 
-            if(currentSessionId == sessionId){
+            if(Storage.currentSessionId == sessionId){
                 console.log("Deleted the active session. Resetting chat view and connection.");
-                if (sessions.length == 0){
+                if (Storage.sessions.length == 0){
                     this.createNewSession();
                 } else {
-                    currentSession = sessions[0];
-                    sendEvent('chat:change-session', {session: currentSession})
-                    this.updateSessionHighlight(currentSession);
+                    Storage.currentSession = Storage.sessions[0];
+                    sendEvent('chat:change-session', {session: Storage.currentSession})
+                    this.updateSessionHighlight(Storage.currentSession);
                 }
                 
             }
@@ -107,11 +107,11 @@ class List extends HTMLElement {
         if (session) {
             console.log("New session created:", session.id);
     
-            sessions.unshift(session)
+            Storage.sessions.unshift(session)
             this.appendSession(session, true)
             this.selectSession(session.id)
 
-            this.updateSessionHighlight(currentSession);
+            this.updateSessionHighlight(Storage.currentSession);
 
         } else {
             appendMessage("Error: Could not create new session.", "error");
@@ -120,7 +120,7 @@ class List extends HTMLElement {
 
     updateSessionHighlight() {
         for(let item of this.list.children){
-            if (item.getAttribute('data-id') === currentSession.id) {
+            if (item.getAttribute('data-id') === Storage.currentSession.id) {
                 item.classList.add('active');
             } else {
                 item.classList.remove('active');
@@ -129,37 +129,37 @@ class List extends HTMLElement {
     }
 
     selectSession(sessionId){
-        for (let session of sessions){
+        for (let session of Storage.sessions){
             if(session.id == sessionId){
-                currentSession = session
+                Storage.currentSession = session
                 break
             }
         }
         this.updateSessionHighlight()
 
-        if(currentSession != null){
-            sendEvent('chat:change-session', {session: currentSession})
+        if(Storage.currentSession != null){
+            sendEvent('chat:change-session', {session: Storage.currentSession})
         }
     }
 
     touch() {
-        if (currentSession) {
+        if (Storage.currentSession) {
             // Find the index of the current session in the sessions array
-            const currentIndex = sessions.findIndex(session => session.id === currentSession.id);
+            const currentIndex = Storage.sessions.findIndex(session => session.id === Storage.currentSession.id);
     
             // If the current session is not the first in the list
             if (currentIndex > 0) {
                 // Move the current session to the beginning of the sessions array
-                sessions.splice(currentIndex, 1);
-                sessions.unshift(currentSession);
+                Storage.sessions.splice(currentIndex, 1);
+                Storage.sessions.unshift(Storage.currentSession);
     
                 // Update the current session's date to now
-                currentSession.date = new Date().toISOString();
+                Storage.currentSession.date = new Date().toISOString();
     
                 // Update the session list in the UI
                 for(let i in this.list.children){
                     let item = this.list.children[i]
-                    if (item.getAttribute('data-id') === currentSession.id) {
+                    if (item.getAttribute('data-id') === Storage.currentSession.id) {
                         this.list.removeChild(item)
                         this.list.insertBefore(item, this.list.firstChild);
                         break

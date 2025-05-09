@@ -37,7 +37,7 @@ class ChatView extends HTMLElement {
 
         document.addEventListener('chat:last-message-update', e => this.onLastMessageUpdate(e.detail.sessionId))
         document.addEventListener('chat:send', e => this.sendMessageStreaming())
-        document.addEventListener('chat:change-session', e => this.changeSession(e.detail.session))
+        document.addEventListener('storage:current-session', e => this.changeSession(e.detail))
 
         this.chatInput.addEventListener('input', () => {
             let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15)

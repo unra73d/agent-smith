@@ -4,17 +4,21 @@ const modelSelector = document.getElementById('modelSelector');
 const roleSelector = document.getElementById('roleSelector');
 const topTabButtons = document.querySelectorAll('.top-tab-button');
 var currentActiveTabId = null;
-var currentSession = null;
-var sessions = []
 
 var Storage = {
     models: [],
     sessions: [],
     roles: [],
+    mcps: [],
     currentSession: null
 }
 
-monitor(Storage, 'currentSession', 'chat:change-session')
+monitor(Storage, 'models', 'storage:models')
+monitor(Storage, 'sessions', 'storage:sessions')
+monitor(Storage, 'roles', 'storage:roles')
+monitor(Storage, 'mcps', 'storage:mcps')
+monitor(Storage, 'currentSession', 'storage:current-session')
+
 
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
@@ -95,7 +99,7 @@ topTabButtons.forEach(button => {
 
 async function populateModelSelector() {
     models = await apiListModels()
-    if(models){
+    if (models) {
         modelSelector.innerHTML = '<option value="" disabled>Select a Model</option>';
         models.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -165,20 +169,20 @@ function getSelectedRoleId() {
     return roleSelector.value;
 }
 
-function updateLastMessage(sessionId, message){
-    for(let session of sessions){
-        if (session.id == sessionId){
-            if(!session.messages){
+function updateLastMessage(sessionId, message) {
+    for (let session of Storage.sessions) {
+        if (session.id == sessionId) {
+            if (!session.messages) {
                 console.error("Trying to update last message in empty message array")
                 return
             }
 
-            session.messages[session.messages.length-1].text += message
-            sendEvent('chat:last-message-update', {sessionId:sessionId})
+            session.messages[session.messages.length - 1].text += message
+            sendEvent('chat:last-message-update', { sessionId: sessionId })
             break
         }
     }
 }
 
-function addMessage(sessionId, message){
+function addMessage(sessionId, message) {
 }
