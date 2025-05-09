@@ -44,18 +44,32 @@ func LoadMCPServers() []*MCPServer {
 
 	for rows.Next() {
 		var mcpServer MCPServer
-		var argsJSON string
+		var argsJSON sql.NullString
+		var url sql.NullString
+		var command sql.NullString
 
-		// Scan the row data into variables
-		err = rows.Scan(&mcpServer.ID, &mcpServer.Name, &mcpServer.Transport, &mcpServer.URL, &mcpServer.Command, &argsJSON)
+		err = rows.Scan(&mcpServer.ID, &mcpServer.Name, &mcpServer.Transport, &url, &command, &argsJSON)
 		if err != nil {
 			log.W("Failed to scan MCP server row:", err)
 			continue
 		}
 
+		// Assign values from sql.NullString if they are valid
+		if url.Valid {
+			mcpServer.URL = url.String
+		} else {
+			mcpServer.URL = ""
+		}
+
+		if command.Valid {
+			mcpServer.Command = command.String
+		} else {
+			mcpServer.Command = ""
+		}
+
 		// Unmarshal the JSON data from the 'args' column into Args
-		if argsJSON != "" {
-			err = json.Unmarshal([]byte(argsJSON), &mcpServer.Args)
+		if argsJSON.Valid && argsJSON.String != "" {
+			err = json.Unmarshal([]byte(argsJSON.String), &mcpServer.Args)
 			if err != nil {
 				log.W("Failed to unmarshal args for MCP server:", mcpServer.ID, err)
 				mcpServer.Args = make([]string, 0)

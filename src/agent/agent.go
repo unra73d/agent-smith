@@ -49,6 +49,12 @@ func LoadAgent() {
 	for _, role := range roleList {
 		Agent.roles[role.ID] = role
 	}
+
+	// load MCP servers
+	mcpList := tools.LoadMCPServers()
+	for _, mcp := range mcpList {
+		Agent.mcps[mcp.ID] = mcp
+	}
 }
 
 func GetModels() []*ai.Model {

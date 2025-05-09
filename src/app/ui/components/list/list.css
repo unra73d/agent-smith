@@ -1,0 +1,28 @@
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+    transition: border 0.2s ease;
+    cursor: default;
+
+    &.active {
+        background-color: #262729;
+        border-left: 3px solid #ffffff;
+        padding-left: 7px;
+        border-top-left-radius: 0px;
+        border-bottom-left-radius: 0px;
+    }
+
+    .item-text {
+        flex-grow: 1;
+        color: #e3e3e3;
+        font-size: 0.95em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}

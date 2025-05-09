@@ -15,163 +15,59 @@ class List extends HTMLElement {
         this.list = document.createElement('div')
         shadowRoot.appendChild(this.list)
 
-        this.populateList = this.populateList.bind(this)
-        this.createNewItem = this.createNewItem.bind(this)
-
-        document.addEventListener('list:new', e=>this.createNewItem())
-        document.addEventListener('list:reload', e=>this.populateList())
+        this.items = []
+        monitor(this, 'items', 'list:change')
+        document.addEventListener('list:change', e=>this.updateList())
     }
 
-    connectedCallback(){
-        this.populateItems()
-    }
+    getItem(data){
+        const item = document.createElement('div')
+        if(data.id){
+            item.setAttribute("data-id", data.id)
+        } else {
+            item.setAttribute("data-id", crypto.randomUUID())
+        }
 
-    appendSession(session, front=false){
-        const sessionItem = document.createElement('div');
-        sessionItem.classList.add('session-item');
-        sessionItem.setAttribute("data-id", session.id);
+        let text = ''
+        if(data.name)text = data.name
+        if(data.text)text = data.text
+        if(data.content)text = data.content
+        if(data.description)text = data.description
+        if(data.summary)text = data.summary
 
-        const summary = session.summary ? session.summary : 'New chat';
-        sessionItem.innerHTML = `
-            <span class="session-summary">${summary}</span>
-            <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${session.id}">
+        item.innerHTML = `
+            <span class="item-text">${text}</span>
         `;
 
-        if(front){
-            this.list.insertBefore(sessionItem, this.list.firstChild);
-        } else {
-            this.list.appendChild(sessionItem);
-        }
-
-        sessionItem.addEventListener('click', e=>this.selectSession(session.id))
-        sessionItem.querySelector('.delete-icon').addEventListener('click', e=>this.handleDeleteSession(e, sessionItem, session.id))
+        item.addEventListener('click', e=>this.onItemClick(item, data))
+        return item
     }
 
-    async populateSessions(){
-        Storage.sessions = await apiListSessions()
+    onItemClick(item, data){}
 
-        if(Storage.sessions){
-            Storage.sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    updateList(){
+        if(this.items && this.items.length > 0){
             this.list.innerHTML = ''
 
-            for (let session of Storage.sessions) {
-                this.appendSession(session)
+            for (let data of this.items) {
+                this._appendItem(data)
             }
+        }
+    }
 
-            if(Storage.sessions.length > 0){
-                Storage.currentSession = Storage.sessions[0]
-            }
-
-            this.selectSession(Storage.currentSession.id);
+    _appendItem(data, front=false){
+        const item = this.getItem(data)
+        item.classList.add('list-item')
+        
+        if(front){
+            this.list.insertBefore(item, this.list.firstChild);
         } else {
-            Storage.sessions = []
+            this.list.appendChild(item);
         }
     }
 
-    async handleDeleteSession(e, sessionItem, sessionId){
-        e.stopPropagation()
-        const Storage.currentSessionId = Storage.currentSession.id
 
-        // Use the custom confirm dialog
-        const confirmed = await confirmDialog('Are you sure you want to delete this chat session? This action cannot be undone.');
-
-        if (confirmed) {
-            await apiDeleteSession(sessionId)
-            
-            this.list.removeChild(sessionItem)
-
-            for(let i in Storage.sessions){
-                if(Storage.sessions[i] == Storage.currentSession){
-                    Storage.sessions.splice(i, 1)
-                    break
-                }
-            }
-
-            if(Storage.currentSessionId == sessionId){
-                console.log("Deleted the active session. Resetting chat view and connection.");
-                if (Storage.sessions.length == 0){
-                    this.createNewSession();
-                } else {
-                    Storage.currentSession = Storage.sessions[0];
-                    sendEvent('chat:change-session', {session: Storage.currentSession})
-                    this.updateSessionHighlight(Storage.currentSession);
-                }
-                
-            }
-        }
-    }
-
-    async createNewSession() {
-        const session = await apiCreateSession();
-    
-        if (session) {
-            console.log("New session created:", session.id);
-    
-            Storage.sessions.unshift(session)
-            this.appendSession(session, true)
-            this.selectSession(session.id)
-
-            this.updateSessionHighlight(Storage.currentSession);
-
-        } else {
-            appendMessage("Error: Could not create new session.", "error");
-        }
-    }
-
-    updateSessionHighlight() {
-        for(let item of this.list.children){
-            if (item.getAttribute('data-id') === Storage.currentSession.id) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        }
-    }
-
-    selectSession(sessionId){
-        for (let session of Storage.sessions){
-            if(session.id == sessionId){
-                Storage.currentSession = session
-                break
-            }
-        }
-        this.updateSessionHighlight()
-
-        if(Storage.currentSession != null){
-            sendEvent('chat:change-session', {session: Storage.currentSession})
-        }
-    }
-
-    touch() {
-        if (Storage.currentSession) {
-            // Find the index of the current session in the sessions array
-            const currentIndex = Storage.sessions.findIndex(session => session.id === Storage.currentSession.id);
-    
-            // If the current session is not the first in the list
-            if (currentIndex > 0) {
-                // Move the current session to the beginning of the sessions array
-                Storage.sessions.splice(currentIndex, 1);
-                Storage.sessions.unshift(Storage.currentSession);
-    
-                // Update the current session's date to now
-                Storage.currentSession.date = new Date().toISOString();
-    
-                // Update the session list in the UI
-                for(let i in this.list.children){
-                    let item = this.list.children[i]
-                    if (item.getAttribute('data-id') === Storage.currentSession.id) {
-                        this.list.removeChild(item)
-                        this.list.insertBefore(item, this.list.firstChild);
-                        break
-                    }
-                }
-
-                // Update the highlight to reflect the new order
-                this.updateSessionHighlight();
-            }
-        }
-    }
 }
 
-customElements.define('list', List)
+customElements.define('text-list', List)
 

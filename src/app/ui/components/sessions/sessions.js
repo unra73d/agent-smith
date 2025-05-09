@@ -15,16 +15,23 @@ class SessionList extends HTMLElement {
         this.list = document.createElement('div')
         shadowRoot.appendChild(this.list)
 
-        this.populateSessions = this.populateSessions.bind(this)
         this.createNewSession = this.createNewSession.bind(this)
 
         document.addEventListener('sessions:new', e=>this.createNewSession())
         document.addEventListener('sessions:touch', e=>this.touch())
-        document.addEventListener('sessions:reload', e=>this.populateSessions())
+
+        document.addEventListener('storage:sessions', e=>this.updateList())
+        document.addEventListener('storage:current-session', e=>this.updateSessionHighlight())
     }
 
-    connectedCallback(){
-        this.populateSessions()
+    updateList(){
+        if(Storage.sessions && Storage.sessions.length > 0){
+            this.list.innerHTML = ''
+
+            for (let session of Storage.sessions) {
+                this.appendSession(session)
+            }
+        }
     }
 
     appendSession(session, front=false){
@@ -44,30 +51,8 @@ class SessionList extends HTMLElement {
             this.list.appendChild(sessionItem);
         }
 
-        sessionItem.addEventListener('click', e=>this.selectSession(session.id))
+        sessionItem.addEventListener('click', e=>Storage.currentSession=session)
         sessionItem.querySelector('.delete-icon').addEventListener('click', e=>this.handleDeleteSession(e, sessionItem, session.id))
-    }
-
-    async populateSessions(){
-        let sessions = await apiListSessions()
-        Storage.sessions = sessions
-
-        if(Storage.sessions){
-            Storage.sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
-            this.list.innerHTML = ''
-
-            for (let session of Storage.sessions) {
-                this.appendSession(session)
-            }
-
-            if(Storage.sessions.length > 0){
-                Storage.currentSession = Storage.sessions[0]
-            }
-
-            this.selectSession(Storage.currentSession.id);
-        } else {
-            Storage.sessions = []
-        }
     }
 
     async handleDeleteSession(e, sessionItem, sessionId){

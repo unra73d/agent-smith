@@ -19,6 +19,21 @@ monitor(Storage, 'roles', 'storage:roles')
 monitor(Storage, 'mcps', 'storage:mcps')
 monitor(Storage, 'currentSession', 'storage:current-session')
 
+document.addEventListener('sessions:reload', async (e)=>{
+    let sessions = await apiListSessions()
+    if(sessions && sessions.length > 0){
+        sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        Storage.sessions = sessions
+        Storage.currentSession = Storage.sessions[0]
+    }
+})
+
+document.addEventListener('mcp:reload', async (e)=>{
+    let mcps = await apiListMCPServers()
+    if(mcps && mcps.length > 0){
+        Storage.mcps = mcps
+    }
+})
 
 // --- Function to handle tab switching and panel toggle ---
 function handleTopTabClick(event) {
@@ -58,11 +73,13 @@ function handleTopTabClick(event) {
 
 // --- Initial Connection on Load ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("App loaded. Attempting to connect to agent...");
 
     populateModelSelector()
     populateRoleSelector()
     sendEvent('sessions:reload')
+    
+    document.querySelectorAll('mcp-list').forEach(list=>list.items.data = Storage.mcps)
+    sendEvent('mcp:reload')
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');

@@ -101,30 +101,6 @@ function sendEvent(name, data = {}) {
     document.dispatchEvent(e)
 }
 
-function observe(obj, eventName) {
-    const topLevelObject = obj;
-
-    const handler = {
-        set(target, property, value) {
-            if (typeof value === 'object' && value !== null) {
-                value = observe(value, eventName);
-            }
-            target[property] = value;
-            sendEvent(eventName, obj)
-            return true;
-        },
-        get(target, property) {
-            const value = target[property];
-            if (typeof value === 'object' && value !== null) {
-                return observe(value, eventName);
-            }
-            return value;
-        }
-    };
-
-    return new Proxy(obj, handler);
-}
-
 function monitor(obj, prop, eventName) {
     let value = obj[prop]
     Object.defineProperty(obj, prop, {

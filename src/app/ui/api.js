@@ -141,3 +141,23 @@ async function apiListRoles(){
         return null
     }
 }
+
+async function apiListMCPServers(){
+    try {
+        const response = await fetch('http://localhost:8008/agent/mcp/list');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data && data.mcpServers) {
+            return data.mcpServers
+        } else {
+            console.error("Invalid data structure received for mcp servers:", data);
+            return null
+        }
+    } catch (error) {
+        console.error("Failed to list mcp servers:", error);
+        return null
+    }
+}
