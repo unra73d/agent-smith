@@ -1,9 +1,74 @@
-.item-header{
-
+.item-header {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    width: 100%; /* Ensure it occupies the full width */
+    background-color: #1a1b1c; /* Slightly darker background */
 }
 
-.item-content{
-    &:not(.open){
-        display: none;
-    }
+.item-header:hover {
+    background-color: #2a2b2d; /* Lighter on hover */
+}
+
+.item-header .select-all-checkbox {
+    margin-right: 10px;
+}
+
+.item-header .header-text {
+    flex-grow: 1;
+    color: #e3e3e3;
+    font-size: 0.95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-header .delete-icon {
+    margin-left: auto; /* Right-align the delete icon */
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    display: block; /* Ensure it is always visible */
+    transition: filter 0.2s ease;
+}
+
+.item-header .delete-icon:hover {
+    filter: brightness(1.2); /* Slightly brighter on hover */
+}
+
+.item-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-content:not(.open) {
+    display: none;
+}
+
+.tool-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+    cursor: default;
+    width: 100%; /* Ensure it occupies the full width */
+    word-wrap: break-word;
+}
+
+.tool-item input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.tool-item .item-text {
+    flex-grow: 1;
+    color: #e3e3e3;
+    font-size: 0.95em;
+    white-space: normal;
+    word-wrap: break-word;
 }

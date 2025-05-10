@@ -191,6 +191,13 @@ body {
                     overflow-y: auto;
                     max-height: calc(100% - 100px);
                 }
+
+                .mcp-list {
+                    display: flex;
+                    flex-direction: column;
+                    width: 100%;
+                    height: 100%;
+                }
             }
         }
     }
@@ -203,6 +210,7 @@ body {
         height: 100%;
     }
 }
+
 
 .confirm-overlay {
     position: fixed;

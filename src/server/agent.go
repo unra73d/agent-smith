@@ -172,6 +172,7 @@ func listMCPServersHandler(c *gin.Context) {
 	serversList := make([]map[string]any, 0, len(serversMap))
 	for _, val := range serversMap {
 		serversList = append(serversList, map[string]any{
+			"id":        val.ID,
 			"name":      val.Name,
 			"transport": val.Transport,
 			"url":       val.URL,
