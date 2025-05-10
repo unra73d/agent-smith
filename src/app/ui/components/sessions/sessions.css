@@ -27,7 +27,7 @@
 
     .session-summary {
         flex-grow: 1;
-        color: #e3e3e3;
+        color: #b3b3b3; /* Make text a bit darker */
         font-size: 0.95em;
         white-space: nowrap;
         overflow: hidden;

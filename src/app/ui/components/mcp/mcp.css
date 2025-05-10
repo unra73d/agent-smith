@@ -20,7 +20,7 @@
 
 .item-header .header-text {
     flex-grow: 1;
-    color: #e3e3e3;
+    color: #b3b3b3; /* Make text a bit darker */
     font-size: 0.95em;
     white-space: nowrap;
     overflow: hidden;
@@ -32,8 +32,12 @@
     cursor: pointer;
     width: 16px;
     height: 16px;
-    display: block; /* Ensure it is always visible */
+    display: none; /* Hide by default */
     transition: filter 0.2s ease;
+}
+
+.item-header:hover .delete-icon {
+    display: block; /* Show on hover */
 }
 
 .item-header .delete-icon:hover {
@@ -51,7 +55,7 @@
 
 .tool-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Align items to the top */
     padding: 10px;
     border-radius: 6px;
     margin-bottom: 10px;
@@ -63,11 +67,13 @@
 
 .tool-item input[type="checkbox"] {
     margin-right: 10px;
+    margin-top: 4px; /* Align checkbox to the top */
+    padding: 4px; /* Increase clickable area */
 }
 
 .tool-item .item-text {
     flex-grow: 1;
-    color: #e3e3e3;
+    color: #b3b3b3; /* Make text a bit darker */
     font-size: 0.95em;
     white-space: normal;
     word-wrap: break-word;
