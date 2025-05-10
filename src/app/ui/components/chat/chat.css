@@ -290,43 +290,9 @@ body {
         }
 
         .tools-checkbox {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            margin-right: 5px;
-            border-radius: 2px;
-            border: 1px solid #888a8f;
-            background-color: transparent;
-            width: 10px;
-            height: 10px;
-            cursor: pointer;
+            margin-left: 5px;
             position: relative;
-            outline: none;
-        }
-
-        .tools-checkbox:checked {
-            border-color: #e3e3e3;
-        }
-
-        .tools-checkbox:checked::after {
-            content: '✔';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 12px;
-            line-height: 1;
-            color: #e3e3e3;
-        }
-
-        .tools-checkbox-text {
-            color: #888a8f;
             font-size: 0.7em;
-            cursor: pointer;
-        }
-
-        .tools-checkbox:checked + .tools-checkbox-text {
-            color: #e3e3e3;
         }
 
         .send-button {

@@ -17,15 +17,14 @@ class MCPList extends List {
 
         item.innerHTML = `
             <div class="item-header">
-                <input type="checkbox" class="select-all-checkbox" ${data.active ? 'checked' : ''}>
+                <ui-checkbox class="select-all-checkbox" ${data.active ? 'checked' : ''}></ui-checkbox>
                 <span class="header-text">${data.name}</span>
                 <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${data.id}">
             </div>
-            <div class="item-content open">
-            </div>
+            <div class="item-content open"></div>
         `;
 
-        const selectAllCheckbox = item.querySelector('.select-all-checkbox');
+        const selectAllCheckbox = item.querySelector('ui-checkbox');
 
         const itemContent = item.querySelector('.item-content');
         if(!data.active)itemContent.classList.add('disabled')
@@ -33,7 +32,9 @@ class MCPList extends List {
         for (let tool of data.tools) {
             itemContent.innerHTML += `
                 <div class="tool-item">
-                    <label class="tool-checkbox-area"><input ${data.active ? '' : 'disabled'} type="checkbox" ${tool.active ? 'checked' : ''}/></label>
+                    <label class="tool-checkbox-area">
+                        <ui-checkbox ${data.active ? '' : 'disabled'} ${tool.active ? 'checked' : ''}></ui-checkbox>
+                    </label>
                     <span class="item-text"><b>${tool.name}</b> - ${tool.description}</span>
                 </div>
             `

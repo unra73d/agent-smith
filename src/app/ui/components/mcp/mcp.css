@@ -28,20 +28,19 @@
 }
 
 .item-header .delete-icon {
-    margin-left: auto; /* Right-align the delete icon */
+    margin-left: auto;
     cursor: pointer;
     width: 16px;
     height: 16px;
-    display: none; /* Hide by default */
-    transition: filter 0.2s ease;
+    display: none;
 }
 
 .item-header:hover .delete-icon {
-    display: block; /* Show on hover */
+    display: block;
 }
 
 .item-header .delete-icon:hover {
-    filter: brightness(1.2); /* Slightly brighter on hover */
+    filter: brightness(1.2);
 }
 
 .item-content {
@@ -60,11 +59,11 @@
 
 .tool-item {
     display: flex;
-    align-items: flex-start; /* Align items to the top */
+    align-items: flex-start;
     margin-bottom: 5px;
     transition: background-color 0.2s ease;
     cursor: default;
-    width: 100%; /* Ensure it occupies the full width */
+    width: 100%;
     word-wrap: break-word;
 }
 
