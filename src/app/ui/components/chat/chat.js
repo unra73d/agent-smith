@@ -27,6 +27,10 @@ class ChatView extends HTMLElement {
                 <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
             </div>
             <div class="chat-button-container">
+                <label class="tools-checkbox-label">
+                    <input type="checkbox" id="toolsCheckbox" class="tools-checkbox">
+                    <span class="tools-checkbox-text">Tools</span>
+                </label>
                 <button id="sendButton" class="send-button img-button" onclick="sendEvent('chat:send')">
                     <img src="icons/send.svg" alt="Send">
                 </button>

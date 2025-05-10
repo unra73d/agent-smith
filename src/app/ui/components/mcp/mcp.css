@@ -49,6 +49,11 @@
     flex-direction: column;
 }
 
+.item-content.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
 .item-content:not(.open) {
     display: none;
 }
@@ -56,9 +61,7 @@
 .tool-item {
     display: flex;
     align-items: flex-start; /* Align items to the top */
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     transition: background-color 0.2s ease;
     cursor: default;
     width: 100%; /* Ensure it occupies the full width */
@@ -67,14 +70,18 @@
 
 .tool-item input[type="checkbox"] {
     margin-right: 10px;
-    margin-top: 4px; /* Align checkbox to the top */
-    padding: 4px; /* Increase clickable area */
+    margin-top: 4px;
+    padding: 4px;
 }
 
 .tool-item .item-text {
     flex-grow: 1;
-    color: #b3b3b3; /* Make text a bit darker */
-    font-size: 0.95em;
+    color: #b3b3b3;
+    font-size: 0.75em;
     white-space: normal;
     word-wrap: break-word;
+}
+
+.tool-checkbox-area{
+    padding: 5px;
 }

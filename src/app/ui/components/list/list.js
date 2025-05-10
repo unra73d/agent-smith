@@ -46,7 +46,7 @@ class List extends HTMLElement {
     onItemClick(item, data){}
 
     updateList(){
-        if(this.items && this.items.length > 0){
+        if(this.items){
             this.list.innerHTML = ''
 
             for (let data of this.items) {

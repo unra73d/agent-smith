@@ -17,7 +17,7 @@ class MCPList extends List {
 
         item.innerHTML = `
             <div class="item-header">
-                <input type="checkbox" class="select-all-checkbox">
+                <input type="checkbox" class="select-all-checkbox" ${data.active ? 'checked' : ''}>
                 <span class="header-text">${data.name}</span>
                 <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${data.id}">
             </div>
@@ -25,22 +25,23 @@ class MCPList extends List {
             </div>
         `;
 
+        const selectAllCheckbox = item.querySelector('.select-all-checkbox');
+
         const itemContent = item.querySelector('.item-content');
+        if(!data.active)itemContent.classList.add('disabled')
+        const toolCheckboxes = [];
         for (let tool of data.tools) {
             itemContent.innerHTML += `
                 <div class="tool-item">
-                    <input type="checkbox"/>
+                    <label class="tool-checkbox-area"><input ${data.active ? '' : 'disabled'} type="checkbox" ${tool.active ? 'checked' : ''}/></label>
                     <span class="item-text"><b>${tool.name}</b> - ${tool.description}</span>
                 </div>
-            `;
+            `
         }
 
-        const selectAllCheckbox = item.querySelector('.select-all-checkbox');
-        selectAllCheckbox.addEventListener('change', e => {
-            const isChecked = e.target.checked;
-            itemContent.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = isChecked;
-            });
+        selectAllCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked
+            data.active = isChecked
         });
 
         const deleteIcon = item.querySelector('.delete-icon')
