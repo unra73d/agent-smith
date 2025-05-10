@@ -62,11 +62,6 @@ func LoadRoles() []*Role {
 		roles = append(roles, &role)
 	}
 
-	// Check for errors during row iteration
-	if err = rows.Err(); err != nil {
-		log.E("Error iterating role rows: %v", err)
-	}
-
 	log.D("Loaded roles from DB:", len(roles))
 	return roles
 }

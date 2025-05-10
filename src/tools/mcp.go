@@ -3,9 +3,14 @@ package tools
 
 import (
 	"agentsmith/src/logger"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"os"
+	"time"
+
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 var log = logger.Logger("tools", 1, 1, 1)
@@ -24,7 +29,7 @@ type MCPServer struct {
 	URL       string       `json:"url"`
 	Command   string       `json:"command"`
 	Args      []string     `json:"args"`
-	Tools     []Tool       `json:"tools"`
+	Tools     []*Tool      `json:"tools"`
 }
 
 func LoadMCPServers() []*MCPServer {
@@ -78,13 +83,10 @@ func LoadMCPServers() []*MCPServer {
 			mcpServer.Args = make([]string, 0)
 		}
 
+		mcpServer.LoadTools()
+
 		// Append the successfully loaded MCP server to the slice
 		mcpServers = append(mcpServers, &mcpServer)
-	}
-
-	// Check for errors during row iteration
-	if err = rows.Err(); err != nil {
-		log.E("Error iterating MCP server rows: %v", err)
 	}
 
 	log.D("Loaded MCP servers from DB:", len(mcpServers))
@@ -131,4 +133,58 @@ func (self *MCPServer) Delete() {
 
 	query := "DELETE FROM mcp WHERE id=?"
 	db.Exec(query, self.ID)
+}
+
+func (self *MCPServer) LoadTools() {
+	logger.BreakOnError()
+
+	c, err := client.NewStdioMCPClient(
+		self.Command,
+		[]string{}, // Empty ENV
+		self.Args...,
+	)
+	log.CheckE(err, nil, "Failed to create MCP client")
+	defer c.Close()
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	initRequest := mcp.InitializeRequest{}
+	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
+	initRequest.Params.ClientInfo = mcp.Implementation{
+		Name:    "example-client",
+		Version: "1.0.0",
+	}
+
+	_, err = c.Initialize(ctx, initRequest)
+	log.CheckE(err, nil, "Failed to initialize MCP request")
+
+	toolsRequest := mcp.ListToolsRequest{}
+	mcpTools, err := c.ListTools(ctx, toolsRequest)
+	log.CheckE(err, nil, "Failed to list tools from MCP: ", self.Name)
+
+	self.Tools = make([]*Tool, 0, len(mcpTools.Tools))
+	for _, tool := range mcpTools.Tools {
+		params := make([]*ToolParam, 0, 8)
+		for name, prop := range tool.InputSchema.Properties {
+			// Ensure prop is a map[string]interface{}
+			if propMap, ok := prop.(map[string]interface{}); ok {
+				param := &ToolParam{
+					Name:        name,
+					Type:        propMap["type"].(string),
+					Description: propMap["description"].(string),
+				}
+				params = append(params, param)
+
+			} else {
+				log.W("Invalid property format for:", name)
+			}
+		}
+		self.Tools = append(self.Tools, &Tool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			Params:      params,
+		})
+	}
 }

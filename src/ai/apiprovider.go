@@ -121,11 +121,6 @@ func LoadProviders() []IAPIProvider {
 		providers = append(providers, provider)
 	}
 
-	// Check for errors during row iteration
-	if err = rows.Err(); err != nil {
-		log.E("Error iterating provider rows: %v", err)
-	}
-
 	log.D("Loaded providers from DB:", len(providers))
 	return providers
 }

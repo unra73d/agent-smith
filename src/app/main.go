@@ -24,7 +24,7 @@ func main() {
 	os.Setenv("AS_BACKEND_PORT", "8008")
 	os.Setenv("AS_AGENT_DB_FILE", "app.db")
 
-	go agent.LoadAgent()
+	agent.LoadAgent()
 
 	// agent api server
 	go server.StartServer()

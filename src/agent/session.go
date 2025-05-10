@@ -66,11 +66,6 @@ func LoadSessions() []*Session {
 		sessions = append(sessions, &session)
 	}
 
-	// Check for errors during row iteration
-	if err = rows.Err(); err != nil {
-		log.E("Error iterating session rows: %v", err)
-	}
-
 	log.D("Loaded sessions from DB:", len(sessions))
 	return sessions
 }

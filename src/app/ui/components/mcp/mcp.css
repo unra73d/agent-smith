@@ -1,0 +1,9 @@
+.item-header{
+
+}
+
+.item-content{
+    &:not(.open){
+        display: none;
+    }
+}

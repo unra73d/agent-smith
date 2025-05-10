@@ -8,7 +8,7 @@ type ToolParam struct {
 }
 
 type Tool struct {
-	Name        string      `json:"name"`
-	Params      []ToolParam `json:"params"`
-	Description string      `json:"description"`
+	Name        string       `json:"name"`
+	Params      []*ToolParam `json:"params"`
+	Description string       `json:"description"`
 }

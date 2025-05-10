@@ -177,6 +177,7 @@ func listMCPServersHandler(c *gin.Context) {
 			"url":       val.URL,
 			"command":   val.Command,
 			"args":      val.Args,
+			"tools":     val.Tools,
 		})
 	}
 	c.JSON(200, map[string]any{"mcpServers": serversList})

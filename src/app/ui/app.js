@@ -31,6 +31,13 @@ document.addEventListener('sessions:reload', async (e)=>{
 document.addEventListener('mcp:reload', async (e)=>{
     let mcps = await apiListMCPServers()
     if(mcps && mcps.length > 0){
+        for(let i in mcps){
+            mcps[i].active = true
+            if(!mcps[i].tools)mcps[i].tools = []
+            for(let k in mcps[i].tools){
+                mcps[i].tools[k].active = true
+            }
+        }
         Storage.mcps = mcps
     }
 })
