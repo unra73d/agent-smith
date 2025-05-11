@@ -7,54 +7,70 @@ import (
 	"agentsmith/src/logger"
 	"agentsmith/src/tools"
 	"errors"
-	"time"
-
-	"github.com/google/uuid"
+	"sync"
 )
 
+var log = logger.Logger("agent", 1, 1, 1)
+
 type agent struct {
-	sessions     map[string]*Session
-	apiProviders map[string]ai.IAPIProvider
 	flashSession *Session
-	roles        map[string]*Role
-	mcps         map[string]*tools.MCPServer
+	builtinTools []*tools.Tool
+	apiProviders []ai.IAPIProvider
+	roles        []*Role
+	mcps         []*tools.MCPServer
+	sessions     []*Session
 }
 
-var log = logger.Logger("agent", 1, 1, 1)
 var Agent = agent{
-	sessions:     make(map[string]*Session),
-	apiProviders: make(map[string]ai.IAPIProvider),
-	roles:        make(map[string]*Role),
-	mcps:         make(map[string]*tools.MCPServer),
+	builtinTools: make([]*tools.Tool, 0),
+	apiProviders: make([]ai.IAPIProvider, 0),
+	roles:        make([]*Role, 0),
+	mcps:         make([]*tools.MCPServer, 0),
+	sessions:     make([]*Session, 0),
 }
 
 func LoadAgent() {
+	var signal sync.WaitGroup
+
 	// load api providers
-	providerList := ai.LoadProviders()
-	for _, provider := range providerList {
-		Agent.apiProviders[uuid.NewString()] = provider
-	}
+	signal.Add(1)
+	go func() {
+		defer signal.Done()
+		Agent.apiProviders = ai.LoadProviders()
+	}()
 
 	// load historical sessions
-	sessionList := LoadSessions()
-	for _, session := range sessionList {
-		Agent.sessions[session.ID] = session
-	}
+	signal.Add(1)
+	go func() {
+		defer signal.Done()
+		Agent.sessions = LoadSessions()
+	}()
 
 	// create global 'flash' session
 	Agent.flashSession = newSession()
 
 	// load roles
-	roleList := LoadRoles()
-	for _, role := range roleList {
-		Agent.roles[role.ID] = role
-	}
+	signal.Add(1)
+	go func() {
+		defer signal.Done()
+		Agent.roles = LoadRoles()
+	}()
 
 	// load MCP servers
-	mcpList := tools.LoadMCPServers()
-	for _, mcp := range mcpList {
-		Agent.mcps[mcp.ID] = mcp
-	}
+	signal.Add(1)
+	go func() {
+		defer signal.Done()
+		Agent.mcps = tools.LoadMCPServers()
+	}()
+
+	// load builtin tools
+	signal.Add(1)
+	go func() {
+		defer signal.Done()
+		Agent.builtinTools = tools.GetBuiltinTools()
+	}()
+
+	signal.Wait()
 }
 
 func GetModels() []*ai.Model {
@@ -65,123 +81,39 @@ func GetModels() []*ai.Model {
 	return models
 }
 
-func GetSessions() map[string]*Session {
+func GetSessions() []*Session {
 	return Agent.sessions
 }
 
-func GetRoles() map[string]*Role {
+func GetRoles() []*Role {
 	return Agent.roles
 }
 
-func GetMCPServers() map[string]*tools.MCPServer {
+func GetMCPServers() []*tools.MCPServer {
 	return Agent.mcps
+}
+
+func GetBuiltinTools() []*tools.Tool {
+	return Agent.builtinTools
 }
 
 func CreateSession() *Session {
 	session := newSession()
 	session.Save()
-	Agent.sessions[session.ID] = session
+	Agent.sessions = append(Agent.sessions, session)
 	return session
 }
 
 func DeleteSession(id string) error {
-	if session, ok := Agent.sessions[id]; ok {
-		session.Delete()
-		delete(Agent.sessions, id)
-		return nil
-	} else {
-		log.E("trying to delete non existing session", id)
-		return errors.New("session not found")
+	for i, session := range Agent.sessions {
+		if session.ID == id {
+			session.Delete()
+			Agent.sessions = append(Agent.sessions[:i], Agent.sessions[i+1:]...)
+			return nil
+		}
 	}
-}
-
-func DirectChatStreaming(sessionID string, modelID string, roleID string, query string, streamCh chan string, streamDoneCh chan bool) {
-	model := findModel(modelID)
-	if model != nil {
-		session, permanentSession := Agent.sessions[sessionID]
-		if !permanentSession {
-			session = Agent.flashSession
-		}
-
-		sysPrompt := ""
-		if role, ok := Agent.roles[roleID]; ok {
-			sysPrompt = "## General instruction: \n" + role.Config.GeneralInstruction +
-				"## Role and personality: \n" + role.Config.Role +
-				"## Text style and tone: \n" + role.Config.Style
-		}
-
-		modelResponseCh := make(chan string)
-		modelDoneCh := make(chan bool)
-		go func() {
-			for {
-				select {
-				case msg := <-modelResponseCh:
-					session.UpdateLastMessage(msg)
-					streamCh <- msg
-				case <-modelDoneCh:
-					if permanentSession {
-						session.Save()
-					}
-					return
-				case <-time.After(60 * time.Second):
-					return
-				}
-			}
-		}()
-
-		session.AddMessage(ai.MessageOriginUser, query)
-		err := session.AddMessage(ai.MessageOriginAI, "")
-		log.CheckW(err, "Failed to add new message in agent")
-
-		model.Provider.ChatCompletionStream(
-			session.Messages[:len(session.Messages)-1],
-			sysPrompt,
-			model,
-			false,
-			modelResponseCh,
-		)
-		modelDoneCh <- true
-		streamDoneCh <- true
-	} else {
-		log.E("Model not found")
-		streamDoneCh <- false
-	}
-}
-
-func DirectChat(sessionID string, modelID string, roleID string, query string) (response string, err error) {
-	logger.BreakOnError()
-	response = ""
-
-	model := findModel(modelID)
-	if model != nil {
-		session, permanentSession := Agent.sessions[sessionID]
-		if !permanentSession {
-			session = Agent.flashSession
-		}
-
-		sysPrompt := ""
-		if role, ok := Agent.roles[roleID]; ok {
-			sysPrompt = "## General instruction: \n" + role.Config.GeneralInstruction +
-				"## Role and personality: \n" + role.Config.Role +
-				"## Text style and tone: \n" + role.Config.Style
-		}
-
-		message, err := model.Provider.ChatCompletion(
-			session.Messages,
-			sysPrompt,
-			model,
-			false,
-		)
-		log.CheckE(err, nil, "Failed to get completion for message")
-
-		err = session.AddMessage(ai.MessageOriginAI, message)
-		log.CheckE(err, nil, "Failed to store new message in agent")
-
-		response = message
-	} else {
-		err = errors.New("model not selected")
-	}
-	return
+	log.E("trying to delete non existing session", id)
+	return errors.New("session not found")
 }
 
 func findModel(modelID string) *ai.Model {

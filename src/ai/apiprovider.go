@@ -3,6 +3,7 @@ package ai
 
 import (
 	"agentsmith/src/logger"
+	"agentsmith/src/tools"
 	"bytes"
 	"context"
 	"database/sql"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/tmaxmax/go-sse"
@@ -39,8 +41,8 @@ type IAPIProvider interface {
 
 	Test() error
 	LoadModels() error
-	ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error)
-	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) error
+	ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error)
+	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) error
 }
 
 type APIProvider struct {
@@ -94,6 +96,8 @@ func LoadProviders() []IAPIProvider {
 	log.CheckE(err, nil, "Failed to select providers from DB")
 	defer rows.Close()
 
+	var signal sync.WaitGroup
+
 	for rows.Next() {
 		var name, apiURL, apiKey, providerTypeStr sql.NullString
 
@@ -108,45 +112,26 @@ func LoadProviders() []IAPIProvider {
 			continue
 		}
 
-		provider, err := NewProvider(
-			APIType(providerTypeStr.String),
-			name.String,
-			apiURL.String,
-			apiKey.String,
-		)
-		if err != nil {
-			log.W("Error creating provider '%s' from DB data: %v", name.String, err)
-			continue
-		}
-		providers = append(providers, provider)
+		signal.Add(1)
+		go func() {
+			defer signal.Done()
+			provider, err := NewProvider(
+				APIType(providerTypeStr.String),
+				name.String,
+				apiURL.String,
+				apiKey.String,
+			)
+			if err != nil {
+				log.W("Error creating provider '%s' from DB data: %v", name.String, err)
+				return
+			}
+			providers = append(providers, provider)
+		}()
 	}
+
+	signal.Wait()
 
 	log.D("Loaded providers from DB:", len(providers))
-	return providers
-}
-
-func LoadProvidersFromJSON() []IAPIProvider {
-	log.D("loading providers")
-	defer logger.BreakOnError()
-
-	data, err := os.ReadFile(os.Getenv("AS_MODEL_CONFIG_FILE"))
-	log.CheckE(err, nil, "Failed to open models config file")
-
-	var loadedConfigs []APIProvider
-	err = json.Unmarshal(data, &loadedConfigs)
-	log.CheckE(err, nil, "Failed to parse models json")
-
-	providers := make([]IAPIProvider, 0, 16)
-
-	for _, config := range loadedConfigs {
-		provider, err := NewProvider(config.apiType, config.name, config.apiURL, config.apiKey)
-		if err != nil {
-			log.E("Error recreating provider", config.name)
-			continue
-		}
-		providers = append(providers, provider)
-	}
-
 	return providers
 }
 
@@ -214,7 +199,7 @@ type OpenAIChatCompletionRes struct {
 	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error) {
+func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error) {
 	log.D("OpenAI chat completion")
 	url := self.apiURL + "/chat/completions"
 
@@ -260,7 +245,7 @@ type OpenAIStreamChatResponse struct {
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
 }
 
-func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) (err error) {
+func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) (err error) {
 	log.D("OpenAI chat completion streaming")
 	url := self.apiURL + "/chat/completions"
 
@@ -307,11 +292,11 @@ func (self *GoogleAIProvider) LoadModels() error {
 	return nil
 }
 
-func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, toolUse bool) (string, error) {
+func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error) {
 	return "Message received", nil
 }
 
-func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, toolUse bool, writeCh chan string) error {
+func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) error {
 	return nil
 }
 
@@ -331,7 +316,6 @@ func cutThinking(text string) string {
 }
 
 func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string {
-
 	bodyMessages := make([]map[string]string, len(messages)+1)
 	bodyMessages[0] = map[string]string{
 		"role":    "system",

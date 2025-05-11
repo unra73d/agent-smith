@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/mark3labs/mcp-go/client"
@@ -47,6 +48,8 @@ func LoadMCPServers() []*MCPServer {
 	log.CheckE(err, nil, "Failed to select MCP servers from DB")
 	defer rows.Close()
 
+	var signal sync.WaitGroup
+
 	for rows.Next() {
 		var mcpServer MCPServer
 		var argsJSON sql.NullString
@@ -72,22 +75,28 @@ func LoadMCPServers() []*MCPServer {
 			mcpServer.Command = ""
 		}
 
-		// Unmarshal the JSON data from the 'args' column into Args
-		if argsJSON.Valid && argsJSON.String != "" {
-			err = json.Unmarshal([]byte(argsJSON.String), &mcpServer.Args)
-			if err != nil {
-				log.W("Failed to unmarshal args for MCP server:", mcpServer.ID, err)
+		signal.Add(1)
+		go func() {
+			defer signal.Done()
+			// Unmarshal the JSON data from the 'args' column into Args
+			if argsJSON.Valid && argsJSON.String != "" {
+				err = json.Unmarshal([]byte(argsJSON.String), &mcpServer.Args)
+				if err != nil {
+					log.W("Failed to unmarshal args for MCP server:", mcpServer.ID, err)
+					mcpServer.Args = make([]string, 0)
+				}
+			} else {
 				mcpServer.Args = make([]string, 0)
 			}
-		} else {
-			mcpServer.Args = make([]string, 0)
-		}
 
-		mcpServer.LoadTools()
+			mcpServer.LoadTools()
 
-		// Append the successfully loaded MCP server to the slice
-		mcpServers = append(mcpServers, &mcpServer)
+			// Append the successfully loaded MCP server to the slice
+			mcpServers = append(mcpServers, &mcpServer)
+		}()
 	}
+
+	signal.Wait()
 
 	log.D("Loaded MCP servers from DB:", len(mcpServers))
 	return mcpServers

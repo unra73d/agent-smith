@@ -12,10 +12,11 @@ import (
 )
 
 type Session struct {
-	ID       string        `json:"id"`
-	Date     time.Time     `json:"date"`
-	Messages []*ai.Message `json:"messages"`
-	Summary  string        `json:"summary"`
+	ID        string        `json:"id"`
+	Date      time.Time     `json:"date"`
+	Messages  []*ai.Message `json:"messages"`
+	Summary   string        `json:"summary"`
+	temporary bool          `json:"-"`
 }
 
 func LoadSessions() []*Session {
@@ -71,7 +72,12 @@ func LoadSessions() []*Session {
 }
 
 func newSession() *Session {
-	session := &Session{uuid.NewString(), time.Now(), make([]*ai.Message, 0, 32), "New chat"}
+	session := &Session{uuid.NewString(), time.Now(), make([]*ai.Message, 0, 32), "New chat", false}
+	return session
+}
+
+func NewTempSession() *Session {
+	session := &Session{uuid.NewString(), time.Now(), make([]*ai.Message, 0, 32), "New chat", true}
 	return session
 }
 
@@ -125,7 +131,11 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
 
 	s.Messages = append(s.Messages, message)
 	s.Date = time.Now()
-	err := s.Save()
+
+	var err error
+	if !s.temporary {
+		err = s.Save()
+	}
 
 	return err
 }
@@ -136,4 +146,8 @@ func (s *Session) UpdateLastMessage(newText string) {
 		message.Text = message.Text + newText
 	}
 
+}
+
+func (s *Session) ClearMessages() {
+	s.Messages = make([]*ai.Message, 0, 32)
 }

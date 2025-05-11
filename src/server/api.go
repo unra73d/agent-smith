@@ -1,83 +1,239 @@
-// Package server implements http server lifecycle and all available APIs
 package server
 
 import (
+	"agentsmith/src/agent"
 	"agentsmith/src/logger"
-	"context"
-	"net/http"
-	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-var log = logger.Logger("server", 1, 1, 1)
+/*
+Get list of chat sessions
+*/
+var listSessionsURI = "/sessions/list"
 
-// --- Configuration ---
-const listenPort = 8008
-
-func StartServer() {
-	log.D("Starting agent server")
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	if logger.DEBUG == 1 {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	router := gin.New()
-	router.Use(gin.Recovery())
-	router.Use(CORSMiddleware)
-
-	if logger.DEBUG == 1 {
-		router.Use(gin.Logger())
-	}
-
-	server := &http.Server{
-		Addr:    ":" + strconv.Itoa(listenPort),
-		Handler: router,
-	}
-
-	initRoutes(router, server)
-
-	go func() {
-		err := server.ListenAndServe()
-		log.CheckE(err, nil, "Server listen failed")
-	}()
-
-	log.D("Server started")
-
-	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer func() {
-		// extra handling here
-		cancel()
-	}()
-	server.Shutdown(ctx)
+func listSessionsHandler(c *gin.Context) {
+	c.JSON(200, map[string]any{"sessions": agent.GetSessions()})
 }
 
-func initRoutes(router *gin.Engine, server *http.Server) {
-	InitAgentRoutes(router)
+/*
+Create new session
+*/
+var createSessionURI = "/sessions/new"
 
-	if logger.DEBUG == 1 {
-		InitDebugRoutes(router, server)
+func createSessionHandler(c *gin.Context) {
+	session := agent.CreateSession()
+	c.JSON(200, map[string]any{"session": session})
+}
+
+/*
+Delete session by id
+*/
+var deleteSessionURI = "/sessions/delete/:id"
+
+type DeleteSessionReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func deleteSessionHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req DeleteSessionReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.DeleteSession(req.ID)
+	if err != nil {
+		c.JSON(500, map[string]any{"error": err})
+	} else {
+		c.JSON(200, map[string]any{"error": nil})
+	}
+
+}
+
+/*
+Get list of available models
+*/
+var listModelsURI = "/models/list"
+
+func listModelsHandler(c *gin.Context) {
+	c.JSON(200, map[string]any{"models": agent.GetModels()})
+}
+
+/*
+API for sending message to AI directly and get response as streamed chunks.
+No tools will be called in response.
+*/
+var directChatStreamURI = "/directchat/stream"
+
+type directChatStreamReq struct {
+	SessionID string `json:"sessionID" binding:"required"`
+	ModelID   string `json:"modelID" binding:"required"`
+	RoleID    string `json:"roleID"`
+	Message   string `json:"message" binding:"required"`
+}
+
+func directChatStreamHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req directChatStreamReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	streamCh := make(chan string)
+	streamDoneCh := make(chan bool)
+
+	go agent.DirectChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+
+	// blocking call
+	c.Stream(func(w io.Writer) bool {
+		for {
+			select {
+			case msg := <-streamCh:
+				w.Write([]byte(msg))
+				c.Writer.Flush()
+			case <-streamDoneCh:
+				log.D("Stream finalized")
+				c.Status(200)
+				return false
+			case <-time.After(100 * time.Second):
+				log.W("Stream message timed out")
+				c.Status(500)
+				return false
+			}
+		}
+	})
+}
+
+/*
+API for sending message to agent in non-streaming mode. It can be used directly but originally intended for LLM
+calling this as a tool.
+Internal behavior is same as tool streaming chat, meaning it can call tools and even recursively call this API.
+The difference to regular tool chat API is that output returned as complete message instead of streaming.
+In this mode agent also considers a depth of recursion and may decide to break it if deemed too deep to prevent infinite loops.
+No messages or sessions are saved during this call.
+Agent configured only via system prompt
+*/
+var dynamicAgentChatURI = "/dynamicagentchat"
+
+type dynamicAgentChatReq struct {
+	ModelID   string `json:"modelID" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+	SysPrompt string `json:"sysPrompt" binding:"required"`
+}
+
+func dynamicAgentChatHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req dynamicAgentChatReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	response, err := agent.DynamicAgentChat(req.ModelID, req.Message, req.SysPrompt)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": "Unknown error"})
+	} else {
+		c.JSON(200, map[string]string{"response": response, "error": ""})
 	}
 }
 
-func CORSMiddleware(c *gin.Context) {
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-	c.Header("Access-Control-Allow-Headers", "authorization, origin, content-type, accept")
-	c.Header("Allow", "HEAD,GET,POST,PUT,PATCH,DELETE,OPTIONS")
-	c.Header("Content-Type", "application/json")
-	if c.Request.Method != "OPTIONS" {
-		c.Next()
-	} else {
-		c.AbortWithStatus(http.StatusOK)
+/*
+API for sending message to AI through an agent. Internally agent and LLM can exchange multiple messages
+and evet include user in this loop. Loop can be broken by LLM, user prompt or if agent detects recursion
+LLM can call tools or dynamic agents.
+Response is SSE stream:
+{
+}
+*/
+var toolChatStreamURI = "/toolchat/stream"
+
+type toolChatStreamReq struct {
+	SessionID     string `json:"sessionID"`
+	ModelID       string `json:"modelID" binding:"required"`
+	RoleID        string `json:"roleID"`
+	Message       string `json:"message" binding:"required"`
+	DynamicAgents bool   `json:"dynamicAgents" binding:"required"`
+}
+
+func toolChatStreamHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req toolChatStreamReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	streamCh := make(chan string)
+	streamDoneCh := make(chan bool)
+
+	go agent.DirectChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+
+	// blocking call
+	c.Stream(func(w io.Writer) bool {
+		for {
+			select {
+			case msg := <-streamCh:
+				w.Write([]byte(msg))
+				c.Writer.Flush()
+			case <-streamDoneCh:
+				log.D("Stream finalized")
+				c.Status(200)
+				return false
+			case <-time.After(100 * time.Second):
+				log.W("Stream message timed out")
+				c.Status(500)
+				return false
+			}
+		}
+	})
+}
+
+/*
+Get list of available roles
+*/
+var listRolesURI = "/roles/list"
+
+func listRolesHandler(c *gin.Context) {
+	roles := agent.GetRoles()
+	roleList := make([]map[string]any, 0, len(roles))
+	for key, val := range roles {
+		roleList = append(roleList, map[string]any{
+			"name":               val.Config.Name,
+			"generalInstruction": val.Config.GeneralInstruction,
+			"role":               val.Config.Role,
+			"style":              val.Config.Style,
+			"id":                 key,
+		})
+	}
+	c.JSON(200, map[string]any{"roles": roleList})
+}
+
+/*
+Get list of available MCP servers
+*/
+var listMCPServersURI = "/mcp/list"
+
+func listMCPServersHandler(c *gin.Context) {
+	c.JSON(200, map[string]any{"mcpServers": agent.GetMCPServers()})
+}
+
+func InitAgentRoutes(router *gin.Engine) {
+	group := router.Group("/agent")
+	{
+		group.GET(listSessionsURI, listSessionsHandler)
+		group.GET(createSessionURI, createSessionHandler)
+		group.GET(deleteSessionURI, deleteSessionHandler)
+
+		group.GET(listModelsURI, listModelsHandler)
+
+		group.POST(directChatStreamURI, directChatStreamHandler)
+		group.POST(dynamicAgentChatURI, dynamicAgentChatHandler)
+		group.POST(toolChatStreamURI, toolChatStreamHandler)
+
+		group.GET(listRolesURI, listRolesHandler)
+
+		group.GET(listMCPServersURI, listMCPServersHandler)
 	}
 }
