@@ -1,5 +1,7 @@
 package ai
 
+import "agentsmith/src/mcptools"
+
 type MessageOrigin string
 
 const (
@@ -10,7 +12,8 @@ const (
 )
 
 type Message struct {
-	ID     string        `json:"id"`
-	Origin MessageOrigin `json:"origin"`
-	Text   string        `json:"text"`
+	ID           string                      `json:"id"`
+	Origin       MessageOrigin               `json:"origin"`
+	Text         string                      `json:"text"`
+	ToolRequests []*mcptools.ToolCallRequest `json:"toolRequests"`
 }

@@ -21,35 +21,47 @@ const (
 
 func inferNextAction(message string) (AgentAction, *mcptools.MCPServer, *mcptools.ToolCallRequest) {
 	content := util.CutThinking(message)
-	if strings.HasPrefix(content, "<tool/>") {
-		content = content[len("<tool/>"):]
+	if len(content) > 0 {
+		content = strings.TrimSpace(content)
+
+		// some models wrap text into markdown, try to strip it
+		if strings.HasPrefix(content, "```") {
+			openBracketIndex := strings.Index(content, "{")
+			closeBracketIndex := strings.LastIndex(content, "}")
+
+			if openBracketIndex != -1 && closeBracketIndex != -1 && openBracketIndex < closeBracketIndex {
+				content = content[openBracketIndex : closeBracketIndex+1]
+			}
+		}
+
 		var callRequest mcptools.ToolCallRequest
 		err := json.Unmarshal([]byte(content), &callRequest)
 
-		if err != nil {
+		if err == nil {
 			for _, tool := range GetTools() {
-				if tool.Name == callRequest.Name {
+				if strings.Contains(callRequest.Name, tool.Name) {
+					callRequest.Name = tool.Name
 					return AgentActionToolCall, tool.Server, &callRequest
 				}
 			}
 		}
-		return AgentActionError, nil, nil
+		return AgentActionAnswer, nil, nil
 	}
-	return AgentActionAnswer, nil, nil
+	return AgentActionError, nil, nil
 }
 
 const toolUsePrompt = `
 ## Tool usage: \n
-You have tools to find information or perform actions.
-If you need to use a tool, your response must start with <tool/>, followed immediately by the JSON for the tool.
+You have tools/functions (which are two names for same term) to find information or perform actions.
+If you need to use a tool, your response must immediately start with the JSON for the tool.
 When to use tools:
 For real-time data (e.g., weather, news, search).
 For specific calculations or code execution.
 To access specialized knowledge bases, storages, databases.
 Tool Call Format:
-After <tool/>, provide a JSON object like this:
+Provide a JSON object like this:
 {
-	"tool_name": "time",
+	"name": "time",
 	"params": {
 		"location": "New York",
 		"24hr": true
@@ -91,16 +103,16 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 		sysPrompt = sysPrompt + toolUsePrompt
 
 		modelResponseCh := make(chan string)
-		modelDoneCh := make(chan bool)
+		modelDoneCh := make(chan error)
 		toolCh := make(chan []*mcptools.ToolCallRequest)
 
-		session.AddMessage(ai.MessageOriginUser, query)
-		session.AddMessage(ai.MessageOriginAI, "")
+		session.AddMessage(ai.MessageOriginUser, query, nil)
+		session.AddMessage(ai.MessageOriginAI, "", nil)
 
 		var toolCalls []*mcptools.ToolCallRequest
 		go func() {
 			log.D("Starting initial chat completion")
-			model.Provider.ChatCompletionStream(
+			err := model.Provider.ChatCompletionStream(
 				session.Messages[:len(session.Messages)-1],
 				sysPrompt,
 				model,
@@ -108,7 +120,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 				modelResponseCh,
 				toolCh,
 			)
-			modelDoneCh <- true
+			modelDoneCh <- err
 		}()
 
 		for {
@@ -117,24 +129,29 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 				session.UpdateLastMessage(msg)
 				streamCh <- msg
 			case toolCalls = <-toolCh:
-			case <-modelDoneCh:
+			case err := <-modelDoneCh:
 				log.D("Model response done")
 				session.Save()
 
 				var action AgentAction
 				var mcp *mcptools.MCPServer
 				var callRequest *mcptools.ToolCallRequest
-				if len(toolCalls) > 0 {
-					action = AgentActionToolCall
-					callRequest = toolCalls[0]
-					for _, tool := range GetTools() {
-						if tool.Name == toolCalls[0].Name {
-							mcp = tool.Server
-							break
-						}
-					}
+
+				if err != nil {
+					action = AgentActionError
 				} else {
-					action, mcp, callRequest = inferNextAction(session.Messages[len(session.Messages)-1].Text)
+					if len(toolCalls) > 0 {
+						action = AgentActionToolCall
+						callRequest = toolCalls[0]
+						for _, tool := range GetTools() {
+							if tool.Name == toolCalls[0].Name {
+								mcp = tool.Server
+								break
+							}
+						}
+					} else {
+						action, mcp, callRequest = inferNextAction(session.Messages[len(session.Messages)-1].Text)
+					}
 				}
 
 				switch action {
@@ -153,12 +170,13 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 						log.D("Tool execution result: ", toolResult)
 						streamCh <- toolResult
 
-						session.AddMessage(ai.MessageOriginTool, toolResult)
-						session.AddMessage(ai.MessageOriginAI, "")
+						session.Messages[len(session.Messages)-1].ToolRequests = []*mcptools.ToolCallRequest{callRequest}
+						session.AddMessage(ai.MessageOriginTool, toolResult, []*mcptools.ToolCallRequest{callRequest})
+						session.AddMessage(ai.MessageOriginAI, "", nil)
 
 						toolCalls = nil
 						go func() {
-							model.Provider.ChatCompletionStream(
+							err := model.Provider.ChatCompletionStream(
 								session.Messages[:len(session.Messages)-1],
 								sysPrompt,
 								model,
@@ -166,7 +184,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 								modelResponseCh,
 								toolCh,
 							)
-							modelDoneCh <- true
+							modelDoneCh <- err
 						}()
 					} else {
 						log.E("didnt find mcp to call")
@@ -193,7 +211,7 @@ func DynamicAgentChat(modelID string, query string, sysPrompt string) (response 
 	model := findModel(modelID)
 	if model != nil {
 		session := NewTempSession()
-		err = session.AddMessage(ai.MessageOriginUser, query)
+		err = session.AddMessage(ai.MessageOriginUser, query, nil)
 
 		message, err := model.Provider.ChatCompletion(
 			session.Messages,
@@ -203,7 +221,7 @@ func DynamicAgentChat(modelID string, query string, sysPrompt string) (response 
 		)
 		log.CheckE(err, nil, "Failed to get completion for message")
 
-		err = session.AddMessage(ai.MessageOriginAI, message)
+		err = session.AddMessage(ai.MessageOriginAI, message, nil)
 		log.CheckE(err, nil, "Failed to store new message in agent")
 
 		response = message

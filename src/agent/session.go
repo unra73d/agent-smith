@@ -3,6 +3,7 @@ package agent
 import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
+	"agentsmith/src/mcptools"
 	"database/sql"
 	"encoding/json"
 	"os"
@@ -121,12 +122,12 @@ func (s *Session) Delete() {
 	query := "DELETE FROM sessions WHERE session_id=?"
 	db.Exec(query, s.ID)
 }
-
-func (s *Session) AddMessage(origin ai.MessageOrigin, text string) error {
+func (s *Session) AddMessage(origin ai.MessageOrigin, text string, toolRequests []*mcptools.ToolCallRequest) error {
 	message := &ai.Message{
-		ID:     uuid.NewString(),
-		Origin: origin,
-		Text:   text,
+		ID:           uuid.NewString(),
+		Origin:       origin,
+		Text:         text,
+		ToolRequests: toolRequests,
 	}
 
 	s.Messages = append(s.Messages, message)

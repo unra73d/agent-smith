@@ -51,8 +51,8 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 			}
 		}()
 
-		session.AddMessage(ai.MessageOriginUser, query)
-		err := session.AddMessage(ai.MessageOriginAI, "")
+		session.AddMessage(ai.MessageOriginUser, query, nil)
+		err := session.AddMessage(ai.MessageOriginAI, "", nil)
 		log.CheckW(err, "Failed to add new message in agent")
 
 		model.Provider.ChatCompletionStream(

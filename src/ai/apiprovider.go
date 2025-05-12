@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/tmaxmax/go-sse"
 	"resty.dev/v3"
@@ -142,7 +143,8 @@ type OpenAIModelListRes struct {
 	Data []map[string]any `json:"data"`
 }
 
-func (self *OpenAIProvider) LoadModels() error {
+func (self *OpenAIProvider) LoadModels() (err error) {
+	defer logger.BreakOnError()
 	log.D("Loading OpenAI models")
 	url := self.apiURL + "/models"
 
@@ -156,11 +158,8 @@ func (self *OpenAIProvider) LoadModels() error {
 
 	list := &OpenAIModelListRes{}
 	r.SetResult(list)
-	_, err := r.Get(url)
-
-	if err != nil {
-		return err
-	}
+	_, err = r.Get(url)
+	log.CheckE(err, nil, "failed to list models for provider: ", self.name)
 
 	self.models = make([]*Model, len(list.Data))
 	for i, config := range list.Data {
@@ -171,6 +170,7 @@ func (self *OpenAIProvider) LoadModels() error {
 		}
 	}
 
+	log.D("loaded", len(self.models), " models for provider: ", self.name)
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (self *OpenAIProvider) ChatCompletionStream(
 	writeCh chan string,
 	toolCh chan []*mcptools.ToolCallRequest,
 ) (err error) {
-	logger.BreakOnError()
+	defer logger.BreakOnError()
 	log.D("OpenAI chat completion streaming")
 
 	// log.D("System prompt:", sysPrompt)
@@ -299,6 +299,8 @@ func (self *OpenAIProvider) ChatCompletionStream(
 
 	bodyJSON, err := json.Marshal(body)
 	log.CheckE(err, nil, "failed to marshal request body")
+
+	log.D(string(bodyJSON))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -320,9 +322,9 @@ func (self *OpenAIProvider) ChatCompletionStream(
 	conn := sse.NewConnection(r)
 
 	conn.SubscribeMessages(func(e sse.Event) {
-		logger.BreakOnError()
+		defer logger.BreakOnError()
 		eventData := string(e.Data)
-		// log.D("Received SSE Data:", eventData) // Log raw data for debugging
+		log.D("Received SSE Data:", eventData) // Log raw data for debugging
 
 		if eventData == "[DONE]" {
 			log.D("Provider closing streaming ([DONE] received)")
@@ -362,12 +364,16 @@ func (self *OpenAIProvider) ChatCompletionStream(
 				_, exists := toolCallBuilders[index]
 				if !exists {
 					toolCallBuilders[index] = map[string]any{
+						"id":     "",
 						"name":   "",
 						"params": "",
 					}
 				}
 
 				// Update fields (only update if not empty in the chunk)
+				if toolChunk.ID != "" {
+					toolCallBuilders[index]["id"] = toolCallBuilders[index]["id"].(string) + toolChunk.ID
+				}
 				if toolChunk.Function.Name != "" {
 					toolCallBuilders[index]["name"] = toolCallBuilders[index]["name"].(string) + toolChunk.Function.Name
 				}
@@ -409,7 +415,12 @@ func (self *OpenAIProvider) ChatCompletionStream(
 			log.E("failed to parse tool params json")
 		}
 
+		toolID := toolCall["id"].(string)
+		if len(toolID) == 0 {
+			toolID = uuid.NewString()
+		}
 		toolRequests[i] = &mcptools.ToolCallRequest{
+			ID:     toolID,
 			Name:   toolCall["name"].(string),
 			Params: params,
 		}
@@ -437,16 +448,37 @@ func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPromp
 	return nil
 }
 
-func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string {
-	bodyMessages := make([]map[string]string, len(messages)+1)
-	bodyMessages[0] = map[string]string{
+func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]any {
+	bodyMessages := make([]map[string]any, len(messages)+1)
+	bodyMessages[0] = map[string]any{
 		"role":    "system",
 		"content": sysPrompt,
 	}
 	for i, message := range messages {
-		bodyMessages[i+1] = map[string]string{
+		bodyMessages[i+1] = map[string]any{
 			"role":    string(message.Origin),
-			"content": strings.TrimSpace(util.CutThinking(message.Text)),
+			"content": "<no response>",
+		}
+		content := strings.TrimSpace(util.CutThinking(message.Text))
+		if len(content) > 0 {
+			bodyMessages[i+1]["content"] = content
+		}
+
+		if message.Origin == MessageOriginAI && len(message.ToolRequests) > 0 {
+			argsJSON, _ := json.Marshal(message.ToolRequests[0].Params)
+			toolCalls := []map[string]any{}
+			toolCalls = append(toolCalls, map[string]any{
+				"id":   message.ToolRequests[0].ID,
+				"type": "function",
+				"function": map[string]string{
+					"name":      message.ToolRequests[0].Name,
+					"arguments": string(argsJSON),
+				},
+			})
+			bodyMessages[i+1]["tool_calls"] = toolCalls
+		} else if message.Origin == MessageOriginTool && len(message.ToolRequests) > 0 {
+			bodyMessages[i+1]["name"] = message.ToolRequests[0].Name
+			bodyMessages[i+1]["tool_call_id"] = message.ToolRequests[0].ID
 		}
 	}
 	return &bodyMessages

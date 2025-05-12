@@ -23,6 +23,7 @@ const (
 )
 
 type ToolCallRequest struct {
+	ID     string         `json:"id"`
 	Name   string         `json:"name"`
 	Params map[string]any `json:"params"`
 }
@@ -149,7 +150,7 @@ func (self *MCPServer) Delete() {
 }
 
 func (self *MCPServer) connect() (context.Context, context.CancelFunc, *client.Client) {
-	logger.BreakOnError()
+	defer logger.BreakOnError()
 
 	c, err := client.NewStdioMCPClient(
 		self.Command,
@@ -175,7 +176,7 @@ func (self *MCPServer) connect() (context.Context, context.CancelFunc, *client.C
 }
 
 func (self *MCPServer) LoadTools() {
-	logger.BreakOnError()
+	defer logger.BreakOnError()
 
 	ctx, cancel, c := self.connect()
 	defer cancel()
@@ -212,7 +213,7 @@ func (self *MCPServer) LoadTools() {
 }
 
 func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, err error) {
-	logger.BreakOnError()
+	defer logger.BreakOnError()
 
 	ctx, cancel, c := self.connect()
 	defer cancel()
