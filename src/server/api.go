@@ -151,11 +151,10 @@ Response is SSE stream:
 var toolChatStreamURI = "/toolchat/stream"
 
 type toolChatStreamReq struct {
-	SessionID     string `json:"sessionID"`
-	ModelID       string `json:"modelID" binding:"required"`
-	RoleID        string `json:"roleID"`
-	Message       string `json:"message" binding:"required"`
-	DynamicAgents bool   `json:"dynamicAgents" binding:"required"`
+	SessionID string `json:"sessionID"`
+	ModelID   string `json:"modelID" binding:"required"`
+	RoleID    string `json:"roleID"`
+	Message   string `json:"message" binding:"required"`
 }
 
 func toolChatStreamHandler(c *gin.Context) {
@@ -168,7 +167,7 @@ func toolChatStreamHandler(c *gin.Context) {
 	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.DirectChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+	go agent.ToolChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {
@@ -198,13 +197,13 @@ var listRolesURI = "/roles/list"
 func listRolesHandler(c *gin.Context) {
 	roles := agent.GetRoles()
 	roleList := make([]map[string]any, 0, len(roles))
-	for key, val := range roles {
+	for _, val := range roles {
 		roleList = append(roleList, map[string]any{
 			"name":               val.Config.Name,
 			"generalInstruction": val.Config.GeneralInstruction,
 			"role":               val.Config.Role,
 			"style":              val.Config.Style,
-			"id":                 key,
+			"id":                 val.ID,
 		})
 	}
 	c.JSON(200, map[string]any{"roles": roleList})

@@ -93,6 +93,16 @@ func GetMCPServers() []*tools.MCPServer {
 	return Agent.mcps
 }
 
+func GetTools() []*tools.Tool {
+	res := make([]*tools.Tool, 0, 32)
+	for _, mcp := range Agent.mcps {
+		res = append(res, mcp.Tools...)
+	}
+	// res = append(res, Agent.builtinTools...)
+
+	return res
+}
+
 func GetBuiltinTools() []*tools.Tool {
 	return Agent.builtinTools
 }

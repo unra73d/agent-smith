@@ -4,6 +4,7 @@ package ai
 import (
 	"agentsmith/src/logger"
 	"agentsmith/src/tools"
+	"agentsmith/src/util"
 	"bytes"
 	"context"
 	"database/sql"
@@ -247,12 +248,14 @@ type OpenAIStreamChatResponse struct {
 
 func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) (err error) {
 	log.D("OpenAI chat completion streaming")
+	log.D("System prompt:", sysPrompt)
 	url := self.apiURL + "/chat/completions"
 
 	body := map[string]any{
 		"model":    model.ID,
 		"messages": prepareMessages(messages, sysPrompt),
 		"stream":   true,
+		"tools":    prepareTools(tools),
 	}
 	bodyJSON, err := json.Marshal(body)
 	log.CheckW(err, "Failed to pack chat content into json")
@@ -276,6 +279,7 @@ func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt 
 			log.CheckE(err, nil, "Failed to parse JSON response from chat completion_tokens")
 			writeCh <- response.Choices[0].Delta.Content
 		} else {
+			log.D("Provider closing streaming")
 			cancel()
 		}
 	})
@@ -300,21 +304,6 @@ func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPromp
 	return nil
 }
 
-var thinkTags = []string{"think", "thinking"}
-
-func cutThinking(text string) string {
-	for _, tag := range thinkTags {
-		if strings.HasPrefix(text, "<"+tag+">") {
-			pos := strings.Index(text, "</"+tag+">")
-			if pos != -1 {
-				text = text[pos+len("</"+tag+">"):]
-			}
-			break
-		}
-	}
-	return text
-}
-
 func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string {
 	bodyMessages := make([]map[string]string, len(messages)+1)
 	bodyMessages[0] = map[string]string{
@@ -324,8 +313,38 @@ func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string
 	for i, message := range messages {
 		bodyMessages[i+1] = map[string]string{
 			"role":    string(message.Origin),
-			"content": strings.TrimSpace(cutThinking(message.Text)),
+			"content": strings.TrimSpace(util.CutThinking(message.Text)),
 		}
 	}
 	return &bodyMessages
+}
+
+func prepareTools(tools []*tools.Tool) *[]map[string]any {
+	bodyTools := make([]map[string]any, len(tools))
+
+	for i, tool := range tools {
+
+		paramMap := make(map[string]any)
+		for _, param := range tool.Params {
+			paramMap[param.Name] = map[string]string{
+				"type":        param.Type,
+				"description": param.Description,
+			}
+		}
+
+		bodyTools[i] = map[string]any{
+			"type": "function",
+			"function": map[string]any{
+				"name":        tool.Name,
+				"description": tool.Description,
+				"parameters": map[string]any{
+					"type":       "object",
+					"properties": paramMap,
+					"required":   tool.RequiredParams,
+				},
+			},
+		}
+	}
+
+	return &bodyTools
 }

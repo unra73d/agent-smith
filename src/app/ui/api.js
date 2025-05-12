@@ -102,6 +102,36 @@ async function apiDirectChatStreaming(sessionId, message, onMessage) {
     sendEvent('loading:generation-stopped', {sessionId: sessionId})
 }
 
+async function apiToolChatStreaming(sessionId, message, onMessage) {
+    let controller = new AbortController()
+    sendEvent('loading:generation-started', {sessionId: sessionId, controller: controller})
+
+    try {
+        const response = await fetch('http://localhost:8008/agent/toolchat/stream', {
+            signal: controller.signal,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                "sessionID": sessionId,
+                "modelID": getSelectedModelId(),
+                "roleID": getSelectedRoleId(),
+                "message": message
+            })
+        })
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            onMessage(value)
+        }
+    } catch (error) {
+        console.error("Failed to initiate streaming:", error);
+    }
+    sendEvent('loading:generation-stopped', {sessionId: sessionId})
+}
+
 async function apiListModels() {
     try {
         const response = await fetch('http://localhost:8008/agent/models/list');

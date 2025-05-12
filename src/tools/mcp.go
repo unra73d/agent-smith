@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -22,6 +21,11 @@ const (
 	MCPTransportStdio = "stdio"
 	MCPTransportSSE   = "sse"
 )
+
+type ToolCallRequest struct {
+	Name   string         `json:"name"`
+	Params map[string]any `json:"params"`
+}
 
 type MCPServer struct {
 	ID        string       `json:"id"`
@@ -144,7 +148,7 @@ func (self *MCPServer) Delete() {
 	db.Exec(query, self.ID)
 }
 
-func (self *MCPServer) LoadTools() {
+func (self *MCPServer) connect() (context.Context, context.CancelFunc, *client.Client) {
 	logger.BreakOnError()
 
 	c, err := client.NewStdioMCPClient(
@@ -153,21 +157,28 @@ func (self *MCPServer) LoadTools() {
 		self.Args...,
 	)
 	log.CheckE(err, nil, "Failed to create MCP client")
-	defer c.Close()
 
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	initRequest := mcp.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
 	initRequest.Params.ClientInfo = mcp.Implementation{
-		Name:    "example-client",
+		Name:    "Agent Smith MCP client",
 		Version: "1.0.0",
 	}
 
 	_, err = c.Initialize(ctx, initRequest)
 	log.CheckE(err, nil, "Failed to initialize MCP request")
+
+	return ctx, cancel, c
+}
+
+func (self *MCPServer) LoadTools() {
+	logger.BreakOnError()
+
+	ctx, cancel, c := self.connect()
+	defer cancel()
 
 	toolsRequest := mcp.ListToolsRequest{}
 	mcpTools, err := c.ListTools(ctx, toolsRequest)
@@ -191,9 +202,40 @@ func (self *MCPServer) LoadTools() {
 			}
 		}
 		self.Tools = append(self.Tools, &Tool{
-			Name:        tool.Name,
-			Description: tool.Description,
-			Params:      params,
+			Name:           tool.Name,
+			Description:    tool.Description,
+			Params:         params,
+			RequiredParams: tool.InputSchema.Required,
 		})
 	}
+}
+
+func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, err error) {
+	logger.BreakOnError()
+
+	ctx, cancel, c := self.connect()
+	defer cancel()
+
+	toolRequest := mcp.CallToolRequest{
+		Request: mcp.Request{
+			Method: "tools/call",
+		},
+	}
+
+	toolRequest.Params.Name = callRequest.Name
+	toolRequest.Params.Arguments = callRequest.Params
+
+	callResult, err := c.CallTool(ctx, toolRequest)
+	log.CheckE(err, nil, "Failed to call MCP tool: ", callRequest.Name)
+
+	for _, content := range callResult.Content {
+		if textContent, ok := content.(mcp.TextContent); ok {
+			result = textContent.Text
+		} else {
+			jsonBytes, _ := json.MarshalIndent(content, "", "  ")
+			result = string(jsonBytes)
+		}
+	}
+
+	return
 }

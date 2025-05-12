@@ -10,18 +10,17 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 	model := findModel(modelID)
 	if model != nil {
 		var session *Session
-		var permanentSession bool
 
 		for _, s := range Agent.sessions {
 			if s.ID == sessionID {
 				session = s
-				permanentSession = true
 				break
 			}
 		}
 		if session == nil {
-			session = Agent.flashSession
-			permanentSession = false
+			log.E("Session not found")
+			streamDoneCh <- false
+			return
 		}
 
 		sysPrompt := ""
@@ -44,9 +43,7 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 					session.UpdateLastMessage(msg)
 					streamCh <- msg
 				case <-modelDoneCh:
-					if permanentSession {
-						session.Save()
-					}
+					session.Save()
 					return
 				case <-time.After(60 * time.Second):
 					return

@@ -5,6 +5,7 @@ class ChatView extends HTMLElement {
         super()
 
         this.chatSession = null
+        this.toolsSelected = true
 
         const shadowRoot = this.attachShadow({ mode: 'open' })
 
@@ -27,7 +28,7 @@ class ChatView extends HTMLElement {
                 <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
             </div>
             <div class="chat-button-container">
-                <ui-checkbox class="tools-checkbox" label="Tools"></ui-checkbox>
+                <ui-checkbox class="tools-checkbox" label="Tools" ${this.toolsSelected ? 'checked' : ''}></ui-checkbox>
                 <button id="sendButton" class="send-button img-button" onclick="sendEvent('chat:send')">
                     <img src="icons/send.svg" alt="Send">
                 </button>
@@ -65,6 +66,12 @@ class ChatView extends HTMLElement {
                 event.preventDefault();
                 this.sendMessageStreaming();
             }
+        });
+
+        const toolsCheckbox = chatInputArea.querySelector('ui-checkbox')
+        toolsCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked
+            this.toolsSelected = isChecked
         });
     }
 
@@ -196,7 +203,12 @@ class ChatView extends HTMLElement {
 
         this.scrollToBottom()
         const sessionId = this.chatSession.id
-        apiDirectChatStreaming(this.chatSession.id, messageText, chunk => updateLastMessage(sessionId, chunk))
+        
+        if(this.toolsSelected){
+            apiToolChatStreaming(this.chatSession.id, messageText, chunk => updateLastMessage(sessionId, chunk))
+        } else {
+            apiDirectChatStreaming(this.chatSession.id, messageText, chunk => updateLastMessage(sessionId, chunk))
+        }
     }
 
     changeSession(session) {

@@ -16,7 +16,7 @@ var Storage = {
 monitor(Storage, 'models', 'storage:models')
 monitor(Storage, 'sessions', 'storage:sessions')
 monitor(Storage, 'roles', 'storage:roles')
-monitor(Storage, 'mcps', 'storage:mcps')
+deepMonitor(Storage, 'mcps', 'storage:mcps')
 monitor(Storage, 'currentSession', 'storage:current-session')
 
 document.addEventListener('sessions:reload', async (e)=>{

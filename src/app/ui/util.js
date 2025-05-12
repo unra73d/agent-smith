@@ -101,23 +101,23 @@ function sendEvent(name, data = {}) {
     document.dispatchEvent(e)
 }
 
-// function monitor(obj, prop, eventName) {
-//     let value = obj[prop]
-//     Object.defineProperty(obj, prop, {
-//       get: function() {
-//         return value;
-//         },
-//       set: function(newValue) {
-//             value = newValue;
-//         sendEvent(eventName, value)
-//         },
-//         enumerable: true,
-//         configurable: true
-//     });
-// }
+function monitor(obj, prop, eventName) {
+    let value = obj[prop]
+    Object.defineProperty(obj, prop, {
+      get: function() {
+        return value;
+        },
+      set: function(newValue) {
+            value = newValue;
+        sendEvent(eventName, value)
+        },
+        enumerable: true,
+        configurable: true
+    });
+}
 
 
-function monitor(obj, propName, eventName) {
+function deepMonitor(obj, propName, eventName) {
     // WeakMap to cache proxies: maps an original object to its proxy created by this monitor instance.
     // This serves two purposes:
     // 1. Prevents re-proxying the same object multiple times if it appears in different parts of the

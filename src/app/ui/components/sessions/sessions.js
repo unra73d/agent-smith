@@ -17,7 +17,7 @@ class SessionList extends HTMLElement {
 
         this.createNewSession = this.createNewSession.bind(this)
 
-        document.addEventListener('sessions:new', e=>this.createNewSession())
+        document.addEventListener('sessions:new', async e=>await this.createNewSession())
         document.addEventListener('sessions:touch', e=>this.touch())
 
         document.addEventListener('storage:sessions', e=>this.updateList())
@@ -25,6 +25,7 @@ class SessionList extends HTMLElement {
     }
 
     updateList(){
+        console.debug("session list update")
         if(Storage.sessions && Storage.sessions.length > 0){
             this.list.innerHTML = ''
 
@@ -38,6 +39,9 @@ class SessionList extends HTMLElement {
         const sessionItem = document.createElement('div');
         sessionItem.classList.add('session-item');
         sessionItem.setAttribute("data-id", session.id);
+        if(Storage.currentSession && session.id == Storage.currentSession.id){
+            sessionItem.classList.add('active')
+        }
 
         const summary = session.summary ? session.summary : 'New chat';
         sessionItem.innerHTML = `
@@ -52,10 +56,10 @@ class SessionList extends HTMLElement {
         }
 
         sessionItem.addEventListener('click', e=>Storage.currentSession=session)
-        sessionItem.querySelector('.delete-icon').addEventListener('click', e=>this.handleDeleteSession(e, sessionItem, session.id))
+        sessionItem.querySelector('.delete-icon').addEventListener('click', e=>this.handleDeleteSession(e, session.id))
     }
 
-    async handleDeleteSession(e, sessionItem, sessionId){
+    async handleDeleteSession(e, sessionId){
         e.stopPropagation()
         const currSessionId = Storage.currentSession.id
 
@@ -64,12 +68,10 @@ class SessionList extends HTMLElement {
 
         if (confirmed) {
             await apiDeleteSession(sessionId)
-            
-            this.list.removeChild(sessionItem)
 
             for(let i in Storage.sessions){
-                if(Storage.sessions[i] == Storage.currentSession){
-                    Storage.sessions.splice(i, 1)
+                if(Storage.sessions[i].id == sessionId){
+                    Storage.sessions = [...Storage.sessions.slice(0, i), ...Storage.sessions.slice(i + 1)]
                     break
                 }
             }
@@ -80,7 +82,6 @@ class SessionList extends HTMLElement {
                     this.createNewSession();
                 } else {
                     Storage.currentSession = Storage.sessions[0];
-                    this.updateSessionHighlight(Storage.currentSession);
                 }
                 
             }
@@ -92,12 +93,9 @@ class SessionList extends HTMLElement {
     
         if (session) {
             console.log("New session created:", session.id);
-    
-            Storage.sessions.unshift(session)
-            this.appendSession(session, true)
-            this.selectSession(session.id)
 
-            this.updateSessionHighlight(Storage.currentSession);
+            Storage.sessions = [session, ...Storage.sessions]
+            Storage.currentSession = session
 
         } else {
             appendMessage("Error: Could not create new session.", "error");
@@ -114,16 +112,6 @@ class SessionList extends HTMLElement {
         }
     }
 
-    selectSession(sessionId){
-        for (let session of Storage.sessions){
-            if(session.id == sessionId){
-                Storage.currentSession = session
-                break
-            }
-        }
-        this.updateSessionHighlight()
-    }
-
     touch() {
         if (Storage.currentSession) {
             // Find the index of the current session in the sessions array
@@ -132,8 +120,11 @@ class SessionList extends HTMLElement {
             // If the current session is not the first in the list
             if (currentIndex > 0) {
                 // Move the current session to the beginning of the sessions array
-                Storage.sessions.splice(currentIndex, 1);
-                Storage.sessions.unshift(Storage.currentSession);
+                Storage.sessions = [
+                    Storage.currentSession,
+                    ...Storage.sessions.slice(0, currentIndex),
+                    ...Storage.sessions.slice(currentIndex + 1)
+                  ];
     
                 // Update the current session's date to now
                 Storage.currentSession.date = new Date().toISOString();
