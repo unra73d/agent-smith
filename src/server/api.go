@@ -3,6 +3,7 @@ package server
 import (
 	"agentsmith/src/agent"
 	"agentsmith/src/logger"
+	"encoding/json"
 	"io"
 	"strings"
 	"time"
@@ -218,6 +219,42 @@ func listMCPServersHandler(c *gin.Context) {
 	c.JSON(200, map[string]any{"mcpServers": agent.GetMCPServers()})
 }
 
+/*
+SSE connection for receiving server updates. It implements following events:
+- session_update:{date, summary}
+- new_message:{origin, text}
+- last_message_update:{sessionId, text}
+- session_list_update:[{session}]
+- model_list_update:[{model}]
+- mcp_list_update:[{mcp}]
+*/
+var sseURI = "/sse"
+
+func sseHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	sseCh := agent.NewSSEConnection()
+
+	heartbeat := time.NewTicker(10 * time.Second)
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case msg, ok := <-sseCh:
+			if !ok {
+				return false
+			}
+			_, err := json.Marshal(msg.Data)
+			log.CheckW(err, "failed to marshal sse message", msg)
+			if err == nil {
+				log.D("sending sse event")
+				c.SSEvent(string(msg.Type), msg.Data)
+			}
+		case <-heartbeat.C:
+			c.SSEvent("heartbeat", []byte("keep-alive"))
+		}
+		return true
+	})
+}
+
 func InitAgentRoutes(router *gin.Engine) {
 	group := router.Group("/agent")
 	{
@@ -234,5 +271,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listRolesURI, listRolesHandler)
 
 		group.GET(listMCPServersURI, listMCPServersHandler)
+
+		group.GET(sseURI, sseHandler)
 	}
 }

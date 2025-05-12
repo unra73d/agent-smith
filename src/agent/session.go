@@ -133,6 +133,9 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string, toolRequests 
 	s.Messages = append(s.Messages, message)
 	s.Date = time.Now()
 
+	sseCh <- &SSEMessage{Type: SSEMessageNewMessage, Data: map[string]any{"message": message, "sessionId": s.ID}}
+	sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: s}
+
 	var err error
 	if !s.temporary {
 		err = s.Save()
@@ -145,6 +148,12 @@ func (s *Session) UpdateLastMessage(newText string) {
 	if len(s.Messages) > 0 {
 		message := s.Messages[len(s.Messages)-1]
 		message.Text = message.Text + newText
+		sseCh <- &SSEMessage{
+			Type: SSEMessageLastMessageUpdate,
+			Data: map[string]string{
+				"sessionId": s.ID,
+				"text":      message.Text,
+			}}
 	}
 
 }

@@ -19,22 +19,22 @@ monitor(Storage, 'roles', 'storage:roles')
 deepMonitor(Storage, 'mcps', 'storage:mcps')
 monitor(Storage, 'currentSession', 'storage:current-session')
 
-document.addEventListener('sessions:reload', async (e)=>{
+document.addEventListener('sessions:reload', async (e) => {
     let sessions = await apiListSessions()
-    if(sessions && sessions.length > 0){
+    if (sessions && sessions.length > 0) {
         sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         Storage.sessions = sessions
         Storage.currentSession = Storage.sessions[0]
     }
 })
 
-document.addEventListener('mcp:reload', async (e)=>{
+document.addEventListener('mcp:reload', async (e) => {
     let mcps = await apiListMCPServers()
-    if(mcps && mcps.length > 0){
-        for(let i in mcps){
+    if (mcps && mcps.length > 0) {
+        for (let i in mcps) {
             mcps[i].active = true
-            if(!mcps[i].tools)mcps[i].tools = []
-            for(let k in mcps[i].tools){
+            if (!mcps[i].tools) mcps[i].tools = []
+            for (let k in mcps[i].tools) {
                 mcps[i].tools[k].active = true
             }
         }
@@ -80,12 +80,13 @@ function handleTopTabClick(event) {
 
 // --- Initial Connection on Load ---
 document.addEventListener('DOMContentLoaded', async () => {
+    await apiAgentConnect()
 
     populateModelSelector()
     populateRoleSelector()
     sendEvent('sessions:reload')
-    
-    document.querySelectorAll('mcp-list').forEach(list=>list.items.data = Storage.mcps)
+
+    document.querySelectorAll('mcp-list').forEach(list => list.items.data = Storage.mcps)
     sendEvent('mcp:reload')
 
     // --- Set initial active tab state based on HTML ---
@@ -201,7 +202,7 @@ function updateLastMessage(sessionId, message) {
                 return
             }
 
-            session.messages[session.messages.length - 1].text += message
+            session.messages[session.messages.length - 1].text = message
             sendEvent('chat:last-message-update', { sessionId: sessionId })
             break
         }

@@ -3,8 +3,8 @@
 class SessionList extends HTMLElement {
     constructor() {
         super()
-        const shadowRoot = this.attachShadow({mode: 'open'})
-        
+        const shadowRoot = this.attachShadow({ mode: 'open' })
+
         const styles = document.createElement('style');
         styles.innerHTML = `
         @import url('global.css');
@@ -17,16 +17,16 @@ class SessionList extends HTMLElement {
 
         this.createNewSession = this.createNewSession.bind(this)
 
-        document.addEventListener('sessions:new', async e=>await this.createNewSession())
-        document.addEventListener('sessions:touch', e=>this.touch())
+        document.addEventListener('sessions:new', async e => await this.createNewSession())
+        document.addEventListener('sessions:touch', e => this.touch())
 
-        document.addEventListener('storage:sessions', e=>this.updateList())
-        document.addEventListener('storage:current-session', e=>this.updateSessionHighlight())
+        document.addEventListener('storage:sessions', e => this.updateList())
+        document.addEventListener('storage:current-session', e => this.updateSessionHighlight())
     }
 
-    updateList(){
+    updateList() {
         console.debug("session list update")
-        if(Storage.sessions && Storage.sessions.length > 0){
+        if (Storage.sessions && Storage.sessions.length > 0) {
             this.list.innerHTML = ''
 
             for (let session of Storage.sessions) {
@@ -35,11 +35,11 @@ class SessionList extends HTMLElement {
         }
     }
 
-    appendSession(session, front=false){
+    appendSession(session, front = false) {
         const sessionItem = document.createElement('div');
         sessionItem.classList.add('session-item');
         sessionItem.setAttribute("data-id", session.id);
-        if(Storage.currentSession && session.id == Storage.currentSession.id){
+        if (Storage.currentSession && session.id == Storage.currentSession.id) {
             sessionItem.classList.add('active')
         }
 
@@ -49,17 +49,17 @@ class SessionList extends HTMLElement {
             <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${session.id}">
         `;
 
-        if(front){
+        if (front) {
             this.list.insertBefore(sessionItem, this.list.firstChild);
         } else {
             this.list.appendChild(sessionItem);
         }
 
-        sessionItem.addEventListener('click', e=>Storage.currentSession=session)
-        sessionItem.querySelector('.delete-icon').addEventListener('click', e=>this.handleDeleteSession(e, session.id))
+        sessionItem.addEventListener('click', e => Storage.currentSession = session)
+        sessionItem.querySelector('.delete-icon').addEventListener('click', e => this.handleDeleteSession(e, session.id))
     }
 
-    async handleDeleteSession(e, sessionId){
+    async handleDeleteSession(e, sessionId) {
         e.stopPropagation()
         const currSessionId = Storage.currentSession.id
 
@@ -69,41 +69,39 @@ class SessionList extends HTMLElement {
         if (confirmed) {
             await apiDeleteSession(sessionId)
 
-            for(let i in Storage.sessions){
-                if(Storage.sessions[i].id == sessionId){
+            for (let i in Storage.sessions) {
+                if (Storage.sessions[i].id == sessionId) {
                     Storage.sessions = [...Storage.sessions.slice(0, i), ...Storage.sessions.slice(i + 1)]
                     break
                 }
             }
 
-            if(currSessionId == sessionId){
+            if (currSessionId == sessionId) {
                 console.log("Deleted the active session. Resetting chat view and connection.");
-                if (Storage.sessions.length == 0){
+                if (Storage.sessions.length == 0) {
                     this.createNewSession();
                 } else {
                     Storage.currentSession = Storage.sessions[0];
                 }
-                
+
             }
         }
     }
 
     async createNewSession() {
         const session = await apiCreateSession();
-    
+
         if (session) {
             console.log("New session created:", session.id);
 
             Storage.sessions = [session, ...Storage.sessions]
             Storage.currentSession = session
 
-        } else {
-            appendMessage("Error: Could not create new session.", "error");
         }
     }
 
     updateSessionHighlight() {
-        for(let item of this.list.children){
+        for (let item of this.list.children) {
             if (item.getAttribute('data-id') === Storage.currentSession.id) {
                 item.classList.add('active');
             } else {
@@ -116,7 +114,7 @@ class SessionList extends HTMLElement {
         if (Storage.currentSession) {
             // Find the index of the current session in the sessions array
             const currentIndex = Storage.sessions.findIndex(session => session.id === Storage.currentSession.id);
-    
+
             // If the current session is not the first in the list
             if (currentIndex > 0) {
                 // Move the current session to the beginning of the sessions array
@@ -124,13 +122,13 @@ class SessionList extends HTMLElement {
                     Storage.currentSession,
                     ...Storage.sessions.slice(0, currentIndex),
                     ...Storage.sessions.slice(currentIndex + 1)
-                  ];
-    
+                ];
+
                 // Update the current session's date to now
                 Storage.currentSession.date = new Date().toISOString();
-    
+
                 // Update the session list in the UI
-                for(let i in this.list.children){
+                for (let i in this.list.children) {
                     let item = this.list.children[i]
                     if (item.getAttribute('data-id') === Storage.currentSession.id) {
                         this.list.removeChild(item)

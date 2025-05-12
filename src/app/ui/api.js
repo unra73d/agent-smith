@@ -55,18 +55,18 @@ function apiDirectChat() {
 }
 
 var genRequests = new Map()
-document.addEventListener('loading:generation-started', (e)=>{
+document.addEventListener('loading:generation-started', (e) => {
     sessionId = e.detail.sessionId
-    if( genRequests.has(sessionId) ){
+    if (genRequests.has(sessionId)) {
         genRequests.get(sessionId).abort()
         genRequests.delete(sessionId)
     }
     genRequests.set(sessionId, e.detail.controller)
 })
 
-document.addEventListener('loading:generation-cancel', (e)=>{
+document.addEventListener('loading:generation-cancel', (e) => {
     sessionId = e.detail.sessionId
-    if( genRequests.has(sessionId) ){
+    if (genRequests.has(sessionId)) {
         genRequests.get(sessionId).abort()
         genRequests.delete(sessionId)
     }
@@ -74,7 +74,7 @@ document.addEventListener('loading:generation-cancel', (e)=>{
 
 async function apiDirectChatStreaming(sessionId, message, onMessage) {
     let controller = new AbortController()
-    sendEvent('loading:generation-started', {sessionId: sessionId, controller: controller})
+    sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
     try {
         const response = await fetch('http://localhost:8008/agent/directchat/stream', {
@@ -99,12 +99,12 @@ async function apiDirectChatStreaming(sessionId, message, onMessage) {
     } catch (error) {
         console.error("Failed to initiate streaming:", error);
     }
-    sendEvent('loading:generation-stopped', {sessionId: sessionId})
+    sendEvent('loading:generation-stopped', { sessionId: sessionId })
 }
 
 async function apiToolChatStreaming(sessionId, message, onMessage) {
     let controller = new AbortController()
-    sendEvent('loading:generation-started', {sessionId: sessionId, controller: controller})
+    sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
     try {
         const response = await fetch('http://localhost:8008/agent/toolchat/stream', {
@@ -129,7 +129,7 @@ async function apiToolChatStreaming(sessionId, message, onMessage) {
     } catch (error) {
         console.error("Failed to initiate streaming:", error);
     }
-    sendEvent('loading:generation-stopped', {sessionId: sessionId})
+    sendEvent('loading:generation-stopped', { sessionId: sessionId })
 }
 
 async function apiListModels() {
@@ -152,7 +152,7 @@ async function apiListModels() {
     }
 }
 
-async function apiListRoles(){
+async function apiListRoles() {
     try {
         const response = await fetch('http://localhost:8008/agent/roles/list');
         if (!response.ok) {
@@ -172,7 +172,7 @@ async function apiListRoles(){
     }
 }
 
-async function apiListMCPServers(){
+async function apiListMCPServers() {
     try {
         const response = await fetch('http://localhost:8008/agent/mcp/list');
         if (!response.ok) {
@@ -190,4 +190,74 @@ async function apiListMCPServers(){
         console.error("Failed to list mcp servers:", error);
         return null
     }
+}
+
+async function apiAgentConnect() {
+    var stream = new EventSource('http://localhost:8008/agent/sse');
+
+    stream.onopen = function (event) {
+        console.log('Connection opened:', event);
+    };
+
+    stream.onmessage = function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+        } catch { }
+    };
+
+    stream.onerror = function (event) {
+        console.error('Error event:', event);
+        stream.close();
+    };
+
+    // Handle custom event types if needed
+    stream.addEventListener('session_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+        } catch { }
+    });
+
+    stream.addEventListener('new_message', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+            for (let i in Storage.sessions) {
+                const session = Storage.sessions[i]
+                if (session.id == parsedData.sessionId) {
+                    session.messages.push({
+                        text: parsedData.message.text,
+                        origin: parsedData.message.origin
+                    })
+                    break
+                }
+            }
+            sendEvent('chat:new-message', { text: parsedData.message.text, origin: parsedData.message.origin, sessionId: parsedData.sessionId })
+        } catch (error) {
+            console.error(error)
+        }
+    });
+
+    stream.addEventListener('last_message_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+            updateLastMessage(parsedData.sessionId, parsedData.text)
+        } catch { }
+    });
+
+    stream.addEventListener('session_list_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+        } catch { }
+    });
+
+    stream.addEventListener('model_list_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+        } catch { }
+    });
+
+    stream.addEventListener('mcp_list_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+        } catch { }
+    });
 }

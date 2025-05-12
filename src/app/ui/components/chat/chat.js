@@ -40,6 +40,11 @@ class ChatView extends HTMLElement {
         document.addEventListener('chat:last-message-update', e => this.onLastMessageUpdate(e.detail.sessionId))
         document.addEventListener('chat:send', e => this.sendMessageStreaming())
         document.addEventListener('storage:current-session', e => this.changeSession(e.detail))
+        document.addEventListener('chat:new-message', e => {
+            if (this.chatSession.id == e.detail.sessionId) {
+                this.appendMessage(e.detail.text, e.detail.origin)
+            }
+        })
 
         this.chatInput.addEventListener('input', () => {
             let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15)
@@ -49,7 +54,7 @@ class ChatView extends HTMLElement {
 
             this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
             this.chatInput.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
-            if(isScrolledToBottom){
+            if (isScrolledToBottom) {
                 this.scrollToBottom()
             }
         });
@@ -185,29 +190,26 @@ class ChatView extends HTMLElement {
             text: messageText,
             origin: 'user'
         })
-        this.appendMessage(messageText, 'user');
+        // this.appendMessage(messageText, 'user');
 
         this.chatInput.value = '';
         this.chatInput.style.height = 'auto';
         this.chatInput.style.overflowY = 'hidden';
         this.chatInput.focus();
 
-        const assistantMessageElement = document.createElement('div');
-        assistantMessageElement.classList.add('message', 'assistant');
-        this.initAssisstantMessageElement(assistantMessageElement)
-        this.chatView.appendChild(assistantMessageElement);
-        this.chatSession.messages.push({
-            text: '',
-            origin: 'assistant'
-        })
+        // this.appendMessage('', 'assistant')
+        // this.chatSession.messages.push({
+        //     text: '',
+        //     origin: 'assistant'
+        // })
 
         this.scrollToBottom()
         const sessionId = this.chatSession.id
-        
-        if(this.toolsSelected){
-            apiToolChatStreaming(this.chatSession.id, messageText, chunk => updateLastMessage(sessionId, chunk))
+
+        if (this.toolsSelected) {
+            apiToolChatStreaming(this.chatSession.id, messageText, chunk => { })
         } else {
-            apiDirectChatStreaming(this.chatSession.id, messageText, chunk => updateLastMessage(sessionId, chunk))
+            apiDirectChatStreaming(this.chatSession.id, messageText, chunk => { })
         }
     }
 

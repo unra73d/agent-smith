@@ -20,7 +20,7 @@ import (
 	"resty.dev/v3"
 )
 
-var log = logger.Logger("ai", 1, 1, 1)
+var log = logger.Logger("ai", 0, 1, 1)
 
 type APIType string
 
@@ -65,19 +65,13 @@ type OpenAIProvider struct {
 	APIProvider
 }
 
-type GoogleAIProvider struct {
-	APIProvider
-}
-
 func NewProvider(apiType APIType, name string, url string, apiKey string) (IAPIProvider, error) {
 	basicProvider := APIProvider{name, url, apiKey, apiType, make([]*Model, 0, 16)}
 
 	var provider IAPIProvider
 	switch apiType {
-	case APITypeOpenAI, APITypeLMStudio, APITypeOpenAICompatible, APITypeOllama:
+	case APITypeOpenAI, APITypeLMStudio, APITypeOpenAICompatible, APITypeOllama, APITypeGoogle:
 		provider = &OpenAIProvider{basicProvider}
-	case APITypeGoogle:
-		provider = &GoogleAIProvider{basicProvider}
 	}
 	err := provider.LoadModels()
 	return provider, err
@@ -284,7 +278,7 @@ func (self *OpenAIProvider) ChatCompletionStream(
 	defer logger.BreakOnError()
 	log.D("OpenAI chat completion streaming")
 
-	// log.D("System prompt:", sysPrompt)
+	log.D("System prompt:", sysPrompt)
 	url := self.apiURL + "/chat/completions"
 
 	body := map[string]any{
@@ -432,20 +426,6 @@ func (self *OpenAIProvider) ChatCompletionStream(
 
 	log.D("Finished processing stream. Accumulated tool calls:", len(toolRequests))
 	return
-}
-
-func (self *GoogleAIProvider) Test() error { return nil }
-
-func (self *GoogleAIProvider) LoadModels() error {
-	return nil
-}
-
-func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error) {
-	return "Message received", nil
-}
-
-func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error {
-	return nil
 }
 
 func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]any {
