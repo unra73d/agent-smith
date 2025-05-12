@@ -1,5 +1,5 @@
 // Package tools implements features to work with external functions, tools, mcp servers
-package tools
+package mcptools
 
 import (
 	"agentsmith/src/logger"
@@ -206,6 +206,7 @@ func (self *MCPServer) LoadTools() {
 			Description:    tool.Description,
 			Params:         params,
 			RequiredParams: tool.InputSchema.Required,
+			Server:         self,
 		})
 	}
 }

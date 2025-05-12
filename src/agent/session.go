@@ -82,7 +82,7 @@ func NewTempSession() *Session {
 }
 
 func (s *Session) Save() (err error) {
-	log.D("Saving session to ", os.Getenv("AS_AGENT_DB_FILE"))
+	// log.D("Saving session to ", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
 
 	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))

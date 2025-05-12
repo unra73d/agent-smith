@@ -2,7 +2,7 @@ package agent
 
 import (
 	"agentsmith/src/ai"
-	"agentsmith/src/tools"
+	"agentsmith/src/mcptools"
 	"time"
 )
 
@@ -59,8 +59,9 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 			session.Messages[:len(session.Messages)-1],
 			sysPrompt,
 			model,
-			[]*tools.Tool{},
+			[]*mcptools.Tool{},
 			modelResponseCh,
+			nil,
 		)
 		modelDoneCh <- true
 		streamDoneCh <- true

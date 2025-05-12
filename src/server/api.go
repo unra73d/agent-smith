@@ -99,7 +99,7 @@ func directChatStreamHandler(c *gin.Context) {
 				log.D("Stream finalized")
 				c.Status(200)
 				return false
-			case <-time.After(100 * time.Second):
+			case <-time.After(600 * time.Second):
 				log.W("Stream message timed out")
 				c.Status(500)
 				return false

@@ -1,4 +1,4 @@
-package tools
+package mcptools
 
 func GetBuiltinTools() []*Tool {
 	res := make([]*Tool, 0, 4)

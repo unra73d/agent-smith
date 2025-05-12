@@ -5,7 +5,7 @@ package agent
 import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
-	"agentsmith/src/tools"
+	"agentsmith/src/mcptools"
 	"errors"
 	"sync"
 )
@@ -14,18 +14,18 @@ var log = logger.Logger("agent", 1, 1, 1)
 
 type agent struct {
 	flashSession *Session
-	builtinTools []*tools.Tool
+	builtinTools []*mcptools.Tool
 	apiProviders []ai.IAPIProvider
 	roles        []*Role
-	mcps         []*tools.MCPServer
+	mcps         []*mcptools.MCPServer
 	sessions     []*Session
 }
 
 var Agent = agent{
-	builtinTools: make([]*tools.Tool, 0),
+	builtinTools: make([]*mcptools.Tool, 0),
 	apiProviders: make([]ai.IAPIProvider, 0),
 	roles:        make([]*Role, 0),
-	mcps:         make([]*tools.MCPServer, 0),
+	mcps:         make([]*mcptools.MCPServer, 0),
 	sessions:     make([]*Session, 0),
 }
 
@@ -60,14 +60,14 @@ func LoadAgent() {
 	signal.Add(1)
 	go func() {
 		defer signal.Done()
-		Agent.mcps = tools.LoadMCPServers()
+		Agent.mcps = mcptools.LoadMCPServers()
 	}()
 
 	// load builtin tools
 	signal.Add(1)
 	go func() {
 		defer signal.Done()
-		Agent.builtinTools = tools.GetBuiltinTools()
+		Agent.builtinTools = mcptools.GetBuiltinTools()
 	}()
 
 	signal.Wait()
@@ -89,12 +89,12 @@ func GetRoles() []*Role {
 	return Agent.roles
 }
 
-func GetMCPServers() []*tools.MCPServer {
+func GetMCPServers() []*mcptools.MCPServer {
 	return Agent.mcps
 }
 
-func GetTools() []*tools.Tool {
-	res := make([]*tools.Tool, 0, 32)
+func GetTools() []*mcptools.Tool {
+	res := make([]*mcptools.Tool, 0, 32)
 	for _, mcp := range Agent.mcps {
 		res = append(res, mcp.Tools...)
 	}
@@ -103,7 +103,7 @@ func GetTools() []*tools.Tool {
 	return res
 }
 
-func GetBuiltinTools() []*tools.Tool {
+func GetBuiltinTools() []*mcptools.Tool {
 	return Agent.builtinTools
 }
 

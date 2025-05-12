@@ -3,7 +3,7 @@ package ai
 
 import (
 	"agentsmith/src/logger"
-	"agentsmith/src/tools"
+	"agentsmith/src/mcptools"
 	"agentsmith/src/util"
 	"bytes"
 	"context"
@@ -42,8 +42,8 @@ type IAPIProvider interface {
 
 	Test() error
 	LoadModels() error
-	ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error)
-	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) error
+	ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error)
+	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error
 }
 
 type APIProvider struct {
@@ -200,7 +200,7 @@ type OpenAIChatCompletionRes struct {
 	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error) {
+func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error) {
 	log.D("OpenAI chat completion")
 	url := self.apiURL + "/chat/completions"
 
@@ -227,14 +227,41 @@ func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string
 	return res.Choices[0].Message.Content, nil
 }
 
+type OpenAIFunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type OpenAIToolCall struct {
+	Index    int                `json:"-"`
+	ID       string             `json:"id"`
+	Type     string             `json:"type"`
+	Function OpenAIFunctionCall `json:"function"`
+}
+
+type OpenAIFunctionCallChunk struct {
+	Name      string `json:"name,omitempty"`
+	Arguments string `json:"arguments,omitempty"`
+}
+
+type OpenAIToolCallChunk struct {
+	Index    int                     `json:"index"`
+	ID       string                  `json:"id,omitempty"`
+	Type     string                  `json:"type,omitempty"`
+	Function OpenAIFunctionCallChunk `json:"function,omitempty"`
+}
+
+type OpenAIDelta struct {
+	Role      string                `json:"role,omitempty"`
+	Content   string                `json:"content,omitempty"`
+	ToolCalls []OpenAIToolCallChunk `json:"tool_calls,omitempty"`
+}
+
 type OpenAIStreamChatResponseChoice struct {
-	Index int `json:"index"`
-	Delta struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	} `json:"delta"`
+	Index        int         `json:"index"`
+	Delta        OpenAIDelta `json:"delta"`
 	Logprobs     interface{} `json:"logprobs"`
-	FinishReason interface{} `json:"finish_reason"`
+	FinishReason *string     `json:"finish_reason"`
 }
 
 type OpenAIStreamChatResponse struct {
@@ -246,48 +273,154 @@ type OpenAIStreamChatResponse struct {
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
 }
 
-func (self *OpenAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) (err error) {
+func (self *OpenAIProvider) ChatCompletionStream(
+	messages []*Message,
+	sysPrompt string,
+	model *Model,
+	tools []*mcptools.Tool,
+	writeCh chan string,
+	toolCh chan []*mcptools.ToolCallRequest,
+) (err error) {
+	logger.BreakOnError()
 	log.D("OpenAI chat completion streaming")
-	log.D("System prompt:", sysPrompt)
+
+	// log.D("System prompt:", sysPrompt)
 	url := self.apiURL + "/chat/completions"
 
 	body := map[string]any{
 		"model":    model.ID,
 		"messages": prepareMessages(messages, sysPrompt),
 		"stream":   true,
-		"tools":    prepareTools(tools),
 	}
+
+	if len(tools) > 0 {
+		body["tools"] = prepareTools(tools)
+	}
+
 	bodyJSON, err := json.Marshal(body)
-	log.CheckW(err, "Failed to pack chat content into json")
+	log.CheckE(err, nil, "failed to marshal request body")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	r, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(bodyJSON))
-	r = r.WithContext(ctx)
+	defer cancel()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(bodyJSON))
+	log.CheckE(err, nil, "failed to create request")
 
 	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {
 		r.Header.Add("Authorization", "Bearer "+self.apiKey)
 	}
 	r.Header.Add("Content-Type", "application/json")
+	r.Header.Add("Accept", "text/event-stream")
+	r.Header.Add("Cache-Control", "no-cache")
+	r.Header.Add("Connection", "keep-alive")
+
+	var toolCallsMutex sync.Mutex
+	toolCallBuilders := make(map[int]map[string]any)
 
 	conn := sse.NewConnection(r)
 
 	conn.SubscribeMessages(func(e sse.Event) {
 		logger.BreakOnError()
-		if e.Data != "[DONE]" {
-			var response OpenAIStreamChatResponse
-			err := json.Unmarshal([]byte(e.Data), &response)
-			log.CheckE(err, nil, "Failed to parse JSON response from chat completion_tokens")
-			writeCh <- response.Choices[0].Delta.Content
-		} else {
-			log.D("Provider closing streaming")
+		eventData := string(e.Data)
+		// log.D("Received SSE Data:", eventData) // Log raw data for debugging
+
+		if eventData == "[DONE]" {
+			log.D("Provider closing streaming ([DONE] received)")
 			cancel()
+			return
+		}
+
+		var response OpenAIStreamChatResponse
+		err := json.Unmarshal([]byte(eventData), &response)
+		log.CheckE(err, nil, "failed to parse OpenAI JSON chunk")
+
+		if len(response.Choices) == 0 {
+			log.D("Received chunk with no choices, skipping.")
+			return
+		}
+
+		choice := response.Choices[0]
+		delta := choice.Delta
+
+		// 1. Send Text Content
+		if delta.Content != "" {
+			// log.D("Sending content chunk:", delta.Content) // Debug log
+			select {
+			case writeCh <- delta.Content:
+			case <-ctx.Done():
+				log.W("Context cancelled, could not send content chunk")
+				return
+			}
+		}
+
+		// 2. Accumulate Tool Calls
+		if len(delta.ToolCalls) > 0 {
+			toolCallsMutex.Lock()
+			for _, toolChunk := range delta.ToolCalls {
+				index := toolChunk.Index
+
+				_, exists := toolCallBuilders[index]
+				if !exists {
+					toolCallBuilders[index] = map[string]any{
+						"name":   "",
+						"params": "",
+					}
+				}
+
+				// Update fields (only update if not empty in the chunk)
+				if toolChunk.Function.Name != "" {
+					toolCallBuilders[index]["name"] = toolCallBuilders[index]["name"].(string) + toolChunk.Function.Name
+				}
+				if toolChunk.Function.Arguments != "" {
+					toolCallBuilders[index]["params"] = toolCallBuilders[index]["params"].(string) + toolChunk.Function.Arguments
+				}
+			}
+			toolCallsMutex.Unlock()
+		}
+
+		// 3. Check Finish Reason (optional, for logging or early exit)
+		if choice.FinishReason != nil {
+			log.D("Stream finished with reason:", *choice.FinishReason)
 		}
 	})
 
+	log.D("Connecting to SSE stream...")
 	err = conn.Connect()
-	log.CheckW(err, "Failed to call completions api")
 
-	return err
+	// Check connection error type
+	if err != nil {
+		// SSE library might return specific errors on context cancellation or normal closure
+		// Check if the error is due to context cancellation (which is expected on [DONE])
+		if err == context.Canceled {
+			log.D("SSE connection closed gracefully by context cancellation.")
+			err = nil
+		} else {
+			log.E("SSE connection error:", err)
+		}
+	} else {
+		log.D("SSE connection closed without error.")
+	}
+
+	toolRequests := make([]*mcptools.ToolCallRequest, len(toolCallBuilders))
+	for i, toolCall := range toolCallBuilders {
+		var params map[string]any
+		err = json.Unmarshal([]byte(toolCall["params"].(string)), &params)
+		if err != nil {
+			log.E("failed to parse tool params json")
+		}
+
+		toolRequests[i] = &mcptools.ToolCallRequest{
+			Name:   toolCall["name"].(string),
+			Params: params,
+		}
+	}
+
+	if toolCh != nil && len(toolRequests) > 0 {
+		toolCh <- toolRequests
+	}
+
+	log.D("Finished processing stream. Accumulated tool calls:", len(toolRequests))
+	return
 }
 
 func (self *GoogleAIProvider) Test() error { return nil }
@@ -296,11 +429,11 @@ func (self *GoogleAIProvider) LoadModels() error {
 	return nil
 }
 
-func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool) (string, error) {
+func (self *GoogleAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error) {
 	return "Message received", nil
 }
 
-func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*tools.Tool, writeCh chan string) error {
+func (self *GoogleAIProvider) ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error {
 	return nil
 }
 
@@ -319,7 +452,7 @@ func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]string
 	return &bodyMessages
 }
 
-func prepareTools(tools []*tools.Tool) *[]map[string]any {
+func prepareTools(tools []*mcptools.Tool) *[]map[string]any {
 	bodyTools := make([]map[string]any, len(tools))
 
 	for i, tool := range tools {

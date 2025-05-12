@@ -3,7 +3,7 @@ package agent
 import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
-	"agentsmith/src/tools"
+	"agentsmith/src/mcptools"
 	"agentsmith/src/util"
 	"encoding/json"
 	"errors"
@@ -19,11 +19,11 @@ const (
 	AgentActionError    = "error"
 )
 
-func inferNextAction(message string) (AgentAction, *tools.MCPServer, *tools.ToolCallRequest) {
+func inferNextAction(message string) (AgentAction, *mcptools.MCPServer, *mcptools.ToolCallRequest) {
 	content := util.CutThinking(message)
 	if strings.HasPrefix(content, "<tool/>") {
 		content = content[len("<tool/>"):]
-		var callRequest tools.ToolCallRequest
+		var callRequest mcptools.ToolCallRequest
 		err := json.Unmarshal([]byte(content), &callRequest)
 
 		if err != nil {
@@ -92,10 +92,12 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 
 		modelResponseCh := make(chan string)
 		modelDoneCh := make(chan bool)
+		toolCh := make(chan []*mcptools.ToolCallRequest)
 
 		session.AddMessage(ai.MessageOriginUser, query)
 		session.AddMessage(ai.MessageOriginAI, "")
 
+		var toolCalls []*mcptools.ToolCallRequest
 		go func() {
 			log.D("Starting initial chat completion")
 			model.Provider.ChatCompletionStream(
@@ -104,6 +106,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 				model,
 				GetTools(),
 				modelResponseCh,
+				toolCh,
 			)
 			modelDoneCh <- true
 		}()
@@ -113,39 +116,66 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 			case msg := <-modelResponseCh:
 				session.UpdateLastMessage(msg)
 				streamCh <- msg
+			case toolCalls = <-toolCh:
 			case <-modelDoneCh:
 				log.D("Model response done")
 				session.Save()
 
-				action, mcp, callRequest := inferNextAction(session.Messages[len(session.Messages)-1].Text)
-				log.D("Next action: ", action)
+				var action AgentAction
+				var mcp *mcptools.MCPServer
+				var callRequest *mcptools.ToolCallRequest
+				if len(toolCalls) > 0 {
+					action = AgentActionToolCall
+					callRequest = toolCalls[0]
+					for _, tool := range GetTools() {
+						if tool.Name == toolCalls[0].Name {
+							mcp = tool.Server
+							break
+						}
+					}
+				} else {
+					action, mcp, callRequest = inferNextAction(session.Messages[len(session.Messages)-1].Text)
+				}
+
 				switch action {
 				case AgentActionError:
 					log.E("Error during parse of model intention")
+					streamDoneCh <- false
 					return
 				case AgentActionAnswer:
+					log.D("Model will answer ")
 					streamDoneCh <- true
 					return
 				case AgentActionToolCall:
-					toolResult, _ := mcp.CallTool(callRequest)
-					log.D("Tool execution result: ", toolResult)
-					streamCh <- toolResult
-					session.AddMessage(ai.MessageOriginTool, toolResult)
-					session.AddMessage(ai.MessageOriginAI, "")
-					go func() {
-						model.Provider.ChatCompletionStream(
-							session.Messages[:len(session.Messages)-1],
-							sysPrompt,
-							model,
-							GetTools(),
-							modelResponseCh,
-						)
-						modelDoneCh <- true
-					}()
-				}
+					log.D("Model will call tool")
+					if mcp != nil {
+						toolResult, _ := mcp.CallTool(callRequest)
+						log.D("Tool execution result: ", toolResult)
+						streamCh <- toolResult
 
-				return
+						session.AddMessage(ai.MessageOriginTool, toolResult)
+						session.AddMessage(ai.MessageOriginAI, "")
+
+						toolCalls = nil
+						go func() {
+							model.Provider.ChatCompletionStream(
+								session.Messages[:len(session.Messages)-1],
+								sysPrompt,
+								model,
+								GetTools(),
+								modelResponseCh,
+								toolCh,
+							)
+							modelDoneCh <- true
+						}()
+					} else {
+						log.E("didnt find mcp to call")
+						streamDoneCh <- false
+						return
+					}
+				}
 			case <-time.After(600 * time.Second):
+				streamDoneCh <- false
 				return
 			}
 		}
@@ -169,7 +199,7 @@ func DynamicAgentChat(modelID string, query string, sysPrompt string) (response 
 			session.Messages,
 			sysPrompt,
 			model,
-			[]*tools.Tool{},
+			[]*mcptools.Tool{},
 		)
 		log.CheckE(err, nil, "Failed to get completion for message")
 
