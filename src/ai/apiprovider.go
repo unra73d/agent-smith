@@ -44,7 +44,7 @@ type IAPIProvider interface {
 	Test() error
 	LoadModels() error
 	ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error)
-	ChatCompletionStream(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error
+	ChatCompletionStream(ctx context.Context, messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error
 }
 
 type APIProvider struct {
@@ -268,6 +268,7 @@ type OpenAIStreamChatResponse struct {
 }
 
 func (self *OpenAIProvider) ChatCompletionStream(
+	ctx context.Context,
 	messages []*Message,
 	sysPrompt string,
 	model *Model,
@@ -296,10 +297,10 @@ func (self *OpenAIProvider) ChatCompletionStream(
 
 	log.D(string(bodyJSON))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	apiCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(bodyJSON))
+	r, err := http.NewRequestWithContext(apiCtx, http.MethodPost, url, bytes.NewBuffer(bodyJSON))
 	log.CheckE(err, nil, "failed to create request")
 
 	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {

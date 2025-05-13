@@ -92,6 +92,7 @@ body {
 
         &.tool {
             background-color: #2a2b2d;
+            margin-left: auto;
             margin-right: auto;
             border: 1px dashed #5f6368;
             font-size: 0.9em;

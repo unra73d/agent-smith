@@ -3,10 +3,10 @@ package agent
 import (
 	"agentsmith/src/ai"
 	"agentsmith/src/mcptools"
-	"time"
+	"context"
 )
 
-func DirectChatStreaming(sessionID string, modelID string, roleID string, query string, streamCh chan string, streamDoneCh chan bool) {
+func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, roleID string, query string, streamDoneCh chan bool) {
 	model := findModel(modelID)
 	if model != nil {
 		var session *Session
@@ -24,7 +24,6 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 		}
 
 		sysPrompt := ""
-		// Find the role by ID
 		for _, role := range Agent.roles {
 			if role.ID == roleID {
 				sysPrompt = "## General instruction: \n" + role.Config.GeneralInstruction +
@@ -41,11 +40,10 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 				select {
 				case msg := <-modelResponseCh:
 					session.UpdateLastMessage(msg)
-					streamCh <- msg
 				case <-modelDoneCh:
 					session.Save()
 					return
-				case <-time.After(60 * time.Second):
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -56,6 +54,7 @@ func DirectChatStreaming(sessionID string, modelID string, roleID string, query 
 		log.CheckW(err, "Failed to add new message in agent")
 
 		model.Provider.ChatCompletionStream(
+			ctx,
 			session.Messages[:len(session.Messages)-1],
 			sysPrompt,
 			model,

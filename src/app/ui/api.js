@@ -54,21 +54,21 @@ function apiDirectChat() {
 
 }
 
-var genRequests = new Map()
+var ongoingGenRequests = new Map()
 document.addEventListener('loading:generation-started', (e) => {
     sessionId = e.detail.sessionId
-    if (genRequests.has(sessionId)) {
-        genRequests.get(sessionId).abort()
-        genRequests.delete(sessionId)
+    if (ongoingGenRequests.has(sessionId)) {
+        ongoingGenRequests.get(sessionId).abort()
+        ongoingGenRequests.delete(sessionId)
     }
-    genRequests.set(sessionId, e.detail.controller)
+    ongoingGenRequests.set(sessionId, e.detail.controller)
 })
 
-document.addEventListener('loading:generation-cancel', (e) => {
+document.addEventListener('loading:generation-stopped', (e) => {
     sessionId = e.detail.sessionId
-    if (genRequests.has(sessionId)) {
-        genRequests.get(sessionId).abort()
-        genRequests.delete(sessionId)
+    if (ongoingGenRequests.has(sessionId)) {
+        ongoingGenRequests.get(sessionId).abort()
+        ongoingGenRequests.delete(sessionId)
     }
 })
 

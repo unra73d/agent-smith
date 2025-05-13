@@ -5,10 +5,10 @@ import (
 	"agentsmith/src/logger"
 	"agentsmith/src/mcptools"
 	"agentsmith/src/util"
+	"context"
 	"encoding/json"
 	"errors"
 	"strings"
-	"time"
 )
 
 type AgentAction string
@@ -72,7 +72,7 @@ Only use provided tool names and their defined parameters.
 If you can answer directly from your knowledge, do so without using a tool.
 `
 
-func ToolChatStreaming(sessionID string, modelID string, roleID string, query string, streamCh chan string, streamDoneCh chan bool) {
+func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, roleID string, query string, streamDoneCh chan bool) {
 	log.D("Tool chat initiated")
 	model := findModel(modelID)
 	if model != nil {
@@ -114,6 +114,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 		go func() {
 			log.D("Starting initial chat completion")
 			err := model.Provider.ChatCompletionStream(
+				ctx,
 				session.Messages[:len(session.Messages)-1],
 				sysPrompt,
 				model,
@@ -128,7 +129,6 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 			select {
 			case msg := <-modelResponseCh:
 				session.UpdateLastMessage(msg)
-				streamCh <- msg
 			case toolCalls = <-toolCh:
 			case err := <-modelDoneCh:
 				log.D("Model response done")
@@ -169,7 +169,6 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 					if mcp != nil {
 						toolResult, _ := mcp.CallTool(callRequest)
 						log.D("Tool execution result: ", toolResult)
-						streamCh <- toolResult
 
 						session.Messages[len(session.Messages)-1].ToolRequests = []*mcptools.ToolCallRequest{callRequest}
 						session.AddMessage(ai.MessageOriginTool, toolResult, []*mcptools.ToolCallRequest{callRequest})
@@ -178,6 +177,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 						toolCalls = nil
 						go func() {
 							err := model.Provider.ChatCompletionStream(
+								ctx,
 								session.Messages[:len(session.Messages)-1],
 								sysPrompt,
 								model,
@@ -193,7 +193,7 @@ func ToolChatStreaming(sessionID string, modelID string, roleID string, query st
 						return
 					}
 				}
-			case <-time.After(600 * time.Second):
+			case <-ctx.Done():
 				streamDoneCh <- false
 				return
 			}

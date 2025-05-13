@@ -65,7 +65,7 @@ func listModelsHandler(c *gin.Context) {
 }
 
 /*
-API for sending message to AI directly and get response as streamed chunks.
+API for sending message to AI directly and get response via system SSE connection. This call will return when generation ends.
 No tools will be called in response.
 */
 var directChatStreamURI = "/directchat/stream"
@@ -84,23 +84,21 @@ func directChatStreamHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.DirectChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+	go agent.DirectChatStreaming(c.Request.Context(), req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {
 		for {
 			select {
-			case msg := <-streamCh:
-				w.Write([]byte(msg))
-				c.Writer.Flush()
 			case <-streamDoneCh:
 				log.D("Stream finalized")
 				c.Status(200)
 				return false
-			case <-time.After(600 * time.Second):
+			case <-c.Request.Context().Done():
+				return false
+			case <-time.After(3600 * time.Second):
 				log.W("Stream message timed out")
 				c.Status(500)
 				return false
@@ -165,23 +163,21 @@ func toolChatStreamHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	streamCh := make(chan string)
 	streamDoneCh := make(chan bool)
 
-	go agent.ToolChatStreaming(req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamCh, streamDoneCh)
+	go agent.ToolChatStreaming(c.Request.Context(), req.SessionID, req.ModelID, req.RoleID, strings.TrimSpace(req.Message), streamDoneCh)
 
 	// blocking call
 	c.Stream(func(w io.Writer) bool {
 		for {
 			select {
-			case msg := <-streamCh:
-				w.Write([]byte(msg))
-				c.Writer.Flush()
 			case <-streamDoneCh:
 				log.D("Stream finalized")
 				c.Status(200)
 				return false
-			case <-time.After(100 * time.Second):
+			case <-c.Request.Context().Done():
+				return false
+			case <-time.After(3600 * time.Second):
 				log.W("Stream message timed out")
 				c.Status(500)
 				return false
@@ -245,7 +241,6 @@ func sseHandler(c *gin.Context) {
 			_, err := json.Marshal(msg.Data)
 			log.CheckW(err, "failed to marshal sse message", msg)
 			if err == nil {
-				log.D("sending sse event")
 				c.SSEvent(string(msg.Type), msg.Data)
 			}
 		case <-heartbeat.C:
