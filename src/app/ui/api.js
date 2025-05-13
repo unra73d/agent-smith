@@ -224,12 +224,13 @@ async function apiAgentConnect() {
                 if (session.id == parsedData.sessionId) {
                     session.messages.push({
                         text: parsedData.message.text,
-                        origin: parsedData.message.origin
+                        origin: parsedData.message.origin,
+                        toolRequests: parsedData.message.toolRequests
                     })
                     break
                 }
             }
-            sendEvent('chat:new-message', { text: parsedData.message.text, origin: parsedData.message.origin, sessionId: parsedData.sessionId })
+            sendEvent('chat:new-message', { text: parsedData.message.text, origin: parsedData.message.origin, toolRequests: parsedData.message.toolRequests, sessionId: parsedData.sessionId })
         } catch (error) {
             console.error(error)
         }
@@ -238,7 +239,7 @@ async function apiAgentConnect() {
     stream.addEventListener('last_message_update', function (event) {
         try {
             const parsedData = JSON.parse(event.data);
-            updateLastMessage(parsedData.sessionId, parsedData.text)
+            updateLastMessage(parsedData.sessionId, parsedData.message)
         } catch { }
     });
 

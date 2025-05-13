@@ -167,10 +167,11 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 				case AgentActionToolCall:
 					log.D("Model will call tool")
 					if mcp != nil {
+						session.Messages[len(session.Messages)-1].ToolRequests = []*mcptools.ToolCallRequest{callRequest}
+						session.UpdateLastMessage("") // to trigger updates of tool requests
+
 						toolResult, _ := mcp.CallTool(callRequest)
 						log.D("Tool execution result: ", toolResult)
-
-						session.Messages[len(session.Messages)-1].ToolRequests = []*mcptools.ToolCallRequest{callRequest}
 						session.AddMessage(ai.MessageOriginTool, toolResult, []*mcptools.ToolCallRequest{callRequest})
 						session.AddMessage(ai.MessageOriginAI, "", nil)
 

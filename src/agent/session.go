@@ -150,9 +150,9 @@ func (s *Session) UpdateLastMessage(newText string) {
 		message.Text = message.Text + newText
 		sseCh <- &SSEMessage{
 			Type: SSEMessageLastMessageUpdate,
-			Data: map[string]string{
+			Data: map[string]any{
 				"sessionId": s.ID,
-				"text":      message.Text,
+				"message":   message,
 			}}
 	}
 

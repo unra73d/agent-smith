@@ -42,7 +42,7 @@ class ChatView extends HTMLElement {
         document.addEventListener('storage:current-session', e => this.changeSession(e.detail))
         document.addEventListener('chat:new-message', e => {
             if (this.chatSession.id == e.detail.sessionId) {
-                this.appendMessage(e.detail.text, e.detail.origin)
+                this.appendMessage(e.detail)
             }
         })
 
@@ -86,15 +86,16 @@ class ChatView extends HTMLElement {
                 const messageElement = [...this.chatView.querySelectorAll('.message.assistant')].slice(-1)[0]
                 const thinkSummary = messageElement.querySelector('.thinking-summary');
                 const thinkContent = messageElement.querySelector('.thinking-content');
+                const toolContent = messageElement.querySelector('.tool-content');
                 const messageContent = messageElement.querySelector('.message-content')
-                this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, this.chatSession.messages[this.chatSession.messages.length - 1].text)
+                this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, this.chatSession.messages[this.chatSession.messages.length - 1].text, this.chatSession.messages[this.chatSession.messages.length - 1].toolRequests)
             } catch {
                 console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId}`)
             }
         }
     }
 
-    setAssistantMessageContent(messageElement, thinkElement, thinkSummary, content) {
+    setAssistantMessageContent(messageElement, thinkElement, thinkSummary, toolContent, content, toolCalls) {
         try {
             let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15)
 
@@ -125,6 +126,11 @@ class ChatView extends HTMLElement {
 
             this.applySyntaxHighlighting(messageElement);
 
+            if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+                toolContent.classList.remove('tool-content-empty')
+                toolContent.textContent = JSON.stringify(toolCalls)
+            }
+
             if (isScrolledToBottom) {
                 this.scrollToBottom()
             }
@@ -152,34 +158,44 @@ class ChatView extends HTMLElement {
             <div class="thinking-summary">🧠 Thinking...</div>
             <div class="thinking-content thinking-content-empty"></div>
         </div>
+        <div class="tool-block">
+            <div class="tool-summary">🛠️ Tool call...</div>
+            <div class="tool-content tool-content-empty"></div>
+        </div>
         <div class="message-content"></div>`;
 
         const thinkBlock = messageElement.querySelector('.thinking-block');
         const thinkSummary = messageElement.querySelector('.thinking-summary');
         const thinkContent = messageElement.querySelector('.thinking-content');
+        const toolBlock = messageElement.querySelector('.tool-block');
+        const toolSummary = messageElement.querySelector('.tool-summary');
+        const toolContent = messageElement.querySelector('.tool-content');
         const messageContent = messageElement.querySelector('.message-content');
         thinkSummary.addEventListener('click', () => {
             thinkBlock.classList.toggle('open');
         });
-        return { messageContent, thinkContent, thinkSummary }
+        toolSummary.addEventListener('click', () => {
+            toolBlock.classList.toggle('open');
+        });
+        return { messageContent, thinkContent, thinkSummary, toolContent }
     }
 
-    appendMessage(content, type) {
+    appendMessage(message) {
         const messageElement = document.createElement('div')
-        messageElement.classList.add('message', type)
+        messageElement.classList.add('message', message.origin)
 
         const messageInnerContent = document.createElement('div');
         messageInnerContent.classList.add('message-inner-content');
 
-        if (type === 'assistant') {
-            const { messageContent, thinkContent, thinkSummary } = this.initAssisstantMessageElement(messageInnerContent);
-            this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content);
+        if (message.origin === 'assistant') {
+            const { messageContent, thinkContent, thinkSummary, toolContent } = this.initAssisstantMessageElement(messageInnerContent);
+            this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, message.text, message.toolRequests);
         } else {
-            messageInnerContent.textContent = content;
+            messageInnerContent.textContent = message.text;
         }
         messageElement.appendChild(messageInnerContent);
 
-        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${type}">
+        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
             <button title="Copy"><img src="icons/copy.svg" class="img-button" alt="Copy"/></button>
             <button title="Delete"><img src="icons/delete.svg" class="img-button" alt="Delete"/></button>
         </div>`;
@@ -190,7 +206,7 @@ class ChatView extends HTMLElement {
         buttons[0].addEventListener('click', () => {
             // Smartly get content from messageInnerContent
             let contentToCopy = messageInnerContent.innerText || messageInnerContent.textContent;
-            if (type === 'assistant') {
+            if (message.origin === 'assistant') {
                 const mc = messageInnerContent.querySelector('.message-content');
                 if (mc) contentToCopy = mc.innerText;
             }
@@ -241,7 +257,7 @@ class ChatView extends HTMLElement {
             if (session.messages && Array.isArray(session.messages)) {
                 this.chatView.innerHTML = '';
                 session.messages.forEach(message => {
-                    this.appendMessage(message.text, message.origin);
+                    this.appendMessage(message);
                 });
                 this.scrollToBottom();
             }
