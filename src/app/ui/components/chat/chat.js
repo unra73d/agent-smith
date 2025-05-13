@@ -186,30 +186,18 @@ class ChatView extends HTMLElement {
             return;
         }
 
-        this.chatSession.messages.push({
-            text: messageText,
-            origin: 'user'
-        })
-        // this.appendMessage(messageText, 'user');
-
         this.chatInput.value = '';
         this.chatInput.style.height = 'auto';
         this.chatInput.style.overflowY = 'hidden';
         this.chatInput.focus();
 
-        // this.appendMessage('', 'assistant')
-        // this.chatSession.messages.push({
-        //     text: '',
-        //     origin: 'assistant'
-        // })
-
         this.scrollToBottom()
         const sessionId = this.chatSession.id
 
         if (this.toolsSelected) {
-            apiToolChatStreaming(this.chatSession.id, messageText, chunk => { })
+            apiToolChatStreaming(this.chatSession.id, messageText)
         } else {
-            apiDirectChatStreaming(this.chatSession.id, messageText, chunk => { })
+            apiDirectChatStreaming(this.chatSession.id, messageText)
         }
     }
 

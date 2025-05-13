@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -149,18 +150,24 @@ func (self *MCPServer) Delete() {
 	db.Exec(query, self.ID)
 }
 
-func (self *MCPServer) connect() (context.Context, context.CancelFunc, *client.Client) {
+func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc, c *client.Client, err error) {
 	defer logger.BreakOnError()
 
-	c, err := client.NewStdioMCPClient(
-		self.Command,
-		[]string{}, // Empty ENV
-		self.Args...,
-	)
-	log.CheckE(err, nil, "Failed to create MCP client")
+	ctx, cancel = context.WithCancel(context.Background())
+	if self.Transport == MCPTransportSSE {
+		sseTransport, err := transport.NewSSE(self.URL)
+		log.CheckE(err, nil, "failed to create sse transport")
 
-	// Create context with timeout
-	ctx, cancel := context.WithCancel(context.Background())
+		err = sseTransport.Start(ctx)
+		log.CheckE(err, nil, "failed to start sse transport")
+
+		c = client.NewClient(sseTransport)
+	} else {
+		stdioTransport := transport.NewStdio(self.Command, nil, self.Args...)
+		err := stdioTransport.Start(ctx)
+		log.CheckE(err, nil, "failed to start stdio transport")
+		c = client.NewClient(stdioTransport)
+	}
 
 	initRequest := mcp.InitializeRequest{}
 	initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
@@ -172,14 +179,15 @@ func (self *MCPServer) connect() (context.Context, context.CancelFunc, *client.C
 	_, err = c.Initialize(ctx, initRequest)
 	log.CheckE(err, nil, "Failed to initialize MCP request")
 
-	return ctx, cancel, c
+	return
 }
 
 func (self *MCPServer) LoadTools() {
 	defer logger.BreakOnError()
 
-	ctx, cancel, c := self.connect()
+	ctx, cancel, c, err := self.connect()
 	defer cancel()
+	log.CheckE(err, nil, "failed to connect to MCP")
 
 	toolsRequest := mcp.ListToolsRequest{}
 	mcpTools, err := c.ListTools(ctx, toolsRequest)
@@ -191,10 +199,19 @@ func (self *MCPServer) LoadTools() {
 		for name, prop := range tool.InputSchema.Properties {
 			// Ensure prop is a map[string]interface{}
 			if propMap, ok := prop.(map[string]interface{}); ok {
+				propType := "string"
+				if propMap["type"] != nil {
+					propType = propMap["type"].(string)
+				}
+
+				propDescription := ""
+				if propMap["description"] != nil {
+					propDescription = propMap["description"].(string)
+				}
 				param := &ToolParam{
 					Name:        name,
-					Type:        propMap["type"].(string),
-					Description: propMap["description"].(string),
+					Type:        propType,
+					Description: propDescription,
 				}
 				params = append(params, param)
 
@@ -202,11 +219,15 @@ func (self *MCPServer) LoadTools() {
 				log.W("Invalid property format for:", name)
 			}
 		}
+		requiredParams := []string{}
+		if tool.InputSchema.Required != nil {
+			requiredParams = tool.InputSchema.Required
+		}
 		self.Tools = append(self.Tools, &Tool{
 			Name:           tool.Name,
 			Description:    tool.Description,
 			Params:         params,
-			RequiredParams: tool.InputSchema.Required,
+			RequiredParams: requiredParams,
 			Server:         self,
 		})
 	}
@@ -215,8 +236,9 @@ func (self *MCPServer) LoadTools() {
 func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, err error) {
 	defer logger.BreakOnError()
 
-	ctx, cancel, c := self.connect()
+	ctx, cancel, c, err := self.connect()
 	defer cancel()
+	log.CheckE(err, nil, "failed to connect to MCP")
 
 	toolRequest := mcp.CallToolRequest{
 		Request: mcp.Request{

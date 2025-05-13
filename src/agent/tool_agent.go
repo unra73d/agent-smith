@@ -53,6 +53,7 @@ func inferNextAction(message string) (AgentAction, *mcptools.MCPServer, *mcptool
 const toolUsePrompt = `
 ## Tool usage: \n
 You have tools/functions (which are two names for same term) to find information or perform actions.
+You can use one tool per message and will receive the result of that tool use in the response.
 If you need to use a tool, your response must immediately start with the JSON for the tool.
 When to use tools:
 For real-time data (e.g., weather, news, search).

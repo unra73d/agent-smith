@@ -102,7 +102,7 @@ async function apiDirectChatStreaming(sessionId, message, onMessage) {
     sendEvent('loading:generation-stopped', { sessionId: sessionId })
 }
 
-async function apiToolChatStreaming(sessionId, message, onMessage) {
+async function apiToolChatStreaming(sessionId, message) {
     let controller = new AbortController()
     sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
@@ -124,7 +124,6 @@ async function apiToolChatStreaming(sessionId, message, onMessage) {
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            onMessage(value)
         }
     } catch (error) {
         console.error("Failed to initiate streaming:", error);

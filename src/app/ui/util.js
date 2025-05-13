@@ -99,17 +99,18 @@ function splitStringBySearchText(inputString, searchText) {
 function sendEvent(name, data = {}) {
     e = new CustomEvent(name, { detail: data });
     document.dispatchEvent(e)
+    console.debug(name)
 }
 
 function monitor(obj, prop, eventName) {
     let value = obj[prop]
     Object.defineProperty(obj, prop, {
-      get: function() {
-        return value;
+        get: function () {
+            return value;
         },
-      set: function(newValue) {
+        set: function (newValue) {
             value = newValue;
-        sendEvent(eventName, value)
+            sendEvent(eventName, value)
         },
         enumerable: true,
         configurable: true
