@@ -169,14 +169,33 @@ class ChatView extends HTMLElement {
         messageElement.classList.add('message', type);
 
         if (type === 'assistant') {
-            const { messageContent, thinkContent, thinkSummary } = this.initAssisstantMessageElement(messageElement)
-            this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content)
+            const { messageContent, thinkContent, thinkSummary } = this.initAssisstantMessageElement(messageElement);
+            this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content);
         } else {
             messageElement.textContent = content;
         }
 
+        // Add copy and delete buttons
+        const copyDeleteButtons = `<div class="copy-delete-buttons">
+            <button><img src="icons/copy.svg" alt="Copy"/></button>
+            <button><img src="icons/delete.svg" alt="Delete"/></button>
+        </div>`
+        messageElement.insertAdjacentHTML('beforeend', copyDeleteButtons)
+
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
+    }
+
+    copyMessage(content) {
+        navigator.clipboard.writeText(content).then(() => {
+            alert('Message copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy message: ', err);
+        });
+    }
+
+    deleteMessage(messageElement) {
+        // messageElement.remove();
     }
 
     async sendMessageStreaming() {
