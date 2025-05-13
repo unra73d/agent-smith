@@ -179,7 +179,7 @@ class ChatView extends HTMLElement {
         }
         messageElement.appendChild(messageInnerContent);
 
-        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons">
+        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${type}">
             <button title="Copy"><img src="icons/copy.svg" class="img-button" alt="Copy"/></button>
             <button title="Delete"><img src="icons/delete.svg" class="img-button" alt="Delete"/></button>
         </div>`;
