@@ -165,22 +165,37 @@ class ChatView extends HTMLElement {
     }
 
     appendMessage(content, type) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', type);
+        const messageElement = document.createElement('div')
+        messageElement.classList.add('message', type)
+
+        const messageInnerContent = document.createElement('div');
+        messageInnerContent.classList.add('message-inner-content');
 
         if (type === 'assistant') {
-            const { messageContent, thinkContent, thinkSummary } = this.initAssisstantMessageElement(messageElement);
+            const { messageContent, thinkContent, thinkSummary } = this.initAssisstantMessageElement(messageInnerContent);
             this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, content);
         } else {
-            messageElement.textContent = content;
+            messageInnerContent.textContent = content;
         }
+        messageElement.appendChild(messageInnerContent);
 
-        // Add copy and delete buttons
-        const copyDeleteButtons = `<div class="copy-delete-buttons">
-            <button><img src="icons/copy.svg" alt="Copy"/></button>
-            <button><img src="icons/delete.svg" alt="Delete"/></button>
-        </div>`
-        messageElement.insertAdjacentHTML('beforeend', copyDeleteButtons)
+        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons">
+            <button title="Copy"><img src="icons/copy.svg" class="img-button" alt="Copy"/></button>
+            <button title="Delete"><img src="icons/delete.svg" class="img-button" alt="Delete"/></button>
+        </div>`;
+        messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
+
+        // Add event listeners for copy/delete (ensure you handle content extraction correctly)
+        const buttons = messageElement.querySelectorAll('.copy-delete-buttons button');
+        buttons[0].addEventListener('click', () => {
+            // Smartly get content from messageInnerContent
+            let contentToCopy = messageInnerContent.innerText || messageInnerContent.textContent;
+            if (type === 'assistant') {
+                const mc = messageInnerContent.querySelector('.message-content');
+                if (mc) contentToCopy = mc.innerText;
+            }
+            this.copyMessage(contentToCopy);
+        });
 
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
