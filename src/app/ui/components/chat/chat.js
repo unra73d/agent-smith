@@ -9,21 +9,16 @@ class ChatView extends HTMLElement {
 
         const shadowRoot = this.attachShadow({ mode: 'open' })
 
-        const styles = document.createElement('style')
-        styles.innerHTML = `
-        @import url('global.css');
-        @import url('components/chat/chat.css');
-        @import url('components/chat/syntax-theme.min.css');
-        `
-        shadowRoot.appendChild(styles)
-
-        this.chatView = document.createElement('div')
-        this.chatView.classList.add('chat-view')
-        shadowRoot.appendChild(this.chatView)
-
-        const chatInputArea = document.createElement('div')
-        chatInputArea.classList.add('chat-input-area')
-        chatInputArea.innerHTML = `
+        this.shadowRoot.innerHTML = `
+        <style>
+            @import url('global.css');
+            @import url('components/chat/chat.css');
+            @import url('components/chat/syntax-theme.min.css');
+        </style>
+        <div class="chat-view">
+        </div>
+        <div class="chat-input-area">
+            <button class="cancel-button img-button"><img src="icons/stop.svg" alt="Cancel"> Stop</button >
             <div class="chat-input-container">
                 <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
             </div>
@@ -33,13 +28,19 @@ class ChatView extends HTMLElement {
                     <img src="icons/send.svg" alt="Send">
                 </button>
             </div>
-        `
-        shadowRoot.appendChild(chatInputArea)
-        this.chatInput = chatInputArea.querySelector('#chatInput')
+        </div >
+    `
+
+        const chatInputArea = this.shadowRoot.querySelector('.chat-input-area')
+        this.chatView = this.shadowRoot.querySelector('.chat-view')
+        this.chatInput = this.shadowRoot.querySelector('#chatInput')
+        this.cancelButton = this.shadowRoot.querySelector('.cancel-button')
 
         document.addEventListener('chat:last-message-update', e => this.onLastMessageUpdate(e.detail.sessionId))
         document.addEventListener('chat:send', e => this.sendMessageStreaming())
         document.addEventListener('storage:current-session', e => this.changeSession(e.detail))
+        document.addEventListener('loading:generation-started', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.add('visible') } })
+        document.addEventListener('loading:generation-stopped', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.remove('visible') } })
         document.addEventListener('chat:new-message', e => {
             if (this.chatSession.id == e.detail.sessionId) {
                 this.appendMessage(e.detail)
@@ -52,7 +53,7 @@ class ChatView extends HTMLElement {
             const scrollHeight = this.chatInput.scrollHeight;
             const maxHeight = 150;
 
-            this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+            this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)} px`;
             this.chatInput.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
             if (isScrolledToBottom) {
                 this.scrollToBottom()
@@ -78,6 +79,8 @@ class ChatView extends HTMLElement {
             const isChecked = e.target.checked
             this.toolsSelected = isChecked
         });
+
+        this.cancelButton.addEventListener('click', e => { sendEvent('loading:generation-cancel', { sessionId: this.chatSession.id }) })
     }
 
     onLastMessageUpdate(sessionId) {
@@ -90,7 +93,7 @@ class ChatView extends HTMLElement {
                 const messageContent = messageElement.querySelector('.message-content')
                 this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, this.chatSession.messages[this.chatSession.messages.length - 1].text, this.chatSession.messages[this.chatSession.messages.length - 1].toolRequests)
             } catch {
-                console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId}`)
+                console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId} `)
             }
         }
     }
@@ -254,6 +257,11 @@ class ChatView extends HTMLElement {
     changeSession(session) {
         if (session) {
             this.chatSession = session
+            if (ongoingGenRequests.has(session.id)) {
+                this.cancelButton.classList.add('visible')
+            } else {
+                this.cancelButton.classList.remove('visible')
+            }
             if (session.messages && Array.isArray(session.messages)) {
                 this.chatView.innerHTML = '';
                 session.messages.forEach(message => {
@@ -264,6 +272,10 @@ class ChatView extends HTMLElement {
         } else {
             console.error('trying to change null session')
         }
+    }
+
+    cancelGeneration() {
+        sendEvent('loading:generation-cancel', { sessionId: this.chatSession.id })
     }
 
 }

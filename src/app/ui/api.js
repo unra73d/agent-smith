@@ -64,10 +64,17 @@ document.addEventListener('loading:generation-started', (e) => {
     ongoingGenRequests.set(sessionId, e.detail.controller)
 })
 
-document.addEventListener('loading:generation-stopped', (e) => {
+document.addEventListener('loading:generation-cancel', (e) => {
     sessionId = e.detail.sessionId
     if (ongoingGenRequests.has(sessionId)) {
         ongoingGenRequests.get(sessionId).abort()
+        ongoingGenRequests.delete(sessionId)
+    }
+})
+
+document.addEventListener('loading:generation-stopped', (e) => {
+    sessionId = e.detail.sessionId
+    if (ongoingGenRequests.has(sessionId)) {
         ongoingGenRequests.delete(sessionId)
     }
 })

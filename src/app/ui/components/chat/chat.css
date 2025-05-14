@@ -266,6 +266,34 @@ body {
     padding: 5px;
     position: relative;
 
+    .cancel-button {
+        position: absolute;
+        top: -50px;
+        right: 0px;
+        background-color: #232324;
+        border: 1px solid white;
+        color: white;
+        border-radius: 6px;
+        width: 70px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.7em;
+        display: none;
+        animation: border-animation 2s linear infinite;
+
+        &.visible {
+            display: flex;
+        }
+
+        img {
+            width: 16px;
+            height: 16px;
+        }
+    }
+
     .chat-input-container {
         flex-grow: 1;
         width: 100%;
