@@ -50,8 +50,17 @@ async function apiListSessions() {
     }
 }
 
-function apiDirectChat() {
+async function apiDeleteMessage(sessionId, messageId) {
+    try {
+        const response = await fetch(`http://localhost:8008/agent/sessions/${sessionId}/messages/delete/${messageId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
+        const data = await response.json();
+    } catch (error) {
+        console.error("Failed to delete session:", error);
+    }
 }
 
 var ongoingGenRequests = new Map()
@@ -220,6 +229,14 @@ async function apiAgentConnect() {
     stream.addEventListener('session_update', function (event) {
         try {
             const parsedData = JSON.parse(event.data);
+            for (let i in Storage.sessions) {
+                const session = Storage.sessions[i]
+                if (session.id == parsedData.id) {
+                    Storage.sessions[i] = parsedData
+                    sendEvent('session:update', {session: parsedData})
+                    break
+                }
+            }
         } catch { }
     });
 

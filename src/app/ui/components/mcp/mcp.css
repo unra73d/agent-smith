@@ -29,9 +29,9 @@
 
 .item-header .delete-icon {
     margin-left: auto;
+    font-size: 16px;
+    line-height: 16px;
     cursor: pointer;
-    width: 16px;
-    height: 16px;
     display: none;
 }
 

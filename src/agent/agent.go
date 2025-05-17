@@ -126,6 +126,39 @@ func DeleteSession(id string) error {
 	return errors.New("session not found")
 }
 
+func DeleteMessage(sessionID string, messageID string) error {
+	// find the session
+	// find the message
+	// if its assistant message - delete backwards possible chain of tool requests and calls
+	for _, session := range Agent.sessions {
+		if session.ID == sessionID {
+			for i, message := range session.Messages {
+				if message.ID == messageID {
+					if message.Origin == ai.MessageOriginUser {
+						session.Messages = append(session.Messages[:i], session.Messages[i+1:]...)
+						session.Save()
+						sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: session}
+						return nil
+					} else if message.Origin == ai.MessageOriginAI {
+						for k := i - 1; k >= 0; k-- {
+							if session.Messages[k].Origin == ai.MessageOriginUser {
+								session.Messages = append(session.Messages[:k+1], session.Messages[i+1:]...)
+								session.Save()
+								sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: session}
+								break
+							}
+						}
+					}
+					return nil
+				}
+			}
+			break
+		}
+	}
+	log.E("trying to delete non existing message", sessionID, messageID)
+	return errors.New("message not found")
+}
+
 func findModel(modelID string) *ai.Model {
 	for _, provider := range Agent.apiProviders {
 		for _, model := range provider.Models() {

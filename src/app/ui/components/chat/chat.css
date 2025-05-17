@@ -46,16 +46,16 @@ body {
         &.user .message-inner-content {
             background-color: #313335;
             margin-left: auto;
-            margin-right: 7.5%;
+            margin-right: 9%;
             width: fit-content;
             max-width: 60%;
             white-space: pre-wrap;
         }
 
         &.assistant .message-inner-content {
-            margin-left: 7.5%;
+            margin-left: 9%;
             margin-right: auto;
-            max-width: 85%;
+            max-width: 82%;
             border-left: 1px solid #313335;
             border-radius: 0px;
             padding: 0px 12px;
@@ -212,12 +212,12 @@ body {
 
         &.tool .message-inner-content {
             background-color: #2a2b2d;
-            margin-left: 7.5%;
+            margin-left: 10%;
             margin-right: auto;
             border: 1px dashed #5f6368;
             font-size: 0.9em;
             color: #bdc1c6;
-            max-width: 85%;
+            max-width: 80%;
             width: fit-content;
         }
 
@@ -228,12 +228,12 @@ body {
             flex-direction: row;
 
             &.user {
-                left: 93%;
+                left: 91%;
             }
 
             &.assistant,
             &.tool {
-                right: 93%;
+                right: 91%;
             }
 
             button {

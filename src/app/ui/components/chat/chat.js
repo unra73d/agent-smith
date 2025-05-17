@@ -41,7 +41,8 @@ class ChatView extends HTMLElement {
         document.addEventListener('storage:current-session', e => this.changeSession(e.detail))
         document.addEventListener('loading:generation-started', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.add('visible') } })
         document.addEventListener('loading:generation-stopped', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.remove('visible') } })
-        document.addEventListener('chat:new-message', e => {
+        document.addEventListener('session:update', e => { if (this.chatSession.id == e.detail.session.id) { this.changeSession(e.detail.session) } })
+            document.addEventListener('chat:new-message', e => {
             if (this.chatSession.id == e.detail.sessionId) {
                 this.appendMessage(e.detail)
             }
@@ -198,31 +199,41 @@ class ChatView extends HTMLElement {
         }
         messageElement.appendChild(messageInnerContent);
 
-        const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
-            <button title="Copy" class="img-button" alt="Copy">📋</button>
-            <button title="Reload" class="img-button" alt="Generate again">🔄</button>
-            <button title="Delete" class="img-button" alt="Delete">🗑️</button>
-        </div>`;
-        messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
+        if (message.origin == 'assistant' || message.origin == 'user') {
+            const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
+                <button title="Copy" class="img-button" alt="Copy">📋</button>
+                <button title="Reload" class="img-button" alt="Generate again">🔄</button>
+                <button title="Delete" class="img-button" alt="Delete">🗑️</button>
+            </div>`;
+            messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
 
-        // Add event listeners for copy/delete (ensure you handle content extraction correctly)
-        const buttons = messageElement.querySelectorAll('.copy-delete-buttons button');
-        buttons[0].addEventListener('click', () => {
-            // Smartly get content from messageInnerContent
-            let contentToCopy = messageInnerContent.innerText || messageInnerContent.textContent;
-            if (message.origin === 'assistant') {
-                const mc = messageInnerContent.querySelector('.message-content');
-                if (mc) contentToCopy = mc.innerText;
-            }
-            navigator.clipboard.writeText(contentToCopy)
-        });
+            // Add event listeners for copy/delete (ensure you handle content extraction correctly)
+            const buttons = messageElement.querySelectorAll('.copy-delete-buttons button');
+            buttons[0].addEventListener('click', () => {
+                // Smartly get content from messageInnerContent
+                let contentToCopy = messageInnerContent.innerText || messageInnerContent.textContent;
+                if (message.origin === 'assistant') {
+                    const mc = messageInnerContent.querySelector('.message-content');
+                    if (mc) contentToCopy = mc.innerText;
+                }
+                navigator.clipboard.writeText(contentToCopy)
+            });
+            buttons[1].addEventListener('click', () => {
+                
+            });
+            buttons[2].addEventListener('click', async() => {
+                if(await confirmDialog("Delete this message?")){
+                    apiDeleteMessage(this.chatSession.id, message.id)
+                }
+            });
 
-        if (message.origin != 'user') {
-            const copyDeleteButtons = messageElement.querySelector('.copy-delete-buttons');
-            if (copyDeleteButtons) {
-                // Reverse the order of the buttons
-                for (let i = copyDeleteButtons.children.length - 1; i >= 0; i--) {
-                    copyDeleteButtons.appendChild(copyDeleteButtons.children[i]);
+            if (message.origin != 'user') {
+                const copyDeleteButtons = messageElement.querySelector('.copy-delete-buttons');
+                if (copyDeleteButtons) {
+                    // Reverse the order of the buttons
+                    for (let i = copyDeleteButtons.children.length - 1; i >= 0; i--) {
+                        copyDeleteButtons.appendChild(copyDeleteButtons.children[i]);
+                    }
                 }
             }
         }

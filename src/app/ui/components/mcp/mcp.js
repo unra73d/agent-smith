@@ -19,7 +19,7 @@ class MCPList extends List {
             <div class="item-header">
                 <ui-checkbox class="select-all-checkbox" ${data.active ? 'checked' : ''}></ui-checkbox>
                 <span class="header-text">${data.name}</span>
-                <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${data.id}">
+                <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">🗑️</div>
             </div>
             <div class="item-content open"></div>
         `;
