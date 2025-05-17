@@ -46,7 +46,7 @@ class SessionList extends HTMLElement {
         const summary = session.summary ? session.summary : 'New chat';
         sessionItem.innerHTML = `
             <span class="session-summary">${summary}</span>
-            <img src="icons/delete.svg" alt="Delete" class="delete-icon" data-id="${session.id}">
+            <div alt="Delete" class="delete-icon img-button" data-id="${session.id}">🗑️</div>
         `;
 
         if (front) {

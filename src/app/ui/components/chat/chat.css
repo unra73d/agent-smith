@@ -225,15 +225,15 @@ body {
             display: none;
             position: absolute;
             bottom: 0;
-            flex-direction: column;
+            flex-direction: row;
 
             &.user {
-                right: 5%;
+                left: 93%;
             }
 
             &.assistant,
             &.tool {
-                left: 5%;
+                right: 93%;
             }
 
             button {
@@ -241,6 +241,7 @@ body {
                 border: none;
                 cursor: pointer;
                 padding: 0;
+                font-size: 16px;
             }
 
             img {

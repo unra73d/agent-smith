@@ -200,7 +200,8 @@ class ChatView extends HTMLElement {
 
         const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
             <button title="Copy" class="img-button" alt="Copy">📋</button>
-            <button title="Delete" class="img-button"><img src="icons/delete.svg" alt="Delete"/></button>
+            <button title="Reload" class="img-button" alt="Generate again">🔄</button>
+            <button title="Delete" class="img-button" alt="Delete">🗑️</button>
         </div>`;
         messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
 
@@ -215,6 +216,16 @@ class ChatView extends HTMLElement {
             }
             navigator.clipboard.writeText(contentToCopy)
         });
+
+        if (message.origin != 'user') {
+            const copyDeleteButtons = messageElement.querySelector('.copy-delete-buttons');
+            if (copyDeleteButtons) {
+                // Reverse the order of the buttons
+                for (let i = copyDeleteButtons.children.length - 1; i >= 0; i--) {
+                    copyDeleteButtons.appendChild(copyDeleteButtons.children[i]);
+                }
+            }
+        }
 
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
