@@ -216,8 +216,31 @@ class ChatView extends HTMLElement {
                 }
                 navigator.clipboard.writeText(contentToCopy)
             });
-            buttons[1].addEventListener('click', () => {
+            buttons[1].addEventListener('click', async () => {
+                let messageToDelete = message
 
+                if (message.origin != 'user') {
+                    for (let i = 0; i <= this.chatSession.messages.length - 1; i++) {
+                        let msg = this.chatSession.messages[i]
+                        if (msg.id == message.id) {
+                            for (let k = i - 1; k >= 0; k--) {
+                                let backMsg = this.chatSession.messages[k]
+                                if (backMsg.origin == 'user') {
+                                    messageToDelete = backMsg
+                                    break
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+                const messageText = messageToDelete.text
+                await apiTruncateSession(this.chatSession.id, messageToDelete.id)
+                if (this.toolsSelected) {
+                    apiToolChatStreaming(this.chatSession.id, messageText)
+                } else {
+                    apiDirectChatStreaming(this.chatSession.id, messageText)
+                }
             });
             buttons[2].addEventListener('click', async () => {
                 if (await confirmDialog("Delete this message?")) {

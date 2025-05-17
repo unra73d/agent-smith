@@ -148,6 +148,9 @@ func DeleteMessage(sessionID string, messageID string) error {
 								break
 							}
 						}
+						session.Messages = append(session.Messages[:i], session.Messages[i+1:]...)
+						session.Save()
+						sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: session}
 					}
 					return nil
 				}
