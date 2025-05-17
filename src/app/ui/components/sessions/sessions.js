@@ -21,6 +21,7 @@ class SessionList extends HTMLElement {
         document.addEventListener('sessions:touch', e => this.touch())
 
         document.addEventListener('storage:sessions', e => this.updateList())
+        document.addEventListener('session:update', e => this.updateList())
         document.addEventListener('storage:current-session', e => this.updateSessionHighlight())
     }
 
@@ -46,7 +47,7 @@ class SessionList extends HTMLElement {
         const summary = session.summary ? session.summary : 'New chat';
         sessionItem.innerHTML = `
             <span class="session-summary">${summary}</span>
-            <div alt="Delete" class="delete-icon img-button" data-id="${session.id}">🗑️</div>
+            <div alt="Delete" class="delete-icon img-button" data-id="${session.id}">&#xe053;</div>
         `;
 
         if (front) {

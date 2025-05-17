@@ -1,60 +1,61 @@
 .item-header {
     display: flex;
     align-items: center;
-    padding: 10px;
     border-radius: 6px;
-    margin-bottom: 10px;
+    margin-top: 2px;
+    padding: 5px;
     transition: background-color 0.2s ease;
     cursor: pointer;
-    width: 100%; /* Ensure it occupies the full width */
-    background-color: #1a1b1c; /* Slightly darker background */
-}
+    width: 100%;
+    background-color: #1a1b1c;
 
-.item-header:hover {
-    background-color: #2a2b2d; /* Lighter on hover */
-}
+    &:hover {
+        background-color: #2a2b2d;
+    }
 
-.item-header .select-all-checkbox {
-    margin-right: 10px;
-}
+    .select-all-checkbox {
+        margin-right: 10px;
+    }
 
-.item-header .header-text {
-    flex-grow: 1;
-    color: #b3b3b3; /* Make text a bit darker */
-    font-size: 0.95em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+    .header-text {
+        flex-grow: 1;
+        color: #b3b3b3;
+        font-size: 0.8em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
-.item-header .delete-icon {
-    margin-left: auto;
-    font-size: 16px;
-    line-height: 16px;
-    cursor: pointer;
-    display: none;
-}
+    .delete-icon {
+        margin-left: auto;
+        font-size: 16px;
+        line-height: 16px;
+        cursor: pointer;
+        display: none;
 
-.item-header:hover .delete-icon {
-    display: block;
-}
+        &:hover {
+            filter: brightness(1.2);
+        }
+    }
 
-.item-header .delete-icon:hover {
-    filter: brightness(1.2);
+    &:hover .delete-icon {
+        display: block;
+    }
 }
 
 .item-content {
     display: flex;
     flex-direction: column;
-}
+    font-size: 0.9em;
 
-.item-content.disabled {
-    opacity: 0.5;
-    pointer-events: none;
-}
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
 
-.item-content:not(.open) {
-    display: none;
+    &:not(.open) {
+        display: none;
+    }
 }
 
 .tool-item {
@@ -65,22 +66,22 @@
     cursor: default;
     width: 100%;
     word-wrap: break-word;
+    font-size: 0.9em;
+
+    input[type="checkbox"] {
+        margin-right: 10px;
+        margin-top: 4px;
+        padding: 4px;
+    }
+
+    .item-text {
+        flex-grow: 1;
+        color: #b3b3b3;
+        white-space: normal;
+        word-wrap: break-word;
+    }
 }
 
-.tool-item input[type="checkbox"] {
-    margin-right: 10px;
-    margin-top: 4px;
-    padding: 4px;
-}
-
-.tool-item .item-text {
-    flex-grow: 1;
-    color: #b3b3b3;
-    font-size: 0.75em;
-    white-space: normal;
-    word-wrap: break-word;
-}
-
-.tool-checkbox-area{
+.tool-checkbox-area {
     padding: 5px;
 }

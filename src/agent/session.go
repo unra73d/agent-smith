@@ -30,7 +30,7 @@ func LoadSessions() []*Session {
 	log.CheckE(err, nil, "Failed to open session db")
 	defer db.Close()
 
-	query := "SELECT session_id, date, data FROM sessions ORDER BY date DESC;"
+	query := "SELECT session_id, date, summary, data FROM sessions ORDER BY date DESC;"
 	rows, err := db.Query(query)
 	log.CheckE(err, nil, "Failed to select sessions from DB")
 	defer rows.Close()
@@ -39,9 +39,10 @@ func LoadSessions() []*Session {
 		var session Session
 		var dataJSON string
 		var dateStr string
+		var summary sql.NullString
 
 		// Scan the row data into variables
-		err = rows.Scan(&session.ID, &dateStr, &dataJSON)
+		err = rows.Scan(&session.ID, &dateStr, &summary, &dataJSON)
 		if err != nil {
 			log.W("Failed to scan session row:", err)
 			continue
@@ -51,6 +52,12 @@ func LoadSessions() []*Session {
 		if err != nil {
 			log.W("Failed to parse session date: ", dateStr, err)
 			session.Date = time.Time{}
+		}
+
+		if summary.Valid {
+			session.Summary = summary.String
+		} else {
+			session.Summary = ""
 		}
 
 		// Unmarshal the JSON data from the 'data' column into Messages
@@ -95,16 +102,17 @@ func (s *Session) Save() (err error) {
 
 	// Use INSERT OR REPLACE (UPSERT) to handle both new and existing sessions
 	query := `
-	INSERT INTO sessions (session_id, date, data)
-	VALUES (?, ?, ?)
+	INSERT INTO sessions (session_id, date, summary, data)
+	VALUES (?, ?, ?, ?)
 	ON CONFLICT(session_id) DO UPDATE SET
 		date=excluded.date,
+		summary=excluded.summary,
 		data=excluded.data;
 	`
 	// Format date to a standard string format for SQLite
 	dateStr := s.Date.Format(time.RFC3339)
 
-	_, err = db.Exec(query, s.ID, dateStr, string(messagesJSON))
+	_, err = db.Exec(query, s.ID, dateStr, s.Summary, string(messagesJSON))
 	log.CheckW(err, "Failed to update session DB")
 
 	log.D("Saved session", s.ID)
@@ -132,6 +140,10 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string, toolRequests 
 
 	s.Messages = append(s.Messages, message)
 	s.Date = time.Now()
+
+	if len(s.Messages) == 1 {
+		s.Summary = s.Messages[0].Text
+	}
 
 	sseCh <- &SSEMessage{Type: SSEMessageNewMessage, Data: map[string]any{"message": message, "sessionId": s.ID}}
 	sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: s}

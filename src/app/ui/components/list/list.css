@@ -1,8 +1,9 @@
 .list-item {
-    display: block; /* Change to block or inline-block */
-    padding: 10px;
+    display: block;
+    padding-right: 10px;
+    padding-left: 10px;
     border-radius: 6px;
-    margin-bottom: 10px;
+    margin-top: 2px;
     transition: background-color 0.2s ease;
     transition: border 0.2s ease;
     cursor: default;
@@ -16,7 +17,7 @@
     }
 
     .item-text {
-        color: #b3b3b3; /* Make text a bit darker */
+        color: #b3b3b3;
         font-size: 0.95em;
         white-space: nowrap;
         overflow: hidden;

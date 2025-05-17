@@ -18,15 +18,13 @@ class ChatView extends HTMLElement {
         <div class="chat-view">
         </div>
         <div class="chat-input-area">
-            <button class="cancel-button img-button">🚫 Stop</button >
+            <button class="cancel-button">Stop</button >
             <div class="chat-input-container">
                 <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
             </div>
             <div class="chat-button-container">
                 <ui-checkbox class="tools-checkbox" label="Tools" ${this.toolsSelected ? 'checked' : ''}></ui-checkbox>
-                <button id="sendButton" class="send-button img-button" onclick="sendEvent('chat:send')">
-                    <img src="icons/send.svg" alt="Send">
-                </button>
+                <button id="sendButton" class="send-button img-button" alt="Send" onclick="sendEvent('chat:send')">&</button>
             </div>
         </div >
     `
@@ -42,22 +40,22 @@ class ChatView extends HTMLElement {
         document.addEventListener('loading:generation-started', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.add('visible') } })
         document.addEventListener('loading:generation-stopped', e => { if (this.chatSession.id == e.detail.sessionId) { this.cancelButton.classList.remove('visible') } })
         document.addEventListener('session:update', e => { if (this.chatSession.id == e.detail.session.id) { this.changeSession(e.detail.session) } })
-            document.addEventListener('chat:new-message', e => {
+        document.addEventListener('chat:new-message', e => {
             if (this.chatSession.id == e.detail.sessionId) {
                 this.appendMessage(e.detail)
             }
         })
 
         this.chatInput.addEventListener('input', () => {
-            let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15)
+            let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15);
             this.chatInput.style.height = 'auto';
             const scrollHeight = this.chatInput.scrollHeight;
             const maxHeight = 150;
 
-            this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)} px`;
+            this.chatInput.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
             this.chatInput.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
             if (isScrolledToBottom) {
-                this.scrollToBottom()
+                this.scrollToBottom();
             }
         });
 
@@ -159,11 +157,11 @@ class ChatView extends HTMLElement {
 
     initAssisstantMessageElement(messageElement) {
         messageElement.innerHTML = `<div class="thinking-block">
-            <div class="thinking-summary">💡 Thinking...</div>
+            <div class="thinking-summary"><span class="icon">&#xe00d;</span> Thinking...</div>
             <div class="thinking-content thinking-content-empty"></div>
         </div>
         <div class="tool-block">
-            <div class="tool-summary">🛠️ Tool call...</div>
+            <div class="tool-summary"><span class="icon">&#xe02a;</span> Tool call...</div>
             <div class="tool-content tool-content-empty"></div>
         </div>
         <div class="message-content"></div>`;
@@ -201,9 +199,9 @@ class ChatView extends HTMLElement {
 
         if (message.origin == 'assistant' || message.origin == 'user') {
             const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
-                <button title="Copy" class="img-button" alt="Copy">📋</button>
-                <button title="Reload" class="img-button" alt="Generate again">🔄</button>
-                <button title="Delete" class="img-button" alt="Delete">🗑️</button>
+                <button title="Copy" class="img-button" alt="Copy">7</button>
+                <button title="Reload" class="img-button" alt="Generate again">Z</button>
+                <button title="Delete" class="img-button" alt="Delete">&#xe053;</button>
             </div>`;
             messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
 
@@ -219,10 +217,10 @@ class ChatView extends HTMLElement {
                 navigator.clipboard.writeText(contentToCopy)
             });
             buttons[1].addEventListener('click', () => {
-                
+
             });
-            buttons[2].addEventListener('click', async() => {
-                if(await confirmDialog("Delete this message?")){
+            buttons[2].addEventListener('click', async () => {
+                if (await confirmDialog("Delete this message?")) {
                     apiDeleteMessage(this.chatSession.id, message.id)
                 }
             });

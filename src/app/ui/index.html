@@ -13,11 +13,11 @@
         <div class="top-panel">
             <!-- Tab Buttons moved here -->
             <div class="top-tab-container">
-                <button class="top-tab-button img-button" data-tab="tab1" title="Settings">🔧</button>
-                <button class="top-tab-button img-button" data-tab="tab2" title="Chat sessions">💬</button>
-                <button class="top-tab-button img-button" data-tab="tab3" title="MCP">🔌</button>
-                <button class="top-tab-button img-button" data-tab="tab4" title="Models">🧠</button>
-                <button class="top-tab-button img-button" data-tab="tab5" title="Roles">👥</button>
+                <button class="top-tab-button img-button" data-tab="tab1" title="Settings">~</button>
+                <button class="top-tab-button img-button" data-tab="tab2" title="Chat sessions">6</button>
+                <button class="top-tab-button img-button" data-tab="tab3" title="MCP">&#xe02a;</button>
+                <button class="top-tab-button img-button" data-tab="tab4" title="Models">&#xe044;</button>
+                <button class="top-tab-button img-button" data-tab="tab5" title="Roles">&#xe057;</button>
             </div>
             <select id="modelSelector" class="model-selector">
                 <option value="" disabled selected>Select a Model</option>
@@ -43,10 +43,11 @@
                             <span class="tab-content-title">Chat sessions</span>
                         </div>
                         <div class="session-controls">
-                            <input type="text" id="filterInput" class="filter-input"
-                                placeholder="Filter chats...">
-                            <div alt="Reload" class="reload-icon img-button" id="reloadSessions" onclick="sendEvent('sessions:reload')">🔄</div>
-                            <div alt="New Session" class="plus-icon img-button" id="newSession" onclick="sendEvent('sessions:new')">✚</div>
+                            <input type="text" id="filterInput" class="filter-input" placeholder="Filter chats...">
+                            <div alt="Reload" class="reload-icon img-button" id="reloadSessions"
+                                onclick="sendEvent('sessions:reload')">Z</div>
+                            <div alt="New Session" class="plus-icon img-button" id="newSession"
+                                onclick="sendEvent('sessions:new')">&#xe035;</div>
                         </div>
                         <div class="session-list"><session-list></session-list></div>
                     </div>

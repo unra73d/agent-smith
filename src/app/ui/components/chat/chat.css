@@ -98,7 +98,7 @@ body {
                     overflow-x: auto;
                     border: 1px solid #3c4043;
                     margin: 8px 0;
-                    white-space: pre;
+                    white-space: pre-wrap;
 
                     code {
                         background-color: transparent;
@@ -226,6 +226,7 @@ body {
             position: absolute;
             bottom: 0;
             flex-direction: row;
+            gap: 5px;
 
             &.user {
                 left: 91%;

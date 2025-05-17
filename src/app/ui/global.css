@@ -1,7 +1,13 @@
 @font-face {
-  font-family: 'AgentFont';
-  src: url('font.ttf') format('truetype');
-  unicode-range: U+00A9-E007F;
+    font-family: 'AgentFont';
+    src: url('font.ttf') format('truetype');
+    unicode-range: U+00A9-E007F;
+}
+
+@font-face {
+    font-family: 'AgentIconFont';
+    src: url('icon-font.woff') format('woff');
+    unicode-range: U+00A9-E007F;
 }
 
 * {
@@ -12,7 +18,17 @@
     padding: 0;
 }
 
-.img-button{
+.icon {
+    font-family: 'AgentIconFont';
+    vertical-align: middle;
+}
+
+.text {
+    font-family: 'AgentFont', sans-serif;
+}
+
+.img-button {
+    font-family: 'AgentIconFont';
     filter: sepia(6%) brightness(57%);
     color: white;
 
