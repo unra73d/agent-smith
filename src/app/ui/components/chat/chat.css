@@ -159,7 +159,7 @@ body {
                     border-radius: 4px 4px 0 0;
                     position: relative;
                     border: 1px solid #313335;
-                    width: 120px;
+                    max-width: 30%;
 
                     &.in-progress {
                         animation: border-animation 2s linear infinite;

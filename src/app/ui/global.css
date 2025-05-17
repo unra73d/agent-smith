@@ -1,4 +1,12 @@
+@font-face {
+  font-family: 'AgentFont';
+  src: url('font.ttf') format('truetype');
+  unicode-range: U+00A9-E007F;
+}
+
 * {
+    font-family: 'AgentFont', sans-serif;
+    font-size: 14pt;
     box-sizing: border-box;
     margin: 0;
     padding: 0;

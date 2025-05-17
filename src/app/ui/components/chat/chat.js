@@ -158,7 +158,7 @@ class ChatView extends HTMLElement {
 
     initAssisstantMessageElement(messageElement) {
         messageElement.innerHTML = `<div class="thinking-block">
-            <div class="thinking-summary">🧠 Thinking...</div>
+            <div class="thinking-summary">💡 Thinking...</div>
             <div class="thinking-content thinking-content-empty"></div>
         </div>
         <div class="tool-block">
@@ -213,19 +213,11 @@ class ChatView extends HTMLElement {
                 const mc = messageInnerContent.querySelector('.message-content');
                 if (mc) contentToCopy = mc.innerText;
             }
-            this.copyMessage(contentToCopy);
+            navigator.clipboard.writeText(contentToCopy)
         });
 
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
-    }
-
-    copyMessage(content) {
-        navigator.clipboard.writeText(content).then(() => {
-            alert('Message copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy message: ', err);
-        });
     }
 
     deleteMessage(messageElement) {
