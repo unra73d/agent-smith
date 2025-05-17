@@ -25,6 +25,8 @@ document.addEventListener('sessions:reload', async (e) => {
         sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         Storage.sessions = sessions
         Storage.currentSession = Storage.sessions[0]
+    } else {
+        sendEvent('sessions:new')
     }
 })
 
