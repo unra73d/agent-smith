@@ -50,6 +50,21 @@ async function apiListSessions() {
     }
 }
 
+async function apiTruncateSession(sessionId, messageId) {
+    try {
+        const response = await fetch(`http://localhost:8008/agent/sessions/${sessionId}/truncate/${messageId}`)
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        return null
+    } catch (error) {
+        console.error("Failed to fetch sessions:", error);
+        return null
+    }
+}
+
 async function apiDeleteMessage(sessionId, messageId) {
     try {
         const response = await fetch(`http://localhost:8008/agent/sessions/${sessionId}/messages/delete/${messageId}`);

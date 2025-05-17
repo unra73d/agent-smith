@@ -159,6 +159,24 @@ func DeleteMessage(sessionID string, messageID string) error {
 	return errors.New("message not found")
 }
 
+func TruncateSession(sessionID string, messageID string) error {
+	for _, session := range Agent.sessions {
+		if session.ID == sessionID {
+			for i, message := range session.Messages {
+				if message.ID == messageID {
+					session.Messages = session.Messages[:i]
+					session.Save()
+					sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: session}
+					return nil
+				}
+			}
+			break
+		}
+	}
+	log.E("trying to delete non existing message", sessionID, messageID)
+	return errors.New("message not found")
+}
+
 func findModel(modelID string) *ai.Model {
 	for _, provider := range Agent.apiProviders {
 		for _, model := range provider.Models() {

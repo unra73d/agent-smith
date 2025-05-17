@@ -56,6 +56,32 @@ func deleteSessionHandler(c *gin.Context) {
 }
 
 /*
+Deletes all messages from session starting with given id
+*/
+var truncateSessionURI = "/sessions/:sessionId/truncate/:messageId"
+
+type TruncateSessionReq struct {
+	SessionID string `uri:"sessionId" binding:"required"`
+	MessageID string `uri:"messageId" binding:"required"`
+}
+
+func truncateSessionHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req TruncateSessionReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.TruncateSession(req.SessionID, req.MessageID)
+	if err != nil {
+		c.JSON(500, map[string]any{"error": err})
+	} else {
+		c.JSON(200, map[string]any{"error": nil})
+	}
+
+}
+
+/*
 Delete message by id
 */
 var deleteMessageURI = "/sessions/:sessionId/messages/delete/:messageId"
@@ -282,6 +308,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listSessionsURI, listSessionsHandler)
 		group.GET(createSessionURI, createSessionHandler)
 		group.GET(deleteSessionURI, deleteSessionHandler)
+		group.GET(truncateSessionURI, truncateSessionHandler)
 		group.GET(deleteMessageURI, deleteMessageHandler)
 
 		group.GET(listModelsURI, listModelsHandler)
