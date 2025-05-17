@@ -18,7 +18,7 @@ class ChatView extends HTMLElement {
         <div class="chat-view">
         </div>
         <div class="chat-input-area">
-            <button class="cancel-button img-button"><img src="icons/stop.svg" alt="Cancel"> Stop</button >
+            <button class="cancel-button img-button">🚫 Stop</button >
             <div class="chat-input-container">
                 <textarea id="chatInput" class="chat-input" placeholder="Enter your message..." rows="1"></textarea>
             </div>
@@ -199,8 +199,8 @@ class ChatView extends HTMLElement {
         messageElement.appendChild(messageInnerContent);
 
         const copyDeleteButtonsHTML = `<div class="copy-delete-buttons ${message.origin}">
-            <button title="Copy"><img src="icons/copy.svg" class="img-button" alt="Copy"/></button>
-            <button title="Delete"><img src="icons/delete.svg" class="img-button" alt="Delete"/></button>
+            <button title="Copy" class="img-button" alt="Copy">📋</button>
+            <button title="Delete" class="img-button"><img src="icons/delete.svg" alt="Delete"/></button>
         </div>`;
         messageElement.insertAdjacentHTML('beforeend', copyDeleteButtonsHTML);
 

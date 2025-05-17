@@ -14,6 +14,7 @@
 
 .img-button{
     filter: sepia(6%) brightness(57%);
+    color: white;
 
     &:hover {
         filter: sepia(0%) brightness(100%);

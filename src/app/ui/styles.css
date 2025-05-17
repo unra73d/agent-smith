@@ -51,13 +51,8 @@ body {
         border-bottom: 2px solid transparent;
         transition: border-bottom-color 0.2s ease;
         position: relative;
-
-        img {
-            width: 20px;
-            height: 20px;
-            display: block;
-            transition: filter 0.2s ease;
-        }
+        font-size: 1.2em;
+        transition: filter 0.2s ease;
 
         &.active {
             border-bottom: 1px solid #e3e3e3;
@@ -163,8 +158,6 @@ body {
 
                 .reload-icon,
                 .plus-icon {
-                    width: 16px;
-                    height: 16px;
                     cursor: pointer;
                     margin-right: 5px;
                 }
