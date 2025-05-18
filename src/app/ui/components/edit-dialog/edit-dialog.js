@@ -1,10 +1,8 @@
-// EditDialog web component
 class EditDialog extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
 
-        // Styles (reuse mcp style approach)
         const style = document.createElement('style');
         style.textContent = `
             @import url('global.css');
@@ -12,18 +10,15 @@ class EditDialog extends HTMLElement {
         `;
         this.shadowRoot.appendChild(style);
 
-        // Dialog container
         this.dialog = document.createElement('div');
         this.dialog.className = 'dialog';
         this.shadowRoot.appendChild(this.dialog);
 
-        // Prevent click outside from closing by default
         this.addEventListener('mousedown', e => {
             if (e.target !== this) this._cancel();
         });
     }
 
-    // Show dialog with fields, initial values, and custom buttons
     open({ title = 'Edit', fields = [], values = {}, buttons = [] }) {
         this._fields = fields;
         this._values = { ...values };
@@ -38,50 +33,14 @@ class EditDialog extends HTMLElement {
         this.dialog.appendChild(titleEl);
 
         // Fields
-        const fieldsEl = document.createElement('div');
-        fieldsEl.className = 'fields';
+        this.fieldsEl = document.createElement('div');
+        this.fieldsEl.className = 'fields';
         this._inputEls = {};
-        for (const field of fields) {
-            const row = document.createElement('div');
-            row.className = field.type === 'checkbox' ? 'field-row checkbox-row' : 'field-row';
+        this._fieldRows = {};
 
-            // Label
-            const label = document.createElement('label');
-            label.textContent = field.label + (field.required ? ' *' : '');
-            label.htmlFor = field.name;
+        this._renderFields();
 
-            // Input
-            let input;
-            if (field.type === 'select' && Array.isArray(field.options)) {
-                input = document.createElement('ui-dropdown');
-                input.id = field.name;
-                input.options = field.options.map(opt => ({
-                    value: opt.value,
-                    label: opt.label,
-                    selected: (this._values[field.name] ?? field.default ?? '') === opt.value
-                }));
-                input.value = this._values[field.name] ?? field.default ?? '';
-            } else if (field.type === 'checkbox') {
-                input = document.createElement('ui-checkbox');
-                input.id = field.name;
-                input.checked = !!(this._values[field.name] ?? field.default);
-                row.appendChild(input);
-                row.appendChild(label);
-                this._inputEls[field.name] = input;
-                fieldsEl.appendChild(row);
-                continue;
-            } else {
-                input = document.createElement('input');
-                input.type = field.type === 'password' ? 'password' : 'text';
-                input.id = field.name;
-                input.value = this._values[field.name] ?? field.default ?? '';
-            }
-            row.appendChild(label);
-            row.appendChild(input);
-            this._inputEls[field.name] = input;
-            fieldsEl.appendChild(row);
-        }
-        this.dialog.appendChild(fieldsEl);
+        this.dialog.appendChild(this.fieldsEl);
 
         // Buttons
         const btns = document.createElement('div');
@@ -123,9 +82,95 @@ class EditDialog extends HTMLElement {
         });
     }
 
+    _renderFields() {
+        this.fieldsEl.innerHTML = '';
+        this._inputEls = {};
+        this._fieldRows = {};
+
+        for (const field of this._fields) {
+            // Visibility check
+            if (!this._isFieldVisible(field)) continue;
+
+            const row = document.createElement('div');
+            row.className = field.type === 'checkbox' ? 'field-row checkbox-row' : 'field-row';
+
+            // Label
+            const label = document.createElement('label');
+            label.textContent = field.label + (field.required ? ' *' : '');
+            label.htmlFor = field.name;
+
+            // Input
+            let input;
+            if (field.type === 'select' && Array.isArray(field.options)) {
+                input = document.createElement('ui-dropdown');
+                input.id = field.name;
+                input.options = field.options.map(opt => ({
+                    value: opt.value,
+                    label: opt.label,
+                    selected: (this._values[field.name] ?? field.default ?? '') === opt.value
+                }));
+                input.value = this._values[field.name] ?? field.default ?? '';
+                input.addEventListener('change', () => this._onFieldChange(field.name));
+            } else if (field.type === 'checkbox') {
+                input = document.createElement('ui-checkbox');
+                input.id = field.name;
+                input.checked = !!(this._values[field.name] ?? field.default);
+                input.addEventListener('change', () => this._onFieldChange(field.name));
+                row.appendChild(input);
+                row.appendChild(label);
+                this._inputEls[field.name] = input;
+                this._fieldRows[field.name] = row;
+                this.fieldsEl.appendChild(row);
+                continue;
+            } else {
+                input = document.createElement('input');
+                input.type = field.type === 'password' ? 'password' : 'text';
+                input.id = field.name;
+                input.value = this._values[field.name] ?? field.default ?? '';
+                input.addEventListener('input', () => this._onFieldChange(field.name));
+            }
+            row.appendChild(label);
+            row.appendChild(input);
+            this._inputEls[field.name] = input;
+            this._fieldRows[field.name] = row;
+            this.fieldsEl.appendChild(row);
+        }
+    }
+
+    _onFieldChange(changedFieldName) {
+        // Update values
+        for (const field of this._fields) {
+            const el = this._inputEls[field.name];
+            if (!el) continue;
+            if (field.type === 'checkbox') {
+                this._values[field.name] = el.checked;
+            } else {
+                this._values[field.name] = el.value;
+            }
+        }
+        // Only re-render if the changed field is a checkbox or select
+        const changedField = this._fields.find(f => f.name === changedFieldName);
+        if (changedField && (changedField.type === 'checkbox' || changedField.type === 'select')) {
+            this._renderFields();
+        }
+    }
+
+    _isFieldVisible(field) {
+        if (!field.visibleIf) return true;
+        // visibleIf: { fieldName: value } or function(values) => bool
+        if (typeof field.visibleIf === 'function') {
+            return field.visibleIf(this._values);
+        }
+        if (typeof field.visibleIf === 'object') {
+            return Object.entries(field.visibleIf).every(([dep, val]) => this._values[dep] === val);
+        }
+        return true;
+    }
+
     _collectValues() {
         const result = {};
         for (const field of this._fields) {
+            if (!this._isFieldVisible(field)) continue;
             const el = this._inputEls[field.name];
             if (!el) continue;
             if (field.type === 'checkbox') {
@@ -138,8 +183,9 @@ class EditDialog extends HTMLElement {
     }
 
     _ok() {
-        // Validate required
+        // Validate required (only visible fields)
         for (const field of this._fields) {
+            if (!this._isFieldVisible(field)) continue;
             if (field.required) {
                 const val = this._inputEls[field.name];
                 if (field.type === 'checkbox') continue;
@@ -159,7 +205,6 @@ class EditDialog extends HTMLElement {
     }
 
     _showError(msg) {
-        // Simple error display
         let err = this.shadowRoot.querySelector('.dialog-error');
         if (!err) {
             err = document.createElement('div');
@@ -173,7 +218,6 @@ class EditDialog extends HTMLElement {
 
 customElements.define('edit-dialog', EditDialog);
 
-// Helper function to show dialog and return promise
 window.showEditDialog = function ({ title, fields, values, buttons }) {
     return new Promise(resolve => {
         const dlg = document.createElement('edit-dialog');

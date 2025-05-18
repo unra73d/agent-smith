@@ -14,14 +14,39 @@ class MCPList extends List {
             const fields = [
                 { name: 'name', label: 'MCP name', type: 'text', required: true },
                 {
-                    name: 'type', label: 'Type', type: 'select', required: true, options: [
-                        { vlaue: 'sse', label: 'SSE' },
-                        { vlaue: 'stdio', label: 'stdio' }
+                    name: 'type',
+                    label: 'Type',
+                    type: 'select',
+                    required: true,
+                    options: [
+                        { value: 'sse', label: 'SSE' },
+                        { value: 'stdio', label: 'stdio' }
                     ]
+                },
+                {
+                    name: 'url',
+                    label: 'URL endpoint',
+                    type: 'text',
+                    required: true,
+                    visibleIf: { type: 'sse' }
+                },
+                {
+                    name: 'command',
+                    label: 'Command',
+                    type: 'text',
+                    required: true,
+                    visibleIf: { type: 'stdio' }
+                },
+                {
+                    name: 'args',
+                    label: 'Command arguments',
+                    type: 'text',
+                    required: true,
+                    visibleIf: { type: 'stdio' }
                 }
-            ]
-            let res = await showEditDialog({ title: 'New MCP server', fields: fields })
-            console.log(JSON.stringify(res))
+            ];
+            let res = await showEditDialog({ title: 'New MCP server', fields: fields });
+            console.log(JSON.stringify(res));
         });
     }
 
