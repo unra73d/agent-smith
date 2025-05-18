@@ -125,32 +125,21 @@ topTabButtons.forEach(button => {
 });
 
 async function populateModelSelector() {
-    models = await apiListModels()
+    const models = await apiListModels();
     if (models) {
-        modelSelector.innerHTML = '<option value="" disabled>Select a Model</option>';
-        models.sort((a, b) => a.name.localeCompare(b.name));
-
-        let activeModelFound = false;
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.id;
-            option.textContent = model.name;
-            if (!activeModelFound) {
-                option.selected = true;
-                activeModelFound = true;
-            }
-            modelSelector.appendChild(option);
-        });
-
-        // If the active model wasn't in the list or no active model was specified, select the placeholder
-        if (!activeModelFound) {
-            const placeholder = modelSelector.querySelector('option[disabled]');
-            if (placeholder) {
-                placeholder.selected = true;
-            }
-        }
+        const options = [
+            { value: '', label: 'Select a Model', disabled: true, selected: true },
+            ...models.sort((a, b) => a.name.localeCompare(b.name)).map((model, idx) => ({
+                value: model.id,
+                label: model.name,
+                selected: idx === 0
+            }))
+        ];
+        modelSelector.options = options;
     } else {
-        modelSelector.innerHTML = '<option value="" disabled selected>Error loading models</option>';
+        modelSelector.options = [
+            { value: '', label: 'Error loading models', disabled: true, selected: true }
+        ];
     }
 }
 
@@ -158,37 +147,22 @@ function getSelectedModelId() {
     return modelSelector.value;
 }
 
-function getSelectedRoleId() {
-    return roleSelector.value;
-}
-
 async function populateRoleSelector() {
-    const roles = await apiListRoles()
+    const roles = await apiListRoles();
     if (roles && roles.length > 0) {
-        roleSelector.innerHTML = '<option value="" disabled>Select a Role</option>';
-        roles.sort((a, b) => a.name.localeCompare(b.name));
-
-        let activeRoleFound = false;
-        roles.forEach(role => {
-            const option = document.createElement('option');
-            option.value = role.id;
-            option.textContent = role.name;
-            if (!activeRoleFound) {
-                option.selected = true;
-                activeRoleFound = true;
-            }
-            roleSelector.appendChild(option);
-        });
-
-        // If the active role wasn't in the list or no active role was specified, select the placeholder
-        if (!activeRoleFound) {
-            const placeholder = roleSelector.querySelector('option[disabled]');
-            if (placeholder) {
-                placeholder.selected = true;
-            }
-        }
+        const options = [
+            { value: '', label: 'Select a Role', disabled: true, selected: true },
+            ...roles.sort((a, b) => a.name.localeCompare(b.name)).map((role, idx) => ({
+                value: role.id,
+                label: role.name,
+                selected: idx === 0
+            }))
+        ];
+        roleSelector.options = options;
     } else {
-        roleSelector.innerHTML = '<option value="" disabled selected>Default role</option>';
+        roleSelector.options = [
+            { value: '', label: 'Default role', disabled: true, selected: true }
+        ];
     }
 }
 

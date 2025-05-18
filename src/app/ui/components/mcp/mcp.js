@@ -10,6 +10,19 @@ class MCPList extends List {
         this.shadowRoot.appendChild(styles);
 
         document.addEventListener('storage:mcps', e => this.items = e.detail);
+        document.addEventListener('mcps:new', async e => {
+            const fields = [
+                { name: 'name', label: 'MCP name', type: 'text', required: true },
+                {
+                    name: 'type', label: 'Type', type: 'select', required: true, options: [
+                        { vlaue: 'sse', label: 'SSE' },
+                        { vlaue: 'stdio', label: 'stdio' }
+                    ]
+                }
+            ]
+            let res = await showEditDialog({ title: 'New MCP server', fields: fields })
+            console.log(JSON.stringify(res))
+        });
     }
 
     getItem(data) {

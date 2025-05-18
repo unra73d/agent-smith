@@ -19,14 +19,8 @@
                 <button class="top-tab-button img-button" data-tab="tab4" title="Models">&#xe044;</button>
                 <button class="top-tab-button img-button" data-tab="tab5" title="Roles">&#xe057;</button>
             </div>
-            <select id="modelSelector" class="model-selector">
-                <option value="" disabled selected>Select a Model</option>
-                <!-- Model options will be populated here -->
-            </select>
-            <select id="roleSelector" class="role-selector">
-                <option value="" disabled selected>Select a Role</option>
-                <!-- Role options will be populated here -->
-            </select>
+            <ui-dropdown id="modelSelector" class="model-selector"></ui-dropdown>
+            <ui-dropdown id="roleSelector" class="role-selector"></ui-dropdown>
         </div>
 
         <!-- Content Area (Side Panel + Main Chat) -->
@@ -53,7 +47,8 @@
                     </div>
                     <div id="tab3" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">MCP servers & tools</span>
+                            <span class="tab-content-title">MCP servers & tools<span class="header-controls img-button"
+                                    onclick="sendEvent('mcps:new')">&#xe035;</span></span>
                         </div>
                         <div class="mcp-list"><mcp-list></mcp-list></div>
                     </div>
@@ -86,13 +81,19 @@
 
     <script src="marked.min.js"></script>
     <script src="highlight.min.js"></script>
+
     <script src="util.js"></script>
+    <script src="api.js"></script>
+
     <script src="components/checkbox/checkbox.js"></script>
+    <script src="components/edit-dialog/edit-dialog.js"></script>
+    <script src="components/dropdown/dropdown.js"></script>
+
     <script src="components/list/list.js"></script>
     <script src="components/mcp/mcp.js"></script>
-    <script src="api.js"></script>
     <script src="components/chat/chat.js"></script>
     <script src="components/sessions/sessions.js"></script>
+
     <script src="agents.js"></script>
     <script src="app.js"></script>
 </body>

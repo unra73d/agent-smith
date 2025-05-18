@@ -56,7 +56,10 @@ body {
 
         &.active {
             border-bottom: 1px solid #e3e3e3;
-            img {filter: sepia(0%) saturate(749%) hue-rotate(205deg) brightness(95%) contrast(86%);}
+
+            img {
+                filter: sepia(0%) saturate(749%) hue-rotate(205deg) brightness(95%) contrast(86%);
+            }
         }
     }
 
@@ -64,33 +67,8 @@ body {
     .role-selector {
         min-width: 150px;
         padding: 8px 12px;
-        background-color: #313335;
-        color: #e3e3e3;
-        border: 1px solid #3c4043;
-        border-radius: 6px;
         margin-left: auto;
         margin-right: auto;
-        font-family: inherit;
-        font-size: 0.8em;
-        cursor: pointer;
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23e3e3e3' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 10px center;
-        background-size: 16px 16px;
-
-        &:disabled {
-            color: #888a8f;
-            background-color: #2a2b2d;
-            cursor: default;
-        }
-
-        option {
-            background-color: #313335;
-            color: #e3e3e3;
-        }
     }
 }
 
@@ -141,12 +119,21 @@ body {
                     border-bottom: 1px solid #3c4043;
 
                     .tab-content-title {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        width: 100%;
                         font-weight: 100;
                         font-size: 0.8em;
                         color: #858e94;
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
+
+                        .header-controls {
+                            margin-left: auto;
+                            cursor: pointer;
+                        }
                     }
                 }
 
@@ -162,7 +149,7 @@ body {
                     margin-right: 5px;
                 }
 
-                .reload-icon{
+                .reload-icon {
                     margin-left: auto;
                 }
 
@@ -210,22 +197,27 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black */
+    background-color: rgba(0, 0, 0, 0.6);
+    /* Semi-transparent black */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Ensure it's on top */
+    z-index: 1000;
+    /* Ensure it's on top */
 }
 
 .confirm-dialog {
-    background-color: #1e1f20; /* Dark background like panels */
+    background-color: #1e1f20;
+    /* Dark background like panels */
     padding: 25px;
     border-radius: 8px;
-    border: 1px solid #3c4043; /* Subtle border */
+    border: 1px solid #3c4043;
+    /* Subtle border */
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     text-align: center;
     max-width: 400px;
-    color: #e3e3e3; /* Light text */
+    color: #e3e3e3;
+    /* Light text */
 }
 
 .confirm-dialog p {
@@ -246,7 +238,8 @@ body {
 }
 
 #confirmYes {
-    background-color: #8ab4f8; /* Similar to Send button */
+    background-color: #8ab4f8;
+    /* Similar to Send button */
     color: #131314;
 }
 
@@ -255,7 +248,8 @@ body {
 }
 
 #confirmNo {
-    background-color: #5f6368; /* Greyish */
+    background-color: #5f6368;
+    /* Greyish */
     color: #e3e3e3;
 }
 
