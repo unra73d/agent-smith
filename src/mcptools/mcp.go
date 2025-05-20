@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"os"
 	"sync"
 
@@ -95,10 +96,10 @@ func LoadMCPServers() []*MCPServer {
 				mcpServer.Args = make([]string, 0)
 			}
 
-			mcpServer.LoadTools()
-
-			// Append the successfully loaded MCP server to the slice
-			mcpServers = append(mcpServers, &mcpServer)
+			err = mcpServer.LoadTools()
+			if err == nil {
+				mcpServers = append(mcpServers, &mcpServer)
+			}
 		}()
 	}
 
@@ -112,7 +113,8 @@ func (self *MCPServer) Save() (err error) {
 	log.D("Saving MCP server to ", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
 
-	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	var db *sql.DB
+	db, err = sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
 	log.CheckE(err, nil, "Failed to open DB")
 	defer db.Close()
 
@@ -155,7 +157,8 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 
 	ctx, cancel = context.WithCancel(context.Background())
 	if self.Transport == MCPTransportSSE {
-		sseTransport, err := transport.NewSSE(self.URL)
+		var sseTransport *transport.SSE
+		sseTransport, err = transport.NewSSE(self.URL)
 		log.CheckE(err, nil, "failed to create sse transport")
 
 		err = sseTransport.Start(ctx)
@@ -163,10 +166,15 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 
 		c = client.NewClient(sseTransport)
 	} else {
-		stdioTransport := transport.NewStdio(self.Command, nil, self.Args...)
-		err := stdioTransport.Start(ctx)
-		log.CheckE(err, nil, "failed to start stdio transport")
-		c = client.NewClient(stdioTransport)
+		if len(self.Command) > 0 {
+			stdioTransport := transport.NewStdio(self.Command, nil, self.Args...)
+			err = stdioTransport.Start(ctx)
+			log.CheckE(err, nil, "failed to start stdio transport")
+			c = client.NewClient(stdioTransport)
+		} else {
+			err = errors.New("bad stdio command")
+			log.CheckE(err, nil, "bad stdio command")
+		}
 	}
 
 	initRequest := mcp.InitializeRequest{}
@@ -182,12 +190,15 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 	return
 }
 
-func (self *MCPServer) LoadTools() {
+func (self *MCPServer) LoadTools() (err error) {
 	defer logger.BreakOnError()
 
-	ctx, cancel, c, err := self.connect()
-	defer cancel()
+	var ctx context.Context
+	var cancel context.CancelFunc
+	var c *client.Client
+	ctx, cancel, c, err = self.connect()
 	log.CheckE(err, nil, "failed to connect to MCP")
+	defer cancel()
 
 	toolsRequest := mcp.ListToolsRequest{}
 	mcpTools, err := c.ListTools(ctx, toolsRequest)
@@ -231,12 +242,16 @@ func (self *MCPServer) LoadTools() {
 			Server:         self,
 		})
 	}
+	return
 }
 
 func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, err error) {
 	defer logger.BreakOnError()
 
-	ctx, cancel, c, err := self.connect()
+	var ctx context.Context
+	var cancel context.CancelFunc
+	var c *client.Client
+	ctx, cancel, c, err = self.connect()
 	defer cancel()
 	log.CheckE(err, nil, "failed to connect to MCP")
 
@@ -262,4 +277,10 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 	}
 
 	return
+}
+
+func (self *MCPServer) Test() bool {
+	res := self.LoadTools()
+
+	return res == nil
 }

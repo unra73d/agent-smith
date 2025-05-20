@@ -268,6 +268,29 @@ func listMCPServersHandler(c *gin.Context) {
 }
 
 /*
+Test MCP server connectivity
+*/
+var testMCPServerURI = "/mcp/test"
+
+type testMCPServerReq struct {
+	Name    string `json:"name" binding:"required"`
+	Type    string `json:"type" binding:"required"`
+	URL     string `json:"url,omitempty"`
+	Command string `json:"command,omitempty"`
+	Args    string `json:"args,omitempty"`
+}
+
+func tedtMCPServerHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req testMCPServerReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)})
+}
+
+/*
 SSE connection for receiving server updates. It implements following events:
 - session_update:{date, summary}
 - new_message:{origin, text}
@@ -320,6 +343,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listRolesURI, listRolesHandler)
 
 		group.GET(listMCPServersURI, listMCPServersHandler)
+		group.POST(testMCPServerURI, tedtMCPServerHandler)
 
 		group.GET(sseURI, sseHandler)
 	}

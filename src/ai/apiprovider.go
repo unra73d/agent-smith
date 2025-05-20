@@ -292,7 +292,8 @@ func (self *OpenAIProvider) ChatCompletionStream(
 		body["tools"] = prepareTools(tools)
 	}
 
-	bodyJSON, err := json.Marshal(body)
+	var bodyJSON []byte
+	bodyJSON, err = json.Marshal(body)
 	log.CheckE(err, nil, "failed to marshal request body")
 
 	log.D(string(bodyJSON))

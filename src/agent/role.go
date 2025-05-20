@@ -83,7 +83,8 @@ func (self *Role) Save() (err error) {
 	log.D("Saving role to ", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
 
-	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	var db *sql.DB
+	db, err = sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
 	log.CheckE(err, nil, "Failed to open DB")
 	defer db.Close()
 

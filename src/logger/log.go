@@ -4,7 +4,9 @@
 // The package includes helper functions for checking errors and potentially panicking.
 package logger
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // DEBUG controls the global enablement of debug level logging.
 // Set to 1 to enable, 0 to disable. Affects log printouts only.

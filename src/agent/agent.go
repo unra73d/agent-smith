@@ -8,6 +8,8 @@ import (
 	"agentsmith/src/mcptools"
 	"errors"
 	"sync"
+
+	"github.com/google/shlex"
 )
 
 var log = logger.Logger("agent", 1, 1, 1)
@@ -178,6 +180,24 @@ func TruncateSession(sessionID string, messageID string) error {
 	}
 	log.E("trying to delete non existing message", sessionID, messageID)
 	return errors.New("message not found")
+}
+
+func TestMCPServer(Name string, Type string, URL string, Command string, Args string) (res bool) {
+	res = false
+	defer logger.BreakOnError()
+
+	argArray, err := shlex.Split(Args)
+	log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
+
+	mcp := &mcptools.MCPServer{
+		Name:      Name,
+		Transport: mcptools.MCPTransport(Type),
+		URL:       URL,
+		Command:   Command,
+		Args:      argArray,
+	}
+
+	return mcp.Test()
 }
 
 func findModel(modelID string) *ai.Model {

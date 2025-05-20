@@ -14,17 +14,25 @@ class EditDialog extends HTMLElement {
         this.dialog.className = 'dialog';
         this.shadowRoot.appendChild(this.dialog);
 
+        // Error/Status area
+        this.statusEl = document.createElement('div');
+        this.statusEl.className = 'dialog-status';
+        this.statusEl.style.cssText = 'min-height:1.2em;margin-bottom:6px;font-size:0.98em;';
+        this.dialog.appendChild(this.statusEl);
+
         this.addEventListener('mousedown', e => {
             if (e.target !== this) this._cancel();
         });
     }
 
-    open({ title = 'Edit', fields = [], values = {}, buttons = [] }) {
+    open({ title = 'Edit', fields = [], values = {}, buttons = [], validate = null }) {
         this._fields = fields;
         this._values = { ...values };
         this._customButtons = buttons;
+        this._validate = validate;
 
         this.dialog.innerHTML = '';
+        this.dialog.appendChild(this.statusEl); // Always at the top
 
         // Title
         const titleEl = document.createElement('div');
@@ -46,13 +54,20 @@ class EditDialog extends HTMLElement {
         const btns = document.createElement('div');
         btns.className = 'dialog-buttons';
 
+        // Helper for status
+        const setStatus = (msg, isError = false) => {
+            this.statusEl.textContent = msg || '';
+            this.statusEl.style.color = isError ? '#ff9800' : '#e3e3e3';
+        };
+        this._setStatus = setStatus;
+
         // Custom buttons
         for (const btn of buttons) {
             const b = document.createElement('button');
             b.textContent = btn.name;
             b.onclick = async () => {
                 const values = this._collectValues();
-                await btn.onClick?.(values, this);
+                await btn.onClick?.(values, this, setStatus);
             };
             btns.appendChild(b);
         }
@@ -190,9 +205,17 @@ class EditDialog extends HTMLElement {
                 const val = this._inputEls[field.name];
                 if (field.type === 'checkbox') continue;
                 if (!val || !val.value) {
-                    this._showError(`Field "${field.label}" is required`);
+                    this._setStatus(`Field "${field.label}" is required`, true);
                     return;
                 }
+            }
+        }
+        // Custom validation
+        if (typeof this._validate === 'function') {
+            const err = this._validate(this._collectValues());
+            if (err) {
+                this._setStatus(err, true);
+                return;
             }
         }
         this._resolve(this._collectValues());
@@ -218,10 +241,10 @@ class EditDialog extends HTMLElement {
 
 customElements.define('edit-dialog', EditDialog);
 
-window.showEditDialog = function ({ title, fields, values, buttons }) {
+window.showEditDialog = function ({ title, fields, values, buttons, validate }) {
     return new Promise(resolve => {
         const dlg = document.createElement('edit-dialog');
         document.body.appendChild(dlg);
-        dlg.open({ title, fields, values, buttons }).then(resolve);
+        dlg.open({ title, fields, values, buttons, validate }).then(resolve);
     });
 };

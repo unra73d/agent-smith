@@ -10,44 +10,82 @@ class MCPList extends List {
         this.shadowRoot.appendChild(styles);
 
         document.addEventListener('storage:mcps', e => this.items = e.detail);
-        document.addEventListener('mcps:new', async e => {
-            const fields = [
-                { name: 'name', label: 'MCP name', type: 'text', required: true },
-                {
-                    name: 'type',
-                    label: 'Type',
-                    type: 'select',
-                    required: true,
-                    options: [
-                        { value: 'sse', label: 'SSE' },
-                        { value: 'stdio', label: 'stdio' }
-                    ]
-                },
-                {
-                    name: 'url',
-                    label: 'URL endpoint',
-                    type: 'text',
-                    required: true,
-                    visibleIf: { type: 'sse' }
-                },
-                {
-                    name: 'command',
-                    label: 'Command',
-                    type: 'text',
-                    required: true,
-                    visibleIf: { type: 'stdio' }
-                },
-                {
-                    name: 'args',
-                    label: 'Command arguments',
-                    type: 'text',
-                    required: true,
-                    visibleIf: { type: 'stdio' }
+        document.addEventListener('mcps:new', async e => { this.onNewMCP() });
+    }
+
+    async onNewMCP() {
+        const existingNames = (this.items || []).map(item => item.name);
+
+        const fields = [
+            { name: 'name', label: 'MCP name', type: 'text', required: true },
+            {
+                name: 'type',
+                label: 'Type',
+                type: 'select',
+                required: true,
+                options: [
+                    { value: 'sse', label: 'SSE' },
+                    { value: 'stdio', label: 'stdio' }
+                ]
+            },
+            {
+                name: 'url',
+                label: 'URL endpoint',
+                type: 'text',
+                required: true,
+                visibleIf: { type: 'sse' }
+            },
+            {
+                name: 'command',
+                label: 'Command',
+                type: 'text',
+                required: true,
+                visibleIf: { type: 'stdio' }
+            },
+            {
+                name: 'args',
+                label: 'Command arguments',
+                type: 'text',
+                required: false,
+                visibleIf: { type: 'stdio' }
+            }
+        ];
+
+        const validate = values => {
+            if (existingNames.includes(values.name)) {
+                return 'MCP name must be unique';
+            }
+        };
+
+        const buttons = [
+            {
+                name: 'Test MCP',
+                onClick: async (values, dialog, setStatus) => {
+                    setStatus('Testing MCP...', false);
+                    try {
+                        const ok = await apiMCPTest(values);
+                        if (ok) {
+                            setStatus('MCP test successful!', false);
+                        } else {
+                            setStatus('MCP test failed.', true);
+                        }
+                    } catch (err) {
+                        setStatus('Error testing MCP: ' + (err.message || err), true);
+                    }
                 }
-            ];
-            let res = await showEditDialog({ title: 'New MCP server', fields: fields });
-            console.log(JSON.stringify(res));
+            }
+        ];
+
+        let res = await showEditDialog({
+            title: 'New MCP server',
+            fields,
+            validate,
+            buttons
         });
+
+        if (res) {
+            await apiMCPCreate(res);
+        }
     }
 
     getItem(data) {
