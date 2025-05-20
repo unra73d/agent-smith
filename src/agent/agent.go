@@ -200,6 +200,32 @@ func TestMCPServer(Name string, Type string, URL string, Command string, Args st
 	return mcp.Test()
 }
 
+func CreateMCPServer(Name string, Type string, URL string, Command string, Args string) (err error) {
+	defer logger.BreakOnError()
+
+	argArray, err := shlex.Split(Args)
+	log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
+
+	mcp := &mcptools.MCPServer{
+		Name:      Name,
+		Transport: mcptools.MCPTransport(Type),
+		URL:       URL,
+		Command:   Command,
+		Args:      argArray,
+	}
+	err = mcp.LoadTools()
+	log.CheckE(err, nil, "failed to load MCP server")
+
+	mcp.Save()
+	Agent.mcps = append(Agent.mcps, mcp)
+	sseCh <- &SSEMessage{
+		Type: SSEMessageMCPListUpdate,
+		Data: Agent.mcps,
+	}
+
+	return
+}
+
 func findModel(modelID string) *ai.Model {
 	for _, provider := range Agent.apiProviders {
 		for _, model := range provider.Models() {

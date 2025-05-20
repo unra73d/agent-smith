@@ -1,3 +1,4 @@
+'use strict'
 const tabContents = document.querySelectorAll('.tab-content');
 const contentArea = document.querySelector('.content-area');
 const modelSelector = document.getElementById('modelSelector');
@@ -30,8 +31,8 @@ document.addEventListener('sessions:reload', async (e) => {
     }
 })
 
-document.addEventListener('mcp:reload', async (e) => {
-    let mcps = await apiListMCPServers()
+document.addEventListener('mcp:reloaded', async (e) => {
+    let mcps = e.detail
     if (mcps && mcps.length > 0) {
         for (let i in mcps) {
             mcps[i].active = true
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sendEvent('sessions:reload')
 
     document.querySelectorAll('mcp-list').forEach(list => list.items.data = Storage.mcps)
-    sendEvent('mcp:reload')
+    apiListMCPServers().then(res=>sendEvent('mcp:reloaded', res))
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');

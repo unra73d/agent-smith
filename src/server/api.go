@@ -280,7 +280,7 @@ type testMCPServerReq struct {
 	Args    string `json:"args,omitempty"`
 }
 
-func tedtMCPServerHandler(c *gin.Context) {
+func testMCPServerHandler(c *gin.Context) {
 	defer logger.BreakOnError()
 
 	var req testMCPServerReq
@@ -288,6 +288,29 @@ func tedtMCPServerHandler(c *gin.Context) {
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
 	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)})
+}
+
+/*
+Create new MCP server
+*/
+var createMCPServerURI = "/mcp/create"
+
+type createMCPServerReq struct {
+	Name    string `json:"name" binding:"required"`
+	Type    string `json:"type" binding:"required"`
+	URL     string `json:"url,omitempty"`
+	Command string `json:"command,omitempty"`
+	Args    string `json:"args,omitempty"`
+}
+
+func createMCPServerHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req createMCPServerReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	c.JSON(200, map[string]any{"error": agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)})
 }
 
 /*
@@ -343,7 +366,8 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listRolesURI, listRolesHandler)
 
 		group.GET(listMCPServersURI, listMCPServersHandler)
-		group.POST(testMCPServerURI, tedtMCPServerHandler)
+		group.POST(testMCPServerURI, testMCPServerHandler)
+		group.POST(createMCPServerURI, createMCPServerHandler)
 
 		group.GET(sseURI, sseHandler)
 	}

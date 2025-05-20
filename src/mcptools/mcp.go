@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
@@ -184,8 +185,18 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 		Version: "1.0.0",
 	}
 
+	initDoneCh := make(chan int)
+	go func() {
+		select {
+		case <-initDoneCh:
+		case <-time.After(60 * time.Second):
+			cancel()
+		}
+	}()
+
 	_, err = c.Initialize(ctx, initRequest)
-	log.CheckE(err, nil, "Failed to initialize MCP request")
+	log.CheckE(err, func() { cancel() }, "Failed to initialize MCP request")
+	initDoneCh <- 0
 
 	return
 }

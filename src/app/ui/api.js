@@ -248,6 +248,32 @@ async function apiMCPTest(mcp) {
     }
 }
 
+async function apiMCPCreate(mcp) {
+    try {
+        const response = await fetch('http://localhost:8008/agent/mcp/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(mcp)
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data) {
+            return data
+        } else {
+            console.error("Invalid data structure received for mcp servers:", data);
+            return null
+        }
+    } catch (error) {
+        console.error("Failed to list mcp servers:", error);
+        return null
+    }
+}
+
 async function apiAgentConnect() {
     var stream = new EventSource('http://localhost:8008/agent/sse');
 
@@ -323,6 +349,7 @@ async function apiAgentConnect() {
     stream.addEventListener('mcp_list_update', function (event) {
         try {
             const parsedData = JSON.parse(event.data);
+            sendEvent('mcp:reloaded', parsedData)
         } catch { }
     });
 }
