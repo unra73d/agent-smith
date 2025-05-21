@@ -83,7 +83,8 @@ class ChatView extends HTMLElement {
             await loadCSS('global.css'),
             await loadCSS('components/chat/chat.css'),
             await loadCSS('components/chat/syntax-theme.min.css')
-        ];
+        ]
+        this.scrollToBottom()
     }
 
     onLastMessageUpdate(sessionId) {
@@ -265,10 +266,6 @@ class ChatView extends HTMLElement {
 
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
-    }
-
-    deleteMessage(messageElement) {
-        // messageElement.remove();
     }
 
     async sendMessageStreaming() {
