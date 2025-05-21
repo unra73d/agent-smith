@@ -1,16 +1,10 @@
 'use strict'
 
+
 class SessionList extends HTMLElement {
     constructor() {
         super()
         const shadowRoot = this.attachShadow({ mode: 'open' })
-
-        const styles = document.createElement('style');
-        styles.innerHTML = `
-        @import url('global.css');
-        @import url('components/sessions/sessions.css');
-        `
-        shadowRoot.appendChild(styles);
 
         this.list = document.createElement('div')
         shadowRoot.appendChild(this.list)
@@ -23,6 +17,14 @@ class SessionList extends HTMLElement {
         document.addEventListener('storage:sessions', e => this.updateList())
         document.addEventListener('session:update', e => this.updateList())
         document.addEventListener('storage:current-session', e => this.updateSessionHighlight())
+        this._initStyle()
+    }
+
+    async _initStyle() {
+        this.shadowRoot.adoptedStyleSheets = [
+            await loadCSS('global.css'),
+            await loadCSS('components/sessions/sessions.css')
+        ];
     }
 
     updateList() {

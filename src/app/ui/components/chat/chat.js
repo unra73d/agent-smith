@@ -10,11 +10,6 @@ class ChatView extends HTMLElement {
         const shadowRoot = this.attachShadow({ mode: 'open' })
 
         this.shadowRoot.innerHTML = `
-        <style>
-            @import url('global.css');
-            @import url('components/chat/chat.css');
-            @import url('components/chat/syntax-theme.min.css');
-        </style>
         <div class="chat-view">
         </div>
         <div class="chat-input-area">
@@ -80,6 +75,15 @@ class ChatView extends HTMLElement {
         });
 
         this.cancelButton.addEventListener('click', e => { sendEvent('loading:generation-cancel', { sessionId: this.chatSession.id }) })
+        this._initStyle()
+    }
+
+    async _initStyle() {
+        this.shadowRoot.adoptedStyleSheets = [
+            await loadCSS('global.css'),
+            await loadCSS('components/chat/chat.css'),
+            await loadCSS('components/chat/syntax-theme.min.css')
+        ];
     }
 
     onLastMessageUpdate(sessionId) {

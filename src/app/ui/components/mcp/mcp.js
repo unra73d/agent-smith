@@ -1,17 +1,21 @@
+
+
 class MCPList extends List {
     constructor() {
         super();
         this.testMCPController = null
 
-        const styles = document.createElement('style');
-        styles.innerHTML = `
-        @import url('global.css');
-        @import url('components/mcp/mcp.css');
-        `
-        this.shadowRoot.appendChild(styles);
-
         document.addEventListener('storage:mcps', e => this.items = e.detail);
         document.addEventListener('mcps:new', async e => { this.onNewMCP() });
+        this._initStyle()
+    }
+
+    async _initStyle() {
+        await super._initStyle()
+        this.shadowRoot.adoptedStyleSheets = [
+            ...this.shadowRoot.adoptedStyleSheets,
+            await loadCSS('components/mcp/mcp.css')
+        ];
     }
 
     async onNewMCP() {
@@ -108,8 +112,7 @@ class MCPList extends List {
 
         item.innerHTML = `
             <div class="item-header">
-                <ui-checkbox class="select-all-checkbox" ${data.active ? 'checked' : ''}></ui-checkbox>
-                <span class="header-text">${data.name}</span>
+                <ui-checkbox class="select-all-checkbox" label="${data.name}" ${data.active ? 'checked' : ''}></ui-checkbox>
                 <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">&#xe053;</div>
             </div>
             <div class="item-content"></div>

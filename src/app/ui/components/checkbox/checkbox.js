@@ -1,15 +1,7 @@
-// Checkbox web component
 class Checkbox extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-
-        const style = document.createElement('style');
-        style.textContent = `
-        @import url('global.css');
-        @import url('components/checkbox/checkbox.css');
-        `;
-        this.shadowRoot.appendChild(style);
 
         this.checkbox = document.createElement('input');
         this.checkbox.type = 'checkbox';
@@ -26,6 +18,15 @@ class Checkbox extends HTMLElement {
                 detail: { checked: this.checkbox.checked }
             }));
         });
+
+        this._initStyle()
+    }
+
+    async _initStyle() {
+        this.shadowRoot.adoptedStyleSheets = [
+            await loadCSS('global.css'),
+            await loadCSS('components/checkbox/checkbox.css')
+        ];
     }
 
     static get observedAttributes() {

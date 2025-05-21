@@ -249,4 +249,31 @@ function deepMonitor(obj, propName, eventName) {
     });
 }
 
+async function loadCSS(url) {
+    if (!loadCSS.cache) {
+        loadCSS.cache = {};
+    }
+
+    if (loadCSS.cache[url]) {
+        return loadCSS.cache[url];
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to load CSS from ${url}: ${response.status}`);
+        }
+        const text = await response.text();
+        const sheet = new CSSStyleSheet();
+        sheet.replace(text);
+        loadCSS.cache[url] = sheet;
+        return sheet;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+// const gStyleSheet = await loadCSS('global.css')
+
 initShortcuts();

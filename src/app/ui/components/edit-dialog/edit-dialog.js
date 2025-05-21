@@ -1,14 +1,9 @@
+
+
 class EditDialog extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-
-        const style = document.createElement('style');
-        style.textContent = `
-            @import url('global.css');
-            @import url('components/edit-dialog/edit-dialog.css');
-        `;
-        this.shadowRoot.appendChild(style);
 
         this.dialog = document.createElement('div');
         this.dialog.className = 'dialog';
@@ -23,6 +18,14 @@ class EditDialog extends HTMLElement {
         this.addEventListener('mousedown', e => {
             if (e.target !== this) this._cancel();
         });
+        this._initStyle()
+    }
+
+    async _initStyle() {
+        this.shadowRoot.adoptedStyleSheets = [
+            await loadCSS('global.css'),
+            await loadCSS('components/edit-dialog/edit-dialog.css')
+        ];
     }
 
     open({ title = 'Edit', fields = [], values = {}, buttons = [], validate = null, onClose = null }) {
