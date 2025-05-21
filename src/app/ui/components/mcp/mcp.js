@@ -1,6 +1,7 @@
 class MCPList extends List {
     constructor() {
         super();
+        this.testMCPController = null
 
         const styles = document.createElement('style');
         styles.innerHTML = `
@@ -61,13 +62,21 @@ class MCPList extends List {
             {
                 name: 'Test MCP',
                 onClick: async (values, dialog, setStatus) => {
+                    if (this.testMCPController) {
+                        this.testMCPController.abort()
+                        this.testMCPController = null
+                    }
+                    this.testMCPController = new AbortController();
+
                     setStatus('Testing MCP...', false);
                     try {
-                        const ok = await apiMCPTest(values);
-                        if (ok) {
-                            setStatus('MCP test successful!', false);
-                        } else {
-                            setStatus('MCP test failed.', true);
+                        const ok = await apiMCPTest(values, this.testMCPController.signal);
+                        if (ok != 'canceled') {
+                            if (ok) {
+                                setStatus('MCP test successful!', false);
+                            } else {
+                                setStatus('MCP test failed.', true);
+                            }
                         }
                     } catch (err) {
                         setStatus('Error testing MCP: ' + (err.message || err), true);
@@ -80,7 +89,13 @@ class MCPList extends List {
             title: 'New MCP server',
             fields,
             validate,
-            buttons
+            buttons,
+            onClose: () => {
+                if (this.testMCPController) {
+                    this.testMCPController.abort()
+                    this.testMCPController = null
+                }
+            }
         });
 
         if (res) {

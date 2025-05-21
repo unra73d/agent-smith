@@ -222,29 +222,23 @@ async function apiListMCPServers() {
     }
 }
 
-async function apiMCPTest(mcp) {
+async function apiMCPTest(mcp, signal) {
     try {
         const response = await fetch('http://localhost:8008/agent/mcp/test', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(mcp)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(mcp),
+            signal
         });
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-
-        if (data) {
-            return data.response
-        } else {
-            console.error("Invalid data structure received for mcp servers:", data);
-            return null
-        }
+        return data ? data.response : null;
     } catch (error) {
-        console.error("Failed to list mcp servers:", error);
-        return null
+        if (error.name === 'AbortError') {
+            return 'canceled'
+        }
+        console.error("Failed to test mcp servers:", error);
+        return null;
     }
 }
 

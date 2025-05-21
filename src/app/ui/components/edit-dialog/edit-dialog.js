@@ -25,11 +25,12 @@ class EditDialog extends HTMLElement {
         });
     }
 
-    open({ title = 'Edit', fields = [], values = {}, buttons = [], validate = null }) {
+    open({ title = 'Edit', fields = [], values = {}, buttons = [], validate = null, onClose = null }) {
         this._fields = fields;
         this._values = { ...values };
         this._customButtons = buttons;
         this._validate = validate;
+        this._onClose = onClose;
 
         this.dialog.innerHTML = '';
         this.dialog.appendChild(this.statusEl); // Always at the top
@@ -103,6 +104,20 @@ class EditDialog extends HTMLElement {
         this._fieldRows = {};
 
         for (const field of this._fields) {
+            if (field.type === 'select' && Array.isArray(field.options)) {
+                if (this._values[field.name] === undefined) {
+                    if (field.default !== undefined) {
+                        this._values[field.name] = field.default;
+                    } else if (field.options.length > 0) {
+                        this._values[field.name] = field.options[0].value;
+                    } else {
+                        this._values[field.name] = '';
+                    }
+                }
+            }
+        }
+
+        for (const field of this._fields) {
             // Visibility check
             if (!this._isFieldVisible(field)) continue;
 
@@ -119,12 +134,13 @@ class EditDialog extends HTMLElement {
             if (field.type === 'select' && Array.isArray(field.options)) {
                 input = document.createElement('ui-dropdown');
                 input.id = field.name;
+                let initialValue = this._values[field.name];
                 input.options = field.options.map(opt => ({
                     value: opt.value,
                     label: opt.label,
-                    selected: (this._values[field.name] ?? field.default ?? '') === opt.value
+                    selected: initialValue === opt.value
                 }));
-                input.value = this._values[field.name] ?? field.default ?? '';
+                input.value = initialValue;
                 input.addEventListener('change', () => this._onFieldChange(field.name));
             } else if (field.type === 'checkbox') {
                 input = document.createElement('ui-checkbox');
@@ -219,11 +235,13 @@ class EditDialog extends HTMLElement {
             }
         }
         this._resolve(this._collectValues());
+        if (typeof this._onClose === 'function') this._onClose();
         this.remove();
     }
 
     _cancel() {
         this._resolve(null);
+        if (typeof this._onClose === 'function') this._onClose();
         this.remove();
     }
 
@@ -241,10 +259,10 @@ class EditDialog extends HTMLElement {
 
 customElements.define('edit-dialog', EditDialog);
 
-window.showEditDialog = function ({ title, fields, values, buttons, validate }) {
+window.showEditDialog = function ({ title, fields, values, buttons, validate, onClose }) {
     return new Promise(resolve => {
         const dlg = document.createElement('edit-dialog');
         document.body.appendChild(dlg);
-        dlg.open({ title, fields, values, buttons, validate }).then(resolve);
+        dlg.open({ title, fields, values, buttons, validate, onClose }).then(resolve);
     });
 };
