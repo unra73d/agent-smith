@@ -169,7 +169,6 @@ class EditDialog extends HTMLElement {
     }
 
     _onFieldChange(changedFieldName) {
-        // Update values
         for (const field of this._fields) {
             const el = this._inputEls[field.name];
             if (!el) continue;

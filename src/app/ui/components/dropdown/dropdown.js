@@ -12,8 +12,12 @@ class Dropdown extends HTMLElement {
         `;
         this.shadowRoot.appendChild(style);
 
+        this.wrapper = document.createElement('div');
+        this.wrapper.classList.add('dropdown-wrapper');
+        this.shadowRoot.appendChild(this.wrapper);
+
         this.select = document.createElement('select');
-        this.shadowRoot.appendChild(this.select);
+        this.wrapper.appendChild(this.select);
 
         this.select.addEventListener('change', (e) => {
             this.dispatchEvent(new Event('change', { bubbles: true }));
