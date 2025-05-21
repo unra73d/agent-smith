@@ -9,7 +9,7 @@
     transition: background-color 0.2s ease;
     transition: border 0.2s ease;
 
-    &:hover{
+    &:hover {
         background-color: #2a2b2d;
 
         .delete-icon {
@@ -19,15 +19,15 @@
 
     &.active {
         background-color: #262729;
-        border-left: 3px solid #ffffff;
+        border-left: 1px solid #ffffff;
         padding-left: 7px;
-        border-top-left-radius: 0px;
-        border-bottom-left-radius: 0px;
+        /* border-top-left-radius: 0px;
+        border-bottom-left-radius: 0px; */
     }
 
     .session-summary {
         flex-grow: 1;
-        color: #b3b3b3; /* Make text a bit darker */
+        color: #b3b3b3;
         font-size: 0.95em;
         white-space: nowrap;
         overflow: hidden;

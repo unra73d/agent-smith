@@ -1,105 +1,76 @@
 'use strict'
 
-
-class SessionList extends HTMLElement {
+class SessionList extends List {
     constructor() {
-        super()
-        const shadowRoot = this.attachShadow({ mode: 'open' })
+        super();
 
-        this.list = document.createElement('div')
-        shadowRoot.appendChild(this.list)
+        document.addEventListener('sessions:new', async e => await this.createNewSession());
+        document.addEventListener('sessions:touch', e => this.touch());
 
-        this.createNewSession = this.createNewSession.bind(this)
+        document.addEventListener('storage:sessions', e => this.items = Storage.sessions || []);
+        document.addEventListener('session:update', e => this.items = Storage.sessions || []);
+        document.addEventListener('storage:current-session', e => this.updateSessionHighlight());
 
-        document.addEventListener('sessions:new', async e => await this.createNewSession())
-        document.addEventListener('sessions:touch', e => this.touch())
-
-        document.addEventListener('storage:sessions', e => this.updateList())
-        document.addEventListener('session:update', e => this.updateList())
-        document.addEventListener('storage:current-session', e => this.updateSessionHighlight())
-        this._initStyle()
+        this._initStyle();
     }
 
     async _initStyle() {
+        await super._initStyle();
         this.shadowRoot.adoptedStyleSheets = [
-            await loadCSS('global.css'),
+            ...this.shadowRoot.adoptedStyleSheets,
             await loadCSS('components/sessions/sessions.css')
         ];
     }
 
-    updateList() {
-        console.debug("session list update")
-        if (Storage.sessions && Storage.sessions.length > 0) {
-            this.list.innerHTML = ''
+    getItem(session) {
+        const item = document.createElement('div');
+        item.classList.add('session-item');
+        item.setAttribute("data-id", session.id);
 
-            for (let session of Storage.sessions) {
-                this.appendSession(session)
-            }
-        }
-    }
-
-    appendSession(session, front = false) {
-        const sessionItem = document.createElement('div');
-        sessionItem.classList.add('session-item');
-        sessionItem.setAttribute("data-id", session.id);
         if (Storage.currentSession && session.id == Storage.currentSession.id) {
-            sessionItem.classList.add('active')
+            item.classList.add('active');
         }
 
         const summary = session.summary ? session.summary : 'New chat';
-        sessionItem.innerHTML = `
+        item.innerHTML = `
             <span class="session-summary">${summary}</span>
             <div alt="Delete" class="delete-icon img-button" data-id="${session.id}">&#xe053;</div>
         `;
 
-        if (front) {
-            this.list.insertBefore(sessionItem, this.list.firstChild);
-        } else {
-            this.list.appendChild(sessionItem);
-        }
+        item.querySelector('.delete-icon').addEventListener('click', e => this.handleDeleteSession(e, session.id));
+        item.addEventListener('click', e => this.onItemClick(item, session))
+        return item;
+    }
 
-        sessionItem.addEventListener('click', e => Storage.currentSession = session)
-        sessionItem.querySelector('.delete-icon').addEventListener('click', e => this.handleDeleteSession(e, session.id))
+    onItemClick(item, session) {
+        Storage.currentSession = session;
     }
 
     async handleDeleteSession(e, sessionId) {
-        e.stopPropagation()
-        const currSessionId = Storage.currentSession.id
+        e.stopPropagation();
+        const currSessionId = Storage.currentSession.id;
 
-        // Use the custom confirm dialog
         const confirmed = await confirmDialog('Are you sure you want to delete this chat session? This action cannot be undone.');
-
         if (confirmed) {
-            await apiDeleteSession(sessionId)
+            await apiDeleteSession(sessionId);
 
-            for (let i in Storage.sessions) {
-                if (Storage.sessions[i].id == sessionId) {
-                    Storage.sessions = [...Storage.sessions.slice(0, i), ...Storage.sessions.slice(i + 1)]
-                    break
-                }
-            }
+            Storage.sessions = Storage.sessions.filter(s => s.id !== sessionId);
 
             if (currSessionId == sessionId) {
-                console.log("Deleted the active session. Resetting chat view and connection.");
                 if (Storage.sessions.length == 0) {
-                    this.createNewSession();
+                    await this.createNewSession();
                 } else {
                     Storage.currentSession = Storage.sessions[0];
                 }
-
             }
         }
     }
 
     async createNewSession() {
         const session = await apiCreateSession();
-
         if (session) {
-            console.log("New session created:", session.id);
-
-            Storage.sessions = [session, ...Storage.sessions]
-            Storage.currentSession = session
-
+            Storage.sessions = [session, ...(Storage.sessions || [])];
+            Storage.currentSession = session;
         }
     }
 
@@ -115,37 +86,19 @@ class SessionList extends HTMLElement {
 
     touch() {
         if (Storage.currentSession) {
-            // Find the index of the current session in the sessions array
             const currentIndex = Storage.sessions.findIndex(session => session.id === Storage.currentSession.id);
-
-            // If the current session is not the first in the list
             if (currentIndex > 0) {
-                // Move the current session to the beginning of the sessions array
                 Storage.sessions = [
                     Storage.currentSession,
                     ...Storage.sessions.slice(0, currentIndex),
                     ...Storage.sessions.slice(currentIndex + 1)
                 ];
-
-                // Update the current session's date to now
                 Storage.currentSession.date = new Date().toISOString();
-
-                // Update the session list in the UI
-                for (let i in this.list.children) {
-                    let item = this.list.children[i]
-                    if (item.getAttribute('data-id') === Storage.currentSession.id) {
-                        this.list.removeChild(item)
-                        this.list.insertBefore(item, this.list.firstChild);
-                        break
-                    }
-                }
-
-                // Update the highlight to reflect the new order
+                this.items = Storage.sessions;
                 this.updateSessionHighlight();
             }
         }
     }
 }
 
-customElements.define('session-list', SessionList)
-
+customElements.define('session-list', SessionList);
