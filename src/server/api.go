@@ -126,6 +126,108 @@ func listProvidersHandler(c *gin.Context) {
 }
 
 /*
+Test AI provider connectivity
+*/
+var testProviderURI = "/provider/test"
+
+type testProviderReq struct {
+	Name      string `json:"name" binding:"required"`
+	APIURL    string `json:"url" binding:"required"`
+	APIKey    string `json:"apiKey,omitempty"`
+	RateLimit int    `json:"rateLimit,omitempty"`
+}
+
+func testProviderHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req testProviderReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	c.JSON(200, map[string]any{"response": agent.TesProvider(req.Name, req.APIURL, req.APIKey, req.RateLimit)})
+}
+
+/*
+Update AI Provider
+*/
+var updateProviderURI = "/provider/update"
+
+type updateProviderReq struct {
+	ID        string `json:"id" binding:"required"`
+	Name      string `json:"name" binding:"required"`
+	APIURL    string `json:"url" binding:"required"`
+	APIKey    string `json:"apiKey,omitempty"`
+	RateLimit int    `json:"rateLimit,omitempty"`
+}
+
+func updateProviderHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req updateProviderReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.UpdateProvider(req.ID, req.Name, req.APIURL, req.APIKey, req.RateLimit)
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+/*
+Create AI Provider
+*/
+var createProviderURI = "/provider/create"
+
+type createProviderReq struct {
+	Name      string `json:"name" binding:"required"`
+	APIURL    string `json:"url" binding:"required"`
+	APIKey    string `json:"apiKey,omitempty"`
+	RateLimit int    `json:"rateLimit,omitempty"`
+}
+
+func createProviderHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req createProviderReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.CreateProvider(req.Name, req.APIURL, req.APIKey, req.RateLimit)
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+/*
+Delete provider by id
+*/
+var deleteProviderURI = "/provider/delete/:id"
+
+type DeleteProviderReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func deleteProviderHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req DeleteProviderReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.DeleteProvider(req.ID)
+	if err != nil {
+		c.JSON(500, map[string]any{"error": err})
+	} else {
+		c.JSON(200, map[string]any{"error": nil})
+	}
+
+}
+
+/*
 API for sending message to AI directly and get response via system SSE connection. This call will return when generation ends.
 No tools will be called in response.
 */
@@ -398,6 +500,10 @@ func InitAgentRoutes(router *gin.Engine) {
 
 		group.GET(listModelsURI, listModelsHandler)
 		group.GET(listProvidersURI, listProvidersHandler)
+		group.POST(testProviderURI, testProviderHandler)
+		group.POST(updateProviderURI, updateProviderHandler)
+		group.POST(createProviderURI, createProviderHandler)
+		group.GET(deleteProviderURI, deleteProviderHandler)
 
 		group.POST(directChatStreamURI, directChatStreamHandler)
 		group.POST(dynamicAgentChatURI, dynamicAgentChatHandler)

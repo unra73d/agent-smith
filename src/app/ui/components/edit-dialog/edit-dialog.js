@@ -1,5 +1,3 @@
-
-
 class EditDialog extends HTMLElement {
     constructor() {
         super();
@@ -156,12 +154,78 @@ class EditDialog extends HTMLElement {
                 this._fieldRows[field.name] = row;
                 this.fieldsEl.appendChild(row);
                 continue;
+            } else if (field.type === 'number' && field.integer) {
+                // Custom spinner for integer number fields
+                const wrapper = document.createElement('div');
+                wrapper.className = 'input-spinner-wrapper';
+                input = document.createElement('input');
+                input.type = 'number';
+                input.id = field.name;
+                if (field.min !== undefined) input.min = field.min;
+                if (field.step !== undefined) input.step = field.step;
+                input.value = this._values[field.name] ?? field.default ?? '';
+                input.addEventListener('input', () => {
+                    let val = input.value;
+                    val = val.replace(/[^\d]/g, '');
+                    if (val === '') val = '';
+                    else val = String(Math.max(field.min ?? 0, parseInt(val, 10)));
+                    input.value = val;
+                    this._onFieldChange(field.name);
+                });
+
+                // Spinner arrows
+                const arrows = document.createElement('div');
+                arrows.className = 'input-spinner-arrows';
+
+                const up = document.createElement('div');
+                up.className = 'input-spinner-arrow up img-button';
+                up.tabIndex = 0;
+                up.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    let v = parseInt(input.value || '0', 10);
+                    v = isNaN(v) ? (field.min ?? 0) : v + (field.step ? parseInt(field.step, 10) : 1);
+                    if (field.max !== undefined) v = Math.min(v, field.max);
+                    input.value = String(v);
+                    this._onFieldChange(field.name);
+                });
+
+                const down = document.createElement('div');
+                down.className = 'input-spinner-arrow down img-button';
+                down.tabIndex = 0;
+                down.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    let v = parseInt(input.value || '0', 10);
+                    v = isNaN(v) ? (field.min ?? 0) : v - (field.step ? parseInt(field.step, 10) : 1);
+                    if (field.min !== undefined) v = Math.max(v, field.min);
+                    else v = Math.max(v, 0);
+                    input.value = String(v);
+                    this._onFieldChange(field.name);
+                });
+
+                arrows.appendChild(up);
+                arrows.appendChild(down);
+                wrapper.appendChild(input);
+                wrapper.appendChild(arrows);
+
+                row.appendChild(label);
+                row.appendChild(wrapper);
+                this._inputEls[field.name] = input;
+                this._fieldRows[field.name] = row;
+                this.fieldsEl.appendChild(row);
+                continue;
             } else {
                 input = document.createElement('input');
-                input.type = field.type === 'password' ? 'password' : 'text';
-                input.id = field.name;
-                input.value = this._values[field.name] ?? field.default ?? '';
-                input.addEventListener('input', () => this._onFieldChange(field.name));
+                if (field.type === 'number') {
+                    input.type = 'number';
+                    if (field.min !== undefined) input.min = field.min;
+                    if (field.step !== undefined) input.step = field.step;
+                    input.value = this._values[field.name] ?? field.default ?? '';
+                    input.addEventListener('input', () => this._onFieldChange(field.name));
+                } else {
+                    input.type = field.type === 'password' ? 'password' : 'text';
+                    input.value = this._values[field.name] ?? field.default ?? '';
+                    input.addEventListener('input', () => this._onFieldChange(field.name));
+                }
             }
             row.appendChild(label);
             row.appendChild(input);
@@ -208,6 +272,8 @@ class EditDialog extends HTMLElement {
             if (!el) continue;
             if (field.type === 'checkbox') {
                 result[field.name] = el.checked;
+            } else if (field.type === 'number') {
+                result[field.name] = Number(el.value); // Convert to number
             } else {
                 result[field.name] = el.value;
             }
@@ -225,6 +291,21 @@ class EditDialog extends HTMLElement {
                 if (!val || !val.value) {
                     this._setStatus(`Field "${field.label}" is required`, true);
                     return;
+                }
+            }
+            // Validate number fields
+            if (field.type === 'number') {
+                const val = this._inputEls[field.name];
+                if (val && val.value !== '') {
+                    const num = Number(val.value);
+                    if (isNaN(num) || (field.integer && !Number.isInteger(num))) {
+                        this._setStatus(`Field "${field.label}" must be an integer`, true);
+                        return;
+                    }
+                    if (field.min !== undefined && num < field.min) {
+                        this._setStatus(`Field "${field.label}" must be at least ${field.min}`, true);
+                        return;
+                    }
                 }
             }
         }

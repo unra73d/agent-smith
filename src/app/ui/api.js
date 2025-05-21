@@ -202,6 +202,78 @@ async function apiListProviders() {
     }
 }
 
+async function apiTestProvider(provider, signal) {
+    try {
+        const response = await fetch('http://localhost:8008/agent/provider/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(provider),
+            signal
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data ? data.response : null
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return 'canceled'
+        }
+        console.error("Failed to test ai provider:", error);
+        return null;
+    }
+}
+
+async function apiUpdateProvider(provider) {
+    try {
+        const response = await fetch('http://localhost:8008/agent/provider/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(provider)
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return 'canceled'
+        }
+        console.error("Failed to update provider:", error);
+        return null;
+    }
+}
+
+async function apiCreateProvider(provider) {
+    try {
+        const response = await fetch('http://localhost:8008/agent/provider/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(provider)
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return 'canceled'
+        }
+        console.error("Failed to create provider:", error);
+        return null;
+    }
+}
+
+async function apiDeleteProvider(id) {
+    try {
+        const response = await fetch(`http://localhost:8008/agent/provider/delete/${id}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to delete provider:", error);
+        return null
+    }
+}
+
 async function apiListRoles() {
     try {
         const response = await fetch('http://localhost:8008/agent/roles/list');
@@ -377,6 +449,13 @@ async function apiAgentConnect() {
         try {
             const parsedData = JSON.parse(event.data);
             sendEvent('mcp:reloaded', parsedData)
+        } catch { }
+    });
+
+    stream.addEventListener('provider_list_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+            sendEvent('providers:reloaded', parsedData)
         } catch { }
     });
 }

@@ -42,11 +42,12 @@ func initDB(c *gin.Context) {
 	// Create the AI providers table
 	createAIProvidersTableSQL := `
 	CREATE TABLE IF NOT EXISTS providers (
-		name TEXT PRIMARY KEY,
+		id TEXT PRIMARY KEY,
+		name TEXT,
 		api_url TEXT,
 		api_key TEXT,
 		provider TEXT,
-		additional_params TEXT
+		rate_limit INTEGER
 	);`
 
 	// Create the roles table

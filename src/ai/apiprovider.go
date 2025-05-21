@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -35,15 +36,17 @@ const (
 )
 
 type APIProvider struct {
-	Name    string   `json:"name"`
-	APIURL  string   `json:"url"`
-	APIKey  string   `json:"apiKey"`
-	APIType APIType  `json:"type"`
-	Models  []*Model `json:"models"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	APIURL    string   `json:"url"`
+	APIKey    string   `json:"apiKey"`
+	APIType   APIType  `json:"type"`
+	RateLimit int      `json:"rateLimit"`
+	Models    []*Model `json:"models"`
 }
 
-func NewProvider(apiType APIType, name string, url string, apiKey string) (provider *APIProvider, err error) {
-	provider = &APIProvider{name, url, apiKey, apiType, make([]*Model, 0, 16)}
+func NewProvider(id string, apiType APIType, name string, url string, apiKey string, rateLimit int) (provider *APIProvider, err error) {
+	provider = &APIProvider{id, name, url, apiKey, apiType, rateLimit, make([]*Model, 0, 16)}
 	err = provider.LoadModels()
 	return
 }
@@ -58,7 +61,7 @@ func LoadProviders() []*APIProvider {
 	log.CheckE(err, nil, "Failed to open agent db for loading providers")
 	defer db.Close()
 
-	query := "SELECT name, api_url, api_key, provider FROM providers;"
+	query := "SELECT id, name, api_url, api_key, provider, rate_limit FROM providers;"
 	rows, err := db.Query(query)
 	log.CheckE(err, nil, "Failed to select providers from DB")
 	defer rows.Close()
@@ -66,15 +69,16 @@ func LoadProviders() []*APIProvider {
 	var signal sync.WaitGroup
 
 	for rows.Next() {
-		var name, apiURL, apiKey, providerTypeStr sql.NullString
+		var id, name, apiURL, apiKey, providerTypeStr sql.NullString
+		var rateLimit sql.NullInt16
 
-		err = rows.Scan(&name, &apiURL, &apiKey, &providerTypeStr)
+		err = rows.Scan(&id, &name, &apiURL, &apiKey, &providerTypeStr, &rateLimit)
 		if err != nil {
 			log.W("Failed to scan provider row:", err)
 			continue
 		}
 
-		if !name.Valid || !providerTypeStr.Valid {
+		if !id.Valid || !name.Valid || !providerTypeStr.Valid {
 			log.W("Skipping provider row due to missing name or provider type")
 			continue
 		}
@@ -83,10 +87,12 @@ func LoadProviders() []*APIProvider {
 		go func() {
 			defer signal.Done()
 			provider, err := NewProvider(
+				id.String,
 				APIType(providerTypeStr.String),
 				name.String,
 				apiURL.String,
 				apiKey.String,
+				int(rateLimit.Int16),
 			)
 			if err != nil {
 				log.W("Error creating provider '%s' from DB data: %v", name.String, err)
@@ -102,10 +108,53 @@ func LoadProviders() []*APIProvider {
 	return providers
 }
 
-func (self *APIProvider) Test() error { return nil }
+func (self *APIProvider) Save() (err error) {
+	defer logger.BreakOnError()
+
+	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	log.CheckE(err, nil, "Failed to open DB")
+	defer db.Close()
+
+	query := `
+	INSERT INTO providers (id, name, api_url, api_key, provider, rate_limit)
+	VALUES (?, ?, ?, ?, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET
+		name=excluded.name,
+		api_url=excluded.api_url,
+		api_key=excluded.api_key,
+		provider=excluded.provider,
+		rate_limit=excluded.rate_limit;
+	`
+
+	_, err = db.Exec(query, self.ID, self.Name, self.APIURL, self.APIKey, self.APIType, self.RateLimit)
+	log.CheckW(err, "Failed to update provider DB")
+
+	log.D("Saved provider", self.Name)
+	return
+}
+
+func (self *APIProvider) Delete() (err error) {
+	log.D("Deleting provider from ", os.Getenv("AS_AGENT_DB_FILE"))
+	defer logger.BreakOnError()
+
+	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	log.CheckE(err, nil, "Failed to open DB")
+	defer db.Close()
+
+	query := "DELETE FROM providers WHERE id=?"
+	_, err = db.Exec(query, self.ID)
+	log.CheckW(err, "Failed to delete provider from DB")
+
+	return
+}
+
+func (self *APIProvider) Test() bool {
+	return self.LoadModels() == nil
+}
 
 type OpenAIModelListRes struct {
-	Data []map[string]any `json:"data"`
+	Data  []map[string]any `json:"data"`
+	Error string           `json:"error"`
 }
 
 func (self *APIProvider) LoadModels() (err error) {
@@ -125,6 +174,9 @@ func (self *APIProvider) LoadModels() (err error) {
 	r.SetResult(list)
 	_, err = r.Get(url)
 	log.CheckE(err, nil, "failed to list models for provider: ", self.Name)
+	if list.Error != "" {
+		return errors.New("bad api call")
+	}
 
 	self.Models = make([]*Model, len(list.Data))
 	for i, config := range list.Data {

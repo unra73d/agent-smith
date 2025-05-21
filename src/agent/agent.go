@@ -248,6 +248,54 @@ func DeleteMCPServer(ID string) (err error) {
 	return
 }
 
+func TesProvider(Name string, APIURL string, APIKey string, RateLimit int) (res bool) {
+	provider := &ai.APIProvider{
+		Name:    Name,
+		APIURL:  APIURL,
+		APIKey:  APIKey,
+		APIType: ai.APITypeOpenAICompatible,
+	}
+	return provider.Test()
+}
+
+func UpdateProvider(ID string, Name string, APIURL string, APIKey string, RateLimit int) (err error) {
+	for _, provider := range Agent.apiProviders {
+		if provider.ID == ID {
+			provider.Name = Name
+			provider.APIURL = APIURL
+			provider.APIKey = APIKey
+			provider.RateLimit = RateLimit
+			err = provider.Save()
+			sseCh <- &SSEMessage{SSEMessageProviderListUpdate, Agent.apiProviders}
+			break
+		}
+	}
+	return err
+}
+
+func CreateProvider(Name string, APIURL string, APIKey string, RateLimit int) error {
+	provider, err := ai.NewProvider(uuid.NewString(), ai.APITypeOpenAICompatible, Name, APIURL, APIKey, RateLimit)
+	provider.Save()
+	Agent.apiProviders = append(Agent.apiProviders, provider)
+	sseCh <- &SSEMessage{SSEMessageProviderListUpdate, Agent.apiProviders}
+	return err
+}
+
+func DeleteProvider(id string) (err error) {
+	logger.BreakOnError()
+	for i, provider := range Agent.apiProviders {
+		if provider.ID == id {
+			err = provider.Delete()
+			log.CheckE(err, nil, "failed to delete provider")
+			Agent.apiProviders = append(Agent.apiProviders[:i], Agent.apiProviders[i+1:]...)
+			sseCh <- &SSEMessage{SSEMessageProviderListUpdate, Agent.apiProviders}
+			return nil
+		}
+	}
+	log.E("trying to delete non existing provider", id)
+	return errors.New("provider not found")
+}
+
 func findModel(modelID string) *ai.Model {
 	for _, provider := range Agent.apiProviders {
 		for _, model := range provider.Models {

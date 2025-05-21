@@ -54,8 +54,10 @@
                     </div>
                     <div id="tab4" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">Models</span>
+                            <span class="tab-content-title">Models<span class="header-controls img-button"
+                                    onclick="sendEvent('providers:new')">&#xe035;</span></span>
                         </div>
+                        <div class="provider-list"><provider-list></mcp-list></div>
                     </div>
                     <div id="tab5" class="tab-content">
                         <div class="tab-content-header">
@@ -93,6 +95,7 @@
     <script src="components/mcp/mcp.js"></script>
     <script src="components/chat/chat.js"></script>
     <script src="components/sessions/sessions.js"></script>
+    <script src="components/providers/providers.js"></script>
 
     <script src="agents.js"></script>
     <script src="app.js"></script>

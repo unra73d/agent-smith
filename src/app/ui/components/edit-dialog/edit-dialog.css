@@ -88,3 +88,64 @@ button {
 button:hover {
     background: #44474a;
 }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    position: relative;
+    padding-right: 28px;
+    /* space for custom spinner */
+}
+
+/* Custom spinner container */
+.input-spinner-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+/* Custom spinner arrows */
+.input-spinner-arrows {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    height: 24px;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.input-spinner-arrow {
+    font-family: 'AgentIconFont', sans-serif;
+    font-size: 14px;
+    color: #e3e3e3;
+    line-height: 1;
+    text-align: center;
+    user-select: none;
+    pointer-events: auto;
+    cursor: pointer;
+    width: 16px;
+    height: 12px;
+}
+
+.input-spinner-arrow.up::before {
+    content: "W";
+    display: block;
+}
+
+.input-spinner-arrow.down::before {
+    content: "T";
+    display: block;
+}
+
+.input-spinner-arrow:hover {
+    color: white;
+}

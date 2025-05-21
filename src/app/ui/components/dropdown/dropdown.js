@@ -1,5 +1,4 @@
 // Dropdown web component
-
 class Dropdown extends HTMLElement {
     constructor() {
         super();

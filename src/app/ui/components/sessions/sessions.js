@@ -50,7 +50,7 @@ class SessionList extends List {
         e.stopPropagation();
         const currSessionId = Storage.currentSession.id;
 
-        const confirmed = await confirmDialog('Are you sure you want to delete this chat session? This action cannot be undone.');
+        const confirmed = await confirmDialog('Delete this chat session?');
         if (confirmed) {
             await apiDeleteSession(sessionId);
 

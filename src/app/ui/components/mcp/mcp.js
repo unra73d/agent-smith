@@ -1,5 +1,3 @@
-
-
 class MCPList extends List {
     constructor() {
         super();

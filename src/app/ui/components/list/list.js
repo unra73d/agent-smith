@@ -1,7 +1,5 @@
 'use strict'
 
-
-
 class List extends HTMLElement {
     constructor() {
         super()
