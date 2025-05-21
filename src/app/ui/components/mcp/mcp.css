@@ -24,20 +24,29 @@
         text-overflow: ellipsis;
     }
 
+    .edit-icon,
     .delete-icon {
         margin-left: auto;
         font-size: 16px;
         line-height: 16px;
         cursor: pointer;
         display: none;
-
-        &:hover {
-            filter: brightness(1.2);
-        }
     }
 
-    &:hover .delete-icon {
-        display: block;
+    .edit-icon {
+        margin-right: 10px;
+    }
+
+    .delete-icon {
+        margin-left: 10px;
+    }
+
+    &:hover {
+
+        .edit-icon,
+        .delete-icon {
+            display: block;
+        }
     }
 }
 

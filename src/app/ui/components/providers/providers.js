@@ -53,67 +53,7 @@ class ProviderList extends List {
         }
     }
 
-    async handleEdit(e, provider) {
-        const fields = [
-            { name: 'name', label: 'Provider Name', type: 'text', required: true },
-            { name: 'url', label: 'API URL', type: 'text', required: true },
-            { name: 'apiKey', label: 'API Key', type: 'text', required: false },
-            {
-                name: 'rateLimit',
-                label: 'Rate limit (requests per minute)',
-                type: 'number',
-                required: false,
-                min: 0,
-                step: 1,
-                integer: true
-            }
-        ];
-
-        const buttons = [
-            {
-                name: 'Test Provider',
-                onClick: async (values, dialog, setStatus) => {
-                    if (this.testProviderController) {
-                        this.testProviderController.abort()
-                        this.testProviderController = null
-                    }
-                    this.testProviderController = new AbortController();
-
-                    setStatus('Testing provider...', false);
-                    try {
-                        const ok = await apiTestProvider(values, this.testProviderController.signal);
-                        if (ok) {
-                            setStatus('Provider test successful!', false);
-                        } else {
-                            setStatus('Provider test failed.', true);
-                        }
-                    } catch (err) {
-                        setStatus('Error testing provider: ' + (err.message || err), true);
-                    }
-                }
-            }
-        ];
-
-        const res = await showEditDialog({
-            title: 'Edit Provider',
-            fields,
-            values: provider,
-            buttons,
-            onClose: () => {
-                if (this.testProviderController) {
-                    this.testProviderController.abort()
-                    this.testProviderController = null
-                }
-            }
-        });
-
-        if (res) {
-            res["id"] = provider.id
-            await apiUpdateProvider(res);
-        }
-    }
-
-    async createNewProvider() {
+    async showProviderDialog({ title, initialValues, onSave }) {
         const fields = [
             { name: 'name', label: 'Provider Name', type: 'text', required: true },
             { name: 'url', label: 'API URL', type: 'text', required: true },
@@ -155,9 +95,9 @@ class ProviderList extends List {
         ];
 
         const res = await showEditDialog({
-            title: 'New Provider',
+            title,
             fields,
-            values: {},
+            values: initialValues,
             buttons,
             onClose: () => {
                 if (this.testProviderController) {
@@ -168,8 +108,29 @@ class ProviderList extends List {
         });
 
         if (res) {
-            await apiCreateProvider(res);
+            await onSave(res);
         }
+    }
+
+    async handleEdit(e, provider) {
+        await this.showProviderDialog({
+            title: 'Edit Provider',
+            initialValues: provider,
+            onSave: async (res) => {
+                res["id"] = provider.id;
+                await apiUpdateProvider(res);
+            }
+        });
+    }
+
+    async createNewProvider() {
+        await this.showProviderDialog({
+            title: 'New Provider',
+            initialValues: {},
+            onSave: async (res) => {
+                await apiCreateProvider(res);
+            }
+        });
     }
 }
 

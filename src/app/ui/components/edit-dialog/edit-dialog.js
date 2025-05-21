@@ -139,7 +139,7 @@ class EditDialog extends HTMLElement {
                 input.options = field.options.map(opt => ({
                     value: opt.value,
                     label: opt.label,
-                    selected: initialValue === opt.value
+                    selected: false
                 }));
                 input.value = initialValue;
                 input.addEventListener('change', () => this._onFieldChange(field.name));

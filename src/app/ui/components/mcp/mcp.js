@@ -4,7 +4,7 @@ class MCPList extends List {
         this.testMCPController = null
 
         document.addEventListener('storage:mcps', e => this.items = e.detail);
-        document.addEventListener('mcps:new', async e => { this.onNewMCP() });
+        document.addEventListener('mcps:new', async e => { this.handleCreateMCP() });
         this._initStyle()
     }
 
@@ -16,13 +16,11 @@ class MCPList extends List {
         ];
     }
 
-    async onNewMCP() {
-        const existingNames = (this.items || []).map(item => item.name);
-
+    async showMCPDialog({ title, initialValues = {}, validate, onSave }) {
         const fields = [
             { name: 'name', label: 'MCP name', type: 'text', required: true },
             {
-                name: 'type',
+                name: 'transport',
                 label: 'Type',
                 type: 'select',
                 required: true,
@@ -36,29 +34,23 @@ class MCPList extends List {
                 label: 'URL endpoint',
                 type: 'text',
                 required: true,
-                visibleIf: { type: 'sse' }
+                visibleIf: { transport: 'sse' }
             },
             {
                 name: 'command',
                 label: 'Command',
                 type: 'text',
                 required: true,
-                visibleIf: { type: 'stdio' }
+                visibleIf: { transport: 'stdio' }
             },
             {
                 name: 'args',
                 label: 'Command arguments',
                 type: 'text',
                 required: false,
-                visibleIf: { type: 'stdio' }
+                visibleIf: { transport: 'stdio' }
             }
         ];
-
-        const validate = values => {
-            if (existingNames.includes(values.name)) {
-                return 'MCP name must be unique';
-            }
-        };
 
         const buttons = [
             {
@@ -88,10 +80,11 @@ class MCPList extends List {
         ];
 
         let res = await showEditDialog({
-            title: 'New MCP server',
+            title,
             fields,
             validate,
             buttons,
+            values: initialValues,
             onClose: () => {
                 if (this.testMCPController) {
                     this.testMCPController.abort()
@@ -101,8 +94,43 @@ class MCPList extends List {
         });
 
         if (res) {
-            await apiMCPCreate(res);
+            await onSave(res);
         }
+    }
+
+    async handleCreateMCP() {
+        const existingNames = (this.items || []).map(item => item.name);
+        const validate = values => {
+            if (existingNames.includes(values.name)) {
+                return 'MCP name must be unique';
+            }
+        };
+        await this.showMCPDialog({
+            title: 'New MCP server',
+            initialValues: {},
+            validate,
+            onSave: async (res) => {
+                await apiMCPCreate(res);
+            }
+        });
+    }
+
+    async handleEditMCP(mcp) {
+        const existingNames = (this.items || []).filter(item => item.id !== mcp.id).map(item => item.name);
+        const validate = values => {
+            if (existingNames.includes(values.name)) {
+                return 'MCP name must be unique';
+            }
+        };
+        await this.showMCPDialog({
+            title: 'Edit MCP server',
+            initialValues: mcp,
+            validate,
+            onSave: async (res) => {
+                res.id = mcp.id;
+                await apiMCPUpdate(res);
+            }
+        });
     }
 
     getItem(data) {
@@ -111,14 +139,17 @@ class MCPList extends List {
         item.innerHTML = `
             <div class="item-header">
                 <ui-checkbox class="select-all-checkbox" label="${data.name}" ${data.active ? 'checked' : ''}></ui-checkbox>
+                <div alt="Edit" class="edit-icon img-button" data-id="${data.id}">*</div>
                 <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">&#xe053;</div>
             </div>
             <div class="item-content"></div>
         `;
 
         const selectAllCheckbox = item.querySelector('ui-checkbox');
-
+        const editIcon = item.querySelector('.edit-icon');
+        const deleteIcon = item.querySelector('.delete-icon');
         const itemContent = item.querySelector('.item-content');
+
         if (!data.active) itemContent.classList.add('disabled')
         for (let tool of data.tools) {
             const toolItem = document.createElement('div');
@@ -141,9 +172,8 @@ class MCPList extends List {
             data.active = e.target.checked
         });
 
-        const deleteIcon = item.querySelector('.delete-icon')
-
-        deleteIcon.addEventListener('click', e => this.handleDeleteItem(data.id))
+        editIcon.addEventListener('click', e => this.handleEditMCP(data));
+        deleteIcon.addEventListener('click', e => this.handleDeleteItem(data.id));
 
         return item;
     }

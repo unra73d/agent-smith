@@ -187,7 +187,7 @@ func TruncateSession(sessionID string, messageID string) error {
 	return errors.New("message not found")
 }
 
-func TestMCPServer(Name string, Type string, URL string, Command string, Args string) (res bool) {
+func TestMCPServer(Name string, Transport string, URL string, Command string, Args string) (res bool) {
 	res = false
 	defer logger.BreakOnError()
 
@@ -196,7 +196,7 @@ func TestMCPServer(Name string, Type string, URL string, Command string, Args st
 
 	mcp := &mcptools.MCPServer{
 		Name:      Name,
-		Transport: mcptools.MCPTransport(Type),
+		Transport: mcptools.MCPTransport(Transport),
 		URL:       URL,
 		Command:   Command,
 		Args:      argArray,
