@@ -117,6 +117,15 @@ func listModelsHandler(c *gin.Context) {
 }
 
 /*
+Get list of available AI providers
+*/
+var listProvidersURI = "/providers/list"
+
+func listProvidersHandler(c *gin.Context) {
+	c.JSON(200, map[string]any{"providers": agent.GetProviders()})
+}
+
+/*
 API for sending message to AI directly and get response via system SSE connection. This call will return when generation ends.
 No tools will be called in response.
 */
@@ -388,6 +397,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(deleteMessageURI, deleteMessageHandler)
 
 		group.GET(listModelsURI, listModelsHandler)
+		group.GET(listProvidersURI, listProvidersHandler)
 
 		group.POST(directChatStreamURI, directChatStreamHandler)
 		group.POST(dynamicAgentChatURI, dynamicAgentChatHandler)

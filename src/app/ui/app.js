@@ -11,6 +11,7 @@ var Storage = {
     sessions: [],
     roles: [],
     mcps: [],
+    providers: [],
     currentSession: null
 }
 
@@ -18,6 +19,7 @@ monitor(Storage, 'models', 'storage:models')
 monitor(Storage, 'sessions', 'storage:sessions')
 monitor(Storage, 'roles', 'storage:roles')
 deepMonitor(Storage, 'mcps', 'storage:mcps')
+monitor(Storage, 'providers', 'storage:providers')
 monitor(Storage, 'currentSession', 'storage:current-session')
 
 document.addEventListener('sessions:reload', async (e) => {
@@ -42,54 +44,27 @@ document.addEventListener('mcp:reloaded', async (e) => {
             }
         }
         Storage.mcps = mcps
+    } else if (mcps.length == 0) {
+        Storage.mcps = []
     }
 })
 
-// --- Function to handle tab switching and panel toggle ---
-function handleTopTabClick(event) {
-    const clickedButton = event.currentTarget;
-    const targetTabId = clickedButton.getAttribute('data-tab');
-    const isPanelOpen = contentArea.classList.contains('side-panel-open');
-    const isCurrentActiveButton = clickedButton.classList.contains('active');
-
-    // --- Logic: Click active button when panel is open -> Close panel ---
-    if (isPanelOpen && isCurrentActiveButton) {
-        contentArea.classList.remove('side-panel-open');
-        clickedButton.classList.remove('active');
-        currentActiveTabId = null;
+document.addEventListener('providers:reloaded', async (e) => {
+    let providers = e.detail
+    if (providers) {
+        Storage.providers = providers
+        populateModelSelector()
     }
-    // --- Logic: Click any button when panel is closed, or different button when open -> Open/Switch tab ---
-    else {
-        // 1. Open panel if closed
-        if (!isPanelOpen) {
-            contentArea.classList.add('side-panel-open');
-        }
+})
 
-        // 2. Update button active state
-        topTabButtons.forEach(btn => btn.classList.remove('active'));
-        clickedButton.classList.add('active');
-
-        // 3. Update content active state
-        tabContents.forEach(content => {
-            if (content.id === targetTabId) {
-                content.classList.add('active');
-            } else {
-                content.classList.remove('active');
-            }
-        });
-        currentActiveTabId = targetTabId;
-    }
-}
-
-// --- Initial Connection on Load ---
 document.addEventListener('DOMContentLoaded', async () => {
     await apiAgentConnect()
 
     populateModelSelector()
     populateRoleSelector()
+    apiListProviders().then(res => sendEvent('providers:reloaded', res))
     sendEvent('sessions:reload')
 
-    document.querySelectorAll('mcp-list').forEach(list => list.items.data = Storage.mcps)
     apiListMCPServers().then(res => sendEvent('mcp:reloaded', res))
 
     // --- Set initial active tab state based on HTML ---
@@ -120,28 +95,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// --- Add New Top Tab Button Listener ---
+function handleTopTabClick(event) {
+    const clickedButton = event.currentTarget;
+    const targetTabId = clickedButton.getAttribute('data-tab');
+    const isPanelOpen = contentArea.classList.contains('side-panel-open');
+    const isCurrentActiveButton = clickedButton.classList.contains('active');
+
+    if (isPanelOpen && isCurrentActiveButton) {
+        contentArea.classList.remove('side-panel-open');
+        clickedButton.classList.remove('active');
+        currentActiveTabId = null;
+    } else {
+        // 1. Open panel if closed
+        if (!isPanelOpen) {
+            contentArea.classList.add('side-panel-open');
+        }
+
+        // 2. Update button active state
+        topTabButtons.forEach(btn => btn.classList.remove('active'));
+        clickedButton.classList.add('active');
+
+        // 3. Update content active state
+        tabContents.forEach(content => {
+            if (content.id === targetTabId) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        });
+        currentActiveTabId = targetTabId;
+    }
+}
+
 topTabButtons.forEach(button => {
     button.addEventListener('click', handleTopTabClick);
 });
 
 async function populateModelSelector() {
-    const models = await apiListModels();
-    if (models) {
-        const options = [
-            { value: '', label: 'Select a Model', disabled: true, selected: true },
-            ...models.sort((a, b) => a.name.localeCompare(b.name)).map((model, idx) => ({
+    const options = [
+        { value: '', label: 'Select a Model', disabled: true, selected: true },
+        ...Storage.providers.flatMap((provider, idx) =>
+            provider.models.map((model, modelIdx) => ({
                 value: model.id,
                 label: model.name,
-                selected: idx === 0
+                selected: idx === 0 && modelIdx === 0
             }))
-        ];
-        modelSelector.options = options;
-    } else {
-        modelSelector.options = [
-            { value: '', label: 'Error loading models', disabled: true, selected: true }
-        ];
-    }
+        )
+    ];
+    modelSelector.options = options;
 }
 
 function getSelectedModelId() {

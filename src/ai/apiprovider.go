@@ -34,54 +34,25 @@ const (
 	APITypeOpenAICompatible = "openaicompatible"
 )
 
-type IAPIProvider interface {
-	Name() string
-	URL() string
-	APIKey() string
-	Type() APIType
-	Models() []*Model
-
-	Test() error
-	LoadModels() error
-	ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error)
-	ChatCompletionStream(ctx context.Context, messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool, writeCh chan string, toolCh chan []*mcptools.ToolCallRequest) error
-}
-
 type APIProvider struct {
-	name    string
-	apiURL  string
-	apiKey  string
-	apiType APIType
-	models  []*Model
+	Name    string   `json:"name"`
+	APIURL  string   `json:"url"`
+	APIKey  string   `json:"apiKey"`
+	APIType APIType  `json:"type"`
+	Models  []*Model `json:"models"`
 }
 
-func (self *APIProvider) Name() string     { return self.name }
-func (self *APIProvider) URL() string      { return self.apiURL }
-func (self *APIProvider) APIKey() string   { return self.apiKey }
-func (self *APIProvider) Type() APIType    { return self.apiType }
-func (self *APIProvider) Models() []*Model { return self.models }
-
-type OpenAIProvider struct {
-	APIProvider
+func NewProvider(apiType APIType, name string, url string, apiKey string) (provider *APIProvider, err error) {
+	provider = &APIProvider{name, url, apiKey, apiType, make([]*Model, 0, 16)}
+	err = provider.LoadModels()
+	return
 }
 
-func NewProvider(apiType APIType, name string, url string, apiKey string) (IAPIProvider, error) {
-	basicProvider := APIProvider{name, url, apiKey, apiType, make([]*Model, 0, 16)}
-
-	var provider IAPIProvider
-	switch apiType {
-	case APITypeOpenAI, APITypeLMStudio, APITypeOpenAICompatible, APITypeOllama, APITypeGoogle:
-		provider = &OpenAIProvider{basicProvider}
-	}
-	err := provider.LoadModels()
-	return provider, err
-}
-
-func LoadProviders() []IAPIProvider {
+func LoadProviders() []*APIProvider {
 	log.D("Loading providers from", os.Getenv("AS_AGENT_DB_FILE"))
 	defer logger.BreakOnError()
 
-	providers := make([]IAPIProvider, 0, 16)
+	providers := make([]*APIProvider, 0, 16)
 
 	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
 	log.CheckE(err, nil, "Failed to open agent db for loading providers")
@@ -131,40 +102,40 @@ func LoadProviders() []IAPIProvider {
 	return providers
 }
 
-func (self *OpenAIProvider) Test() error { return nil }
+func (self *APIProvider) Test() error { return nil }
 
 type OpenAIModelListRes struct {
 	Data []map[string]any `json:"data"`
 }
 
-func (self *OpenAIProvider) LoadModels() (err error) {
+func (self *APIProvider) LoadModels() (err error) {
 	defer logger.BreakOnError()
 	log.D("Loading OpenAI models")
-	url := self.apiURL + "/models"
+	url := self.APIURL + "/models"
 
 	c := resty.New()
 	defer c.Close()
 	r := c.R()
 
-	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {
-		r.Header.Add("Authorization", "Bearer "+self.apiKey)
+	if self.APIKey != "" && self.APIType != APITypeOllama && self.APIType != APITypeLMStudio {
+		r.Header.Add("Authorization", "Bearer "+self.APIKey)
 	}
 
 	list := &OpenAIModelListRes{}
 	r.SetResult(list)
 	_, err = r.Get(url)
-	log.CheckE(err, nil, "failed to list models for provider: ", self.name)
+	log.CheckE(err, nil, "failed to list models for provider: ", self.Name)
 
-	self.models = make([]*Model, len(list.Data))
+	self.Models = make([]*Model, len(list.Data))
 	for i, config := range list.Data {
-		self.models[i] = &Model{
+		self.Models[i] = &Model{
 			ID:       config["id"].(string),
-			Name:     self.name + ": " + config["id"].(string),
+			Name:     self.Name + ": " + config["id"].(string),
 			Provider: self,
 		}
 	}
 
-	log.D("loaded", len(self.models), " models for provider: ", self.name)
+	log.D("loaded", len(self.Models), " models for provider: ", self.Name)
 	return nil
 }
 
@@ -194,16 +165,16 @@ type OpenAIChatCompletionRes struct {
 	SystemFingerprint string                       `json:"system_fingerprint"`
 }
 
-func (self *OpenAIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error) {
+func (self *APIProvider) ChatCompletion(messages []*Message, sysPrompt string, model *Model, tools []*mcptools.Tool) (string, error) {
 	log.D("OpenAI chat completion")
-	url := self.apiURL + "/chat/completions"
+	url := self.APIURL + "/chat/completions"
 
 	c := resty.New()
 	defer c.Close()
 	r := c.R()
 
-	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {
-		r.Header.Add("Authorization", "Bearer "+self.apiKey)
+	if self.APIKey != "" && self.APIType != APITypeOllama && self.APIType != APITypeLMStudio {
+		r.Header.Add("Authorization", "Bearer "+self.APIKey)
 	}
 
 	r.SetBody(map[string]any{
@@ -267,7 +238,7 @@ type OpenAIStreamChatResponse struct {
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
 }
 
-func (self *OpenAIProvider) ChatCompletionStream(
+func (self *APIProvider) ChatCompletionStream(
 	ctx context.Context,
 	messages []*Message,
 	sysPrompt string,
@@ -280,7 +251,7 @@ func (self *OpenAIProvider) ChatCompletionStream(
 	log.D("OpenAI chat completion streaming")
 
 	log.D("System prompt:", sysPrompt)
-	url := self.apiURL + "/chat/completions"
+	url := self.APIURL + "/chat/completions"
 
 	body := map[string]any{
 		"model":    model.ID,
@@ -304,8 +275,8 @@ func (self *OpenAIProvider) ChatCompletionStream(
 	r, err := http.NewRequestWithContext(apiCtx, http.MethodPost, url, bytes.NewBuffer(bodyJSON))
 	log.CheckE(err, nil, "failed to create request")
 
-	if self.apiKey != "" && self.apiType != APITypeOllama && self.apiType != APITypeLMStudio {
-		r.Header.Add("Authorization", "Bearer "+self.apiKey)
+	if self.APIKey != "" && self.APIType != APITypeOllama && self.APIType != APITypeLMStudio {
+		r.Header.Add("Authorization", "Bearer "+self.APIKey)
 	}
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Accept", "text/event-stream")

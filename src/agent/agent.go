@@ -18,7 +18,7 @@ var log = logger.Logger("agent", 1, 1, 1)
 type agent struct {
 	flashSession *Session
 	builtinTools []*mcptools.Tool
-	apiProviders []ai.IAPIProvider
+	apiProviders []*ai.APIProvider
 	roles        []*Role
 	mcps         []*mcptools.MCPServer
 	sessions     []*Session
@@ -26,7 +26,7 @@ type agent struct {
 
 var Agent = agent{
 	builtinTools: make([]*mcptools.Tool, 0),
-	apiProviders: make([]ai.IAPIProvider, 0),
+	apiProviders: make([]*ai.APIProvider, 0),
 	roles:        make([]*Role, 0),
 	mcps:         make([]*mcptools.MCPServer, 0),
 	sessions:     make([]*Session, 0),
@@ -79,9 +79,13 @@ func LoadAgent() {
 func GetModels() []*ai.Model {
 	models := make([]*ai.Model, 0, 32)
 	for _, apiProvider := range Agent.apiProviders {
-		models = append(models, apiProvider.Models()...)
+		models = append(models, apiProvider.Models...)
 	}
 	return models
+}
+
+func GetProviders() []*ai.APIProvider {
+	return Agent.apiProviders
 }
 
 func GetSessions() []*Session {
@@ -246,7 +250,7 @@ func DeleteMCPServer(ID string) (err error) {
 
 func findModel(modelID string) *ai.Model {
 	for _, provider := range Agent.apiProviders {
-		for _, model := range provider.Models() {
+		for _, model := range provider.Models {
 			if model.ID == modelID {
 				return model
 			}

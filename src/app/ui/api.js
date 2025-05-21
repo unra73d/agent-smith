@@ -182,6 +182,26 @@ async function apiListModels() {
     }
 }
 
+async function apiListProviders() {
+    try {
+        const response = await fetch('http://localhost:8008/agent/providers/list');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data && data.providers) {
+            return data.providers
+        } else {
+            console.error("Invalid data structure received for providers:", data);
+            return null
+        }
+    } catch (error) {
+        console.error("Failed to list providers:", error);
+        return null
+    }
+}
+
 async function apiListRoles() {
     try {
         const response = await fetch('http://localhost:8008/agent/roles/list');
