@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sendEvent('sessions:reload')
 
     document.querySelectorAll('mcp-list').forEach(list => list.items.data = Storage.mcps)
-    apiListMCPServers().then(res=>sendEvent('mcp:reloaded', res))
+    apiListMCPServers().then(res => sendEvent('mcp:reloaded', res))
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');

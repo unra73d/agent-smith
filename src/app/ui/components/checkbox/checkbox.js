@@ -22,7 +22,9 @@ class Checkbox extends HTMLElement {
         this.shadowRoot.appendChild(this.label);
 
         this.checkbox.addEventListener('change', (e) => {
-            sendEvent('change', { checked: this.checkbox.checked })
+            this.dispatchEvent(new CustomEvent('change', {
+                detail: { checked: this.checkbox.checked }
+            }));
         });
     }
 

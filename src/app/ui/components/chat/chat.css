@@ -229,12 +229,12 @@ body {
             gap: 5px;
 
             &.user {
-                left: 91%;
+                left: 92%;
             }
 
             &.assistant,
             &.tool {
-                right: 91%;
+                right: 92%;
             }
 
             button {

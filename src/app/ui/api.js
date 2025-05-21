@@ -268,6 +268,19 @@ async function apiMCPCreate(mcp) {
     }
 }
 
+async function apiMCPDelete(id) {
+    try {
+        const response = await fetch(`http://localhost:8008/agent/mcp/delete/${id}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+    } catch (error) {
+        console.error("Failed to delete mcp server:", error);
+        return null
+    }
+}
+
 async function apiAgentConnect() {
     var stream = new EventSource('http://localhost:8008/agent/sse');
 

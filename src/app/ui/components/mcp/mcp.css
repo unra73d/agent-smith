@@ -5,13 +5,11 @@
     margin-top: 2px;
     padding: 5px;
     transition: background-color 0.2s ease;
-    cursor: pointer;
     width: 100%;
-    background-color: #1a1b1c;
-
-    &:hover {
-        background-color: #2a2b2d;
-    }
+    background-color: #262729;
+    border-left: 1px solid #ffffff;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
 
     .select-all-checkbox {
         margin-right: 10px;
@@ -51,10 +49,6 @@
     &.disabled {
         opacity: 0.5;
         pointer-events: none;
-    }
-
-    &:not(.open) {
-        display: none;
     }
 }
 

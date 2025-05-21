@@ -310,7 +310,37 @@ func createMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	c.JSON(200, map[string]any{"error": agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)})
+	err = agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+/*
+Delete MCP server by id
+*/
+var deleteMCPServerURI = "/mcp/delete/:id"
+
+type DeleteMCPServerReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func deleteMCPServerHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req DeleteMCPServerReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.DeleteMCPServer(req.ID)
+	if err != nil {
+		c.JSON(500, map[string]any{"error": err})
+	} else {
+		c.JSON(200, map[string]any{"error": nil})
+	}
+
 }
 
 /*
@@ -368,6 +398,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listMCPServersURI, listMCPServersHandler)
 		group.POST(testMCPServerURI, testMCPServerHandler)
 		group.POST(createMCPServerURI, createMCPServerHandler)
+		group.GET(deleteMCPServerURI, deleteMCPServerHandler)
 
 		group.GET(sseURI, sseHandler)
 	}

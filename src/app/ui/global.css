@@ -4,11 +4,13 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-weight: 100;
 }
 
 .icon {
     font-family: 'AgentIconFont';
     vertical-align: middle;
+    font-weight: 100;
 }
 
 .text {

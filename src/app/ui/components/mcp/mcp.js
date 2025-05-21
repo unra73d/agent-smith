@@ -112,48 +112,46 @@ class MCPList extends List {
                 <span class="header-text">${data.name}</span>
                 <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">&#xe053;</div>
             </div>
-            <div class="item-content open"></div>
+            <div class="item-content"></div>
         `;
 
         const selectAllCheckbox = item.querySelector('ui-checkbox');
 
         const itemContent = item.querySelector('.item-content');
         if (!data.active) itemContent.classList.add('disabled')
-        const toolCheckboxes = [];
         for (let tool of data.tools) {
-            itemContent.innerHTML += `
-                <div class="tool-item">
-                    <label class="tool-checkbox-area">
-                        <ui-checkbox ${data.active ? '' : 'disabled'} ${tool.active ? 'checked' : ''}></ui-checkbox>
-                    </label>
-                    <span class="item-text">${tool.name} - ${tool.description}</span>
-                </div>
-            `
+            const toolItem = document.createElement('div');
+            toolItem.classList.add('tool-item');
+            toolItem.innerHTML = `
+                <label class="tool-checkbox-area">
+                    <ui-checkbox ${data.active ? '' : 'disabled'} ${tool.active ? 'checked' : ''}></ui-checkbox>
+                </label>
+                <span class="item-text">${tool.name} - ${tool.description}</span>
+            `;
+            itemContent.appendChild(toolItem);
+
+            const toolCheckbox = toolItem.querySelector('ui-checkbox');
+            toolCheckbox.addEventListener('change', (e) => {
+                tool.active = e.target.checked; // Update the tool's active state
+            });
         }
 
         selectAllCheckbox.addEventListener('change', (e) => {
-            const isChecked = e.target.checked
-            data.active = isChecked
+            data.active = e.target.checked
         });
 
         const deleteIcon = item.querySelector('.delete-icon')
-        item.querySelector('.item-header').addEventListener('click', e => {
-            if (e.target !== selectAllCheckbox && e.target !== deleteIcon) {
-                itemContent.classList.toggle('open');
-            }
-        });
 
-        deleteIcon.addEventListener('click', e => this.handleDeleteItem(e, item, data.id))
+        deleteIcon.addEventListener('click', e => this.handleDeleteItem(data.id))
 
         return item;
     }
 
-    async handleDeleteItem(e, item, itemId) {
-        e.stopPropagation();
+    async handleDeleteItem(itemId) {
         const confirmed = await confirmDialog('Are you sure you want to delete this item? This action cannot be undone.');
 
         if (confirmed) {
-
+            apiMCPDelete(itemId)
         }
     }
 }

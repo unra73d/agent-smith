@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/google/shlex"
+	"github.com/google/uuid"
 )
 
 var log = logger.Logger("agent", 1, 1, 1)
@@ -207,6 +208,7 @@ func CreateMCPServer(Name string, Type string, URL string, Command string, Args 
 	log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
 
 	mcp := &mcptools.MCPServer{
+		ID:        uuid.NewString(),
 		Name:      Name,
 		Transport: mcptools.MCPTransport(Type),
 		URL:       URL,
@@ -223,6 +225,22 @@ func CreateMCPServer(Name string, Type string, URL string, Command string, Args 
 		Data: Agent.mcps,
 	}
 
+	return
+}
+
+func DeleteMCPServer(ID string) (err error) {
+	logger.BreakOnError()
+
+	for i, mcp := range Agent.mcps {
+		if mcp.ID == ID {
+			Agent.mcps = append(Agent.mcps[:i], Agent.mcps[i+1:]...)
+			sseCh <- &SSEMessage{
+				Type: SSEMessageMCPListUpdate,
+				Data: Agent.mcps,
+			}
+			break
+		}
+	}
 	return
 }
 
