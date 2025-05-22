@@ -1,0 +1,112 @@
+name: Build Application
+
+on:
+  push:
+    tags: # Trigger on new tags like v1.0.0, v1.2.3 etc.
+      - "v*"
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  read-version:
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.read_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # for go-winres to get git tags for versioning if needed
+
+      - name: Read version from VERSION file or Git tag
+        id: read_version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            APP_VERSION="${{ github.ref_name }}"
+            # Remove 'v' prefix if present
+            APP_VERSION="${APP_VERSION#v}"
+          elif [[ -f VERSION ]]; then
+            APP_VERSION=$(cat VERSION)
+          else
+            APP_VERSION="0.0.0-dev"
+          fi
+          echo "App version: $APP_VERSION"
+          echo "version=$APP_VERSION" >> $GITHUB_OUTPUT
+
+  build:
+    needs: read-version # Depends on the version being read
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      APP_NAME: AgentSmith # CHANGE THIS TO YOUR ACTUAL APP NAME (binary name)
+      APP_VERSION: ${{ needs.read-version.outputs.app_version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21" # Or your desired Go version
+
+      - name: Set BUILD_NUMBER (for macOS Info.plist)
+        run: echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+
+      # Linux Build
+      - name: Build Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64" main.go
+        shell: bash
+
+      # Windows Build
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: |
+          # Install go-winres
+          go install github.com/tc-hib/go-winres@latest
+          # Generate .syso file (will be placed in main package dir)
+          # go-winres will use git describe for ProductVersion/FileVersion if available
+          # or you can set it explicitly with --product-version and --file-version
+          go-winres make --product-version "${{ env.APP_VERSION }}" --file-version "${{ env.APP_VERSION }}.${{ github.run_number }}" --arch amd64 -rc platform/windows/windows.rc
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags="-s -w -H windowsgui" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_windows_amd64.exe" main.go
+        shell: bash
+
+      # macOS Build
+      - name: Build macOS
+        if: runner.os == 'macOS'
+        run: |
+          # Prepare Info.plist
+          sed -i '' "s/__VERSION__/${{ env.APP_VERSION }}/g" platform/macos/Info.plist
+          sed -i '' "s/__BUILD_NUMBER__/${{ env.BUILD_NUMBER }}/g" platform/macos/Info.plist
+          # Note: CFBundleExecutable should already be set to APP_NAME in Info.plist manually
+
+          # Build the binary
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_binary" main.go
+
+          # Create .app bundle
+          APP_BUNDLE_NAME="${{ env.APP_NAME }}.app"
+          mkdir -p "${APP_BUNDLE_NAME}/Contents/MacOS"
+          mkdir -p "${APP_BUNDLE_NAME}/Contents/Resources"
+
+          mv "${{ env.APP_NAME }}_binary" "${APP_BUNDLE_NAME}/Contents/MacOS/${{ env.APP_NAME }}"
+          cp platform/macos/Info.plist "${APP_BUNDLE_NAME}/Contents/Info.plist"
+          cp assets/icon.icns "${APP_BUNDLE_NAME}/Contents/Resources/icon.icns"
+
+          # Create a zip of the .app bundle
+          zip -r "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_macos_amd64.zip" "${APP_BUNDLE_NAME}"
+        shell: bash
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ env.APP_VERSION }}-${{ runner.os }}
+          path: |
+            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64
+            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_windows_amd64.exe
+            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_macos_amd64.zip
+          if-no-files-found: error # Fails the workflow if the artifact isn't found
