@@ -33,7 +33,7 @@ jobs:
           echo "version=$APP_VERSION" >> $GITHUB_OUTPUT
 
   build:
-    needs: read-version # Depends on the version being read
+    needs: read-version
     strategy:
       matrix:
         os_config:
@@ -42,24 +42,21 @@ jobs:
             goarch: amd64
             deps: "sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev"
             output_suffix: "_linux_amd64"
-            # Use shell variables $APP_NAME and $APP_VERSION here
-            build_cmd: 'CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags=''-s -w'' -o "$APP_NAME_$APP_VERSION${{ matrix.os_config.output_suffix }}" main.go'
+            # We'll construct the full output name in the run step
 
           - os_runner: macos-latest
             goos: darwin
             goarch: amd64
             deps: ""
             output_suffix: "_macos_amd64.zip"
-            # macOS build is handled differently in the run step, no build_cmd here
+            # macOS build handled in the run step
 
           - os_runner: windows-latest
             goos: windows
             goarch: amd64
-            # Use shell variable $APP_VERSION here. ${{ github.run_number }} is fine as 'github' context is available.
             deps: 'go install github.com/tc-hib/go-winres@latest && go-winres make --product-version "$APP_VERSION" --file-version "$APP_VERSION.${{ github.run_number }}" --arch amd64 -rc platform/windows/windows.rc'
             output_suffix: "_windows_amd64.exe"
-            # Use shell variables $APP_NAME and $APP_VERSION here
-            build_cmd: 'CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags=''-s -w -H windowsgui'' -o "$APP_NAME_$APP_VERSION${{ matrix.os_config.output_suffix }}" main.go'
+            # We'll construct the full output name in the run step
 
     runs-on: ${{ matrix.os_config.os_runner }}
     env:
@@ -73,7 +70,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.2" # This specific version should be fine
+          go-version: "1.24.2"
 
       - name: Tidy Go modules
         run: go mod tidy
@@ -82,46 +79,55 @@ jobs:
       - name: Set BUILD_NUMBER (for macOS Info.plist)
         run: echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
-      # Combined Build Step using matrix strategy
       - name: Install Dependencies & Build
         run: |
+          # Construct the full output filename using env and matrix variables
+          # This ensures all contexts are resolved correctly when the shell script runs
+          OUTPUT_FILENAME="${APP_NAME}_${APP_VERSION}${MATRIX_OS_CONFIG_OUTPUT_SUFFIX}"
+          # For macOS, the zipped app is the final artifact, but binary name inside is just APP_NAME
+          MACOS_ZIP_FILENAME="${APP_NAME}_${APP_VERSION}${MATRIX_OS_CONFIG_OUTPUT_SUFFIX}"
+
           if [[ -n "${{ matrix.os_config.deps }}" ]]; then
             echo "--- Installing dependencies for ${{ matrix.os_config.goos }} ---"
-            ${{ matrix.os_config.deps }} # Shell variables within deps will be expanded here
+            # Substitute deps directly here; $APP_VERSION and ${{ github.run_number }} will work.
+            eval "${{ matrix.os_config.deps }}"
           fi
 
           echo "--- Building for ${{ matrix.os_config.goos }}/${{ matrix.os_config.goarch }} ---"
           if [[ "${{ matrix.os_config.goos }}" == "darwin" ]]; then
             # macOS specific build and bundling
-            # Using ${{ env.VAR }} here is fine because this is a 'run' step script
-            sed -i '' "s/__VERSION__/${{ env.APP_VERSION }}/g" platform/macos/Info.plist
-            sed -i '' "s/__BUILD_NUMBER__/${{ env.BUILD_NUMBER }}/g" platform/macos/Info.plist
+            sed -i '' "s/__VERSION__/$APP_VERSION/g" platform/macos/Info.plist
+            sed -i '' "s/__BUILD_NUMBER__/$BUILD_NUMBER/g" platform/macos/Info.plist
             
-            CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_binary" main.go
+            CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${APP_NAME}_binary" main.go
 
-            APP_BUNDLE_NAME="${{ env.APP_NAME }}.app" # Uses shell expansion of env var
+            APP_BUNDLE_NAME="${APP_NAME}.app"
             mkdir -p "${APP_BUNDLE_NAME}/Contents/MacOS"
             mkdir -p "${APP_BUNDLE_NAME}/Contents/Resources"
             
-            mv "${{ env.APP_NAME }}_binary" "${APP_BUNDLE_NAME}/Contents/MacOS/${{ env.APP_NAME }}"
+            mv "${APP_NAME}_binary" "${APP_BUNDLE_NAME}/Contents/MacOS/${APP_NAME}"
             cp platform/macos/Info.plist "${APP_BUNDLE_NAME}/Contents/Info.plist"
             cp assets/icon.icns "${APP_BUNDLE_NAME}/Contents/Resources/icon.icns"
             
-            zip -r "${{ env.APP_NAME }}_${{ env.APP_VERSION }}${{ matrix.os_config.output_suffix }}" "${APP_BUNDLE_NAME}"
-          else
-            # Generic build command for Linux/Windows
-            # Shell variables within build_cmd will be expanded here
-            ${{ matrix.os_config.build_cmd }}
+            zip -r "$MACOS_ZIP_FILENAME" "${APP_BUNDLE_NAME}"
+          elif [[ "${{ matrix.os_config.goos }}" == "linux" ]]; then
+            CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o "$OUTPUT_FILENAME" main.go
+          elif [[ "${{ matrix.os_config.goos }}" == "windows" ]]; then
+            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags='-s -w -H windowsgui' -o "$OUTPUT_FILENAME" main.go
           fi
         shell: bash
+        # Pass matrix values explicitly to the shell environment for the run step
+        env:
+          MATRIX_OS_CONFIG_DEPS: ${{ matrix.os_config.deps }}
+          MATRIX_OS_CONFIG_OUTPUT_SUFFIX: ${{ matrix.os_config.output_suffix }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          # Using ${{ env.VAR }} here is fine as these are step inputs
           name: ${{ env.APP_NAME }}-${{ env.APP_VERSION }}-${{ matrix.os_config.goos }}-${{ matrix.os_config.goarch }}
+          # Construct artifact paths dynamically using shell expansion of env vars
+          # and explicit matrix context.
+          # The artifact paths need to match the exact filenames created.
           path: |
-            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64
-            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_windows_amd64.exe
-            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}_macos_amd64.zip
+            ${{ env.APP_NAME }}_${{ env.APP_VERSION }}${{ matrix.os_config.output_suffix }}
           if-no-files-found: error
