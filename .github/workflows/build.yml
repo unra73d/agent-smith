@@ -108,6 +108,9 @@ jobs:
             mv "${APP_NAME}_binary" "${APP_BUNDLE_NAME}/Contents/MacOS/${APP_NAME}"
             cp platform/macos/Info.plist "${APP_BUNDLE_NAME}/Contents/Info.plist"
             cp assets/icon.icns "${APP_BUNDLE_NAME}/Contents/Resources/icon.icns"
+
+            echo "--- Ad-hoc signing the app bundle ---"
+            codesign --force --deep --sign - "${APP_BUNDLE_NAME}"
             
             zip -r "$MACOS_ZIP_FILENAME" "${APP_BUNDLE_NAME}"
           elif [[ "${{ matrix.os_config.goos }}" == "linux" ]]; then

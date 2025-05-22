@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>com.onrender.agent-smith-imyp</string>
+    <string>AgentSmith</string>
     <key>CFBundleIconFile</key>
     <string>icon.icns</string>
     <key>CFBundleIdentifier</key>
-    <string>com.yourdomain.yourappname</string> <!-- REPLACE with your bundle ID -->
+    <string>com.agent-smith</string> <!-- REPLACE with your bundle ID -->
     <key>CFBundleName</key>
     <string>Agent Smith</string>
     <key>CFBundlePackageType</key>
