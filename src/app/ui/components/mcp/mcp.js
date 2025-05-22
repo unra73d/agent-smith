@@ -131,7 +131,7 @@ class MCPList extends List {
 
         item.innerHTML = `
             <div class="item-header">
-                <ui-checkbox class="select-all-checkbox" label="${data.name}" ${data.active ? 'checked' : ''}></ui-checkbox>
+                <ui-checkbox class="select-all-checkbox" label="${data.loaded ? '' : '(Loading)'}${data.name}" ${data.active ? 'checked' : ''}></ui-checkbox>
                 <div alt="Edit" class="edit-icon img-button" data-id="${data.id}">*</div>
                 <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">&#xe053;</div>
             </div>

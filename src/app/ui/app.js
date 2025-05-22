@@ -32,8 +32,7 @@ document.addEventListener('sessions:reload', async (e) => {
         sendEvent('sessions:new')
     }
 })
-
-document.addEventListener('mcp:reloaded', async (e) => {
+document.addEventListener('mcps:reloaded', async (e) => {
     let mcps = e.detail
     if (mcps && mcps.length > 0) {
         for (let i in mcps) {
@@ -49,8 +48,13 @@ document.addEventListener('mcp:reloaded', async (e) => {
     }
 })
 
-document.addEventListener('providers:reloaded', async (e) => {
-    let providers = e.detail
+document.addEventListener('mcps:reload', async (e) => {
+    let mcps = await apiListMCPServers()
+    sendEvent('mcp:reloaded', mcps)
+})
+
+document.addEventListener('providers:reload', async (e) => {
+    let providers = await apiListProviders()
     if (providers) {
         Storage.providers = providers
         populateModelSelector()
@@ -62,10 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     populateModelSelector()
     populateRoleSelector()
-    apiListProviders().then(res => sendEvent('providers:reloaded', res))
+    // apiListProviders().then(res => sendEvent('providers:reloaded', res))
+    sendEvent('providers:reload')
     sendEvent('sessions:reload')
+    sendEvent('mcps:reload')
 
-    apiListMCPServers().then(res => sendEvent('mcp:reloaded', res))
+    // apiListMCPServers().then(res => sendEvent('mcp:reloaded', res))
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');

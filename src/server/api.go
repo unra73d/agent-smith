@@ -406,10 +406,10 @@ Create new MCP server
 var createMCPServerURI = "/mcp/create"
 
 type createMCPServerReq struct {
-	Name    string `json:"name" binding:"required"`
-	Type    string `json:"type" binding:"required"`
-	URL     string `json:"url,omitempty"`
-	Command string `json:"command,omitempty"`
+	Name      string `json:"name" binding:"required"`
+	Transport string `json:"transport" binding:"required"`
+	URL       string `json:"url,omitempty"`
+	Command   string `json:"command,omitempty"`
 }
 
 func createMCPServerHandler(c *gin.Context) {
@@ -419,7 +419,35 @@ func createMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	err = agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command)
+	err = agent.CreateMCPServer(req.Name, req.Transport, req.URL, req.Command)
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+/*
+Update MCP server
+*/
+var updateMCPServerURI = "/mcp/update"
+
+type updateMCPServerReq struct {
+	ID        string `json:"id" binding:"required"`
+	Name      string `json:"name" binding:"required"`
+	Transport string `json:"transport" binding:"required"`
+	URL       string `json:"url,omitempty"`
+	Command   string `json:"command,omitempty"`
+}
+
+func updateMCPServerHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req updateMCPServerReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.UpdateMCPServer(req.ID, req.Name, req.Transport, req.URL, req.Command)
 	if err == nil {
 		c.JSON(200, map[string]any{"error": nil})
 	} else {
@@ -512,6 +540,7 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.GET(listMCPServersURI, listMCPServersHandler)
 		group.POST(testMCPServerURI, testMCPServerHandler)
 		group.POST(createMCPServerURI, createMCPServerHandler)
+		group.POST(updateMCPServerURI, updateMCPServerHandler)
 		group.GET(deleteMCPServerURI, deleteMCPServerHandler)
 
 		group.GET(sseURI, sseHandler)

@@ -62,7 +62,7 @@ func LoadAgent() {
 	signal.Add(1)
 	go func() {
 		defer signal.Done()
-		Agent.mcps = mcptools.LoadMCPServers()
+		Agent.mcps = mcptools.LoadMCPServers(onMCPUpdate)
 	}()
 
 	// load builtin tools
@@ -111,6 +111,13 @@ func GetTools() []*mcptools.Tool {
 
 func GetBuiltinTools() []*mcptools.Tool {
 	return Agent.builtinTools
+}
+
+func onMCPUpdate(mcp *mcptools.MCPServer) {
+	sseCh <- &SSEMessage{
+		Type: SSEMessageMCPListUpdate,
+		Data: Agent.mcps,
+	}
 }
 
 func CreateSession() *Session {
@@ -186,32 +193,39 @@ func TruncateSession(sessionID string, messageID string) error {
 	return errors.New("message not found")
 }
 
-func TestMCPServer(Name string, Transport string, URL string, Command string) (res bool) {
+func TestMCPServer(name string, transport string, url string, command string) (res bool) {
 	res = false
 	defer logger.BreakOnError()
 
 	mcp := &mcptools.MCPServer{
-		Name:      Name,
-		Transport: mcptools.MCPTransport(Transport),
-		URL:       URL,
-		Command:   Command,
+		Name:      name,
+		Transport: mcptools.MCPTransport(transport),
+		URL:       url,
+		Command:   command,
 	}
 
 	return mcp.Test()
 }
 
-func CreateMCPServer(Name string, Type string, URL string, Command string) (err error) {
+func CreateMCPServer(name string, transport string, url string, command string) (err error) {
 	defer logger.BreakOnError()
 
 	mcp := &mcptools.MCPServer{
 		ID:        uuid.NewString(),
-		Name:      Name,
-		Transport: mcptools.MCPTransport(Type),
-		URL:       URL,
-		Command:   Command,
+		Name:      name,
+		Transport: mcptools.MCPTransport(transport),
+		URL:       url,
+		Command:   command,
 	}
-	err = mcp.LoadTools()
-	log.CheckE(err, nil, "failed to load MCP server")
+	go func() {
+		mcp.LoadTools()
+		mcp.Loaded = true
+		sseCh <- &SSEMessage{
+			Type: SSEMessageMCPListUpdate,
+			Data: Agent.mcps,
+		}
+		log.W(err, "failed to load MCP server")
+	}()
 
 	mcp.Save()
 	Agent.mcps = append(Agent.mcps, mcp)
@@ -223,9 +237,44 @@ func CreateMCPServer(Name string, Type string, URL string, Command string) (err 
 	return
 }
 
-func DeleteMCPServer(ID string) (err error) {
-	logger.BreakOnError()
+func UpdateMCPServer(id string, name string, transport string, url string, command string) (err error) {
+	defer logger.BreakOnError()
 
+	err = errors.New("trying to update non existing MCP")
+	for _, mcp := range Agent.mcps {
+		if mcp.ID == id {
+			mcp.Name = name
+			if mcp.Transport != mcptools.MCPTransport(transport) || mcp.URL != url || mcp.Command != command {
+				mcp.Transport = mcptools.MCPTransport(transport)
+				mcp.URL = url
+				mcp.Command = command
+				mcp.Tools = []*mcptools.Tool{}
+
+				go func() {
+					err := mcp.LoadTools()
+					mcp.Loaded = true
+					sseCh <- &SSEMessage{
+						Type: SSEMessageMCPListUpdate,
+						Data: Agent.mcps,
+					}
+					log.W(err, "failed to load MCP server")
+				}()
+			}
+			err = mcp.Save()
+
+			sseCh <- &SSEMessage{
+				Type: SSEMessageMCPListUpdate,
+				Data: Agent.mcps,
+			}
+			err = nil
+			break
+		}
+	}
+	return
+}
+
+func DeleteMCPServer(ID string) (err error) {
+	err = errors.New("trying to delete non existing MCP")
 	for i, mcp := range Agent.mcps {
 		if mcp.ID == ID {
 			Agent.mcps = append(Agent.mcps[:i], Agent.mcps[i+1:]...)
@@ -233,6 +282,7 @@ func DeleteMCPServer(ID string) (err error) {
 				Type: SSEMessageMCPListUpdate,
 				Data: Agent.mcps,
 			}
+			err = nil
 			break
 		}
 	}

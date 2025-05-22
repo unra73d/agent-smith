@@ -34,28 +34,37 @@
                     </div>
                     <div id="tab2" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">Chat sessions</span>
+                            <span class="tab-content-title">Chat sessions
+                                <div class="header-controls">
+                                    <span class="img-button" onclick="sendEvent('sessions:reload')">Z</span>
+                                    <span class="img-button" onclick="sendEvent('sessions:new')">&#xe035;</span>
+                                </div>
+                            </span>
                         </div>
                         <div class="session-controls">
                             <input type="text" id="filterInput" class="filter-input" placeholder="Filter chats...">
-                            <div alt="Reload" class="reload-icon img-button" id="reloadSessions"
-                                onclick="sendEvent('sessions:reload')">Z</div>
-                            <div alt="New Session" class="plus-icon img-button" id="newSession"
-                                onclick="sendEvent('sessions:new')">&#xe035;</div>
                         </div>
                         <div class="session-list"><session-list></session-list></div>
                     </div>
                     <div id="tab3" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">MCP servers & tools<span class="header-controls img-button"
-                                    onclick="sendEvent('mcps:new')">&#xe035;</span></span>
+                            <span class="tab-content-title">MCP servers & tools
+                                <div class="header-controls">
+                                    <span class="img-button" onclick="sendEvent('mcps:reload')">Z</span>
+                                    <span class="img-button" onclick="sendEvent('mcps:new')">&#xe035;</span>
+                                </div>
+                            </span>
                         </div>
                         <div class="mcp-list"><mcp-list></mcp-list></div>
                     </div>
                     <div id="tab4" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">Models<span class="header-controls img-button"
-                                    onclick="sendEvent('providers:new')">&#xe035;</span></span>
+                            <span class="tab-content-title">Models
+                                <div class="header-controls">
+                                    <span class="img-button" onclick="sendEvent('providers:reload')">Z</span>
+                                    <span class="img-button" onclick="sendEvent('providers:new')">&#xe035;</span>
+                                </div>
+                            </span>
                         </div>
                         <div class="provider-list"><provider-list></mcp-list></div>
                     </div>
