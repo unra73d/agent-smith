@@ -99,7 +99,7 @@ jobs:
             sed -i '' "s/__VERSION__/$APP_VERSION/g" platform/macos/Info.plist
             sed -i '' "s/__BUILD_NUMBER__/$BUILD_NUMBER/g" platform/macos/Info.plist
             
-            CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${APP_NAME}_binary" main.go
+            CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${APP_NAME}_binary" src/app/main.go
 
             APP_BUNDLE_NAME="${APP_NAME}.app"
             mkdir -p "${APP_BUNDLE_NAME}/Contents/MacOS"
@@ -111,9 +111,9 @@ jobs:
             
             zip -r "$MACOS_ZIP_FILENAME" "${APP_BUNDLE_NAME}"
           elif [[ "${{ matrix.os_config.goos }}" == "linux" ]]; then
-            CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o "$OUTPUT_FILENAME" main.go
+            CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o "$OUTPUT_FILENAME" src/app/main.go
           elif [[ "${{ matrix.os_config.goos }}" == "windows" ]]; then
-            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags='-s -w -H windowsgui' -o "$OUTPUT_FILENAME" main.go
+            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags='-s -w -H windowsgui' -o "$OUTPUT_FILENAME" src/app/main.go
           fi
         shell: bash
         # Pass matrix values explicitly to the shell environment for the run step
