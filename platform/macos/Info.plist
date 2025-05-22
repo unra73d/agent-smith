@@ -7,7 +7,7 @@
     <key>CFBundleIconFile</key>
     <string>icon.icns</string>
     <key>CFBundleIdentifier</key>
-    <string>com.agent-smith</string> <!-- REPLACE with your bundle ID -->
+    <string>com.agent-smith</string>
     <key>CFBundleName</key>
     <string>Agent Smith</string>
     <key>CFBundlePackageType</key>
