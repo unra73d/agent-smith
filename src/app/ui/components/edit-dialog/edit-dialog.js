@@ -34,7 +34,6 @@ class EditDialog extends HTMLElement {
         this._onClose = onClose;
 
         this.dialog.innerHTML = '';
-        this.dialog.appendChild(this.statusEl); // Always at the top
 
         // Title
         const titleEl = document.createElement('div');
@@ -51,6 +50,9 @@ class EditDialog extends HTMLElement {
         this._renderFields();
 
         this.dialog.appendChild(this.fieldsEl);
+
+        // Status
+        this.dialog.appendChild(this.statusEl);
 
         // Buttons
         const btns = document.createElement('div');
