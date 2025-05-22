@@ -62,9 +62,36 @@ jobs:
       - name: Build Linux
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64" src/app/main.go
+          echo "--- Identifying Ubuntu version ---"
+          lsb_release -a
+          echo ""
+
+          echo "--- Current APT sources ---"
+          grep -rhE ^deb /etc/apt/sources.list*
+          echo ""
+
+          echo "--- Updating package lists (verbose) ---"
+          sudo apt-get update -y # Removed -qq for more verbosity
+          echo ""
+
+          echo "--- Checking availability of libwebkit2gtk-4.0-dev ---"
+          apt-cache policy libwebkit2gtk-4.0-dev
+          echo ""
+
+          echo "--- Searching for related webkit packages ---"
+          apt-cache search libwebkit2gtk
+          echo ""
+
+          echo "--- Attempting to install dependencies ---"
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev
+          echo "--- Dependencies installation command finished ---"
+          echo ""
+
+          echo "--- Building application ---"
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64" main.go
+          echo "--- Build command finished ---"
         shell: bash
 
       # Windows Build

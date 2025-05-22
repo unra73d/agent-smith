@@ -1,4 +1,5 @@
 .vscode
+go.sum
 app.db
 .DS_Store
 models.json
