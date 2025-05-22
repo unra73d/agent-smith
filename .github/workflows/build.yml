@@ -99,7 +99,7 @@ jobs:
             sed -i '' "s/__VERSION__/$APP_VERSION/g" platform/macos/Info.plist
             sed -i '' "s/__BUILD_NUMBER__/$BUILD_NUMBER/g" platform/macos/Info.plist
             
-            CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${APP_NAME}_binary" src/app/main.go
+            CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "${APP_NAME}_binary" src/app/main.go
 
             APP_BUNDLE_NAME="${APP_NAME}.app"
             mkdir -p "${APP_BUNDLE_NAME}/Contents/MacOS"
