@@ -123,13 +123,51 @@ class ChatView extends HTMLElement {
             }
             let processedContent = content.replace(/<think>([\s\S]*?)<\/think>/g, '').trim();
 
+            // --- MODIFIED: Wrap code blocks with header/footer and copy icon ---
             const htmlContent = marked.parse(processedContent, {
                 gfm: true,
                 breaks: true,
                 mangle: false,
-                headerIds: false
+                headerIds: false,
+                highlight: function (code, lang) {
+                    // Let highlight.js handle highlighting
+                    return hljs.highlightAuto(code, [lang]).value;
+                }
             });
-            messageElement.innerHTML = htmlContent;
+
+            // Wrap code blocks with header/footer
+            const wrappedHtml = htmlContent.replace(
+                /<pre><code( class="[^"]*")?>([\s\S]*?)<\/code><\/pre>/g,
+                (match, cls, code) => {
+                    // Unescape HTML entities for copying
+                    const codeText = code.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+                    return `
+                    <div class="code-block-wrapper">
+                        <div class="code-block-header">
+                            <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
+                        </div>
+                        <pre><code${cls ? cls : ''}>${code}</code></pre>
+                        <div class="code-block-footer">
+                            <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
+                        </div>
+                    </div>
+                    `;
+                }
+            );
+
+            messageElement.innerHTML = wrappedHtml;
+
+            // Add copy event listeners for all copy buttons in this message
+            messageElement.querySelectorAll('.copy-code-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const codeBlock = btn.closest('.code-block-wrapper').querySelector('pre code');
+                    if (codeBlock) {
+                        // Get plain text for copying
+                        let codeText = codeBlock.innerText;
+                        navigator.clipboard.writeText(codeText);
+                    }
+                });
+            });
 
             this.applySyntaxHighlighting(messageElement);
 
