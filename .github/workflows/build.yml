@@ -60,7 +60,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64" main.go
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_linux_amd64" src/app/main.go
         shell: bash
 
       # Windows Build
@@ -73,7 +73,7 @@ jobs:
           # go-winres will use git describe for ProductVersion/FileVersion if available
           # or you can set it explicitly with --product-version and --file-version
           go-winres make --product-version "${{ env.APP_VERSION }}" --file-version "${{ env.APP_VERSION }}.${{ github.run_number }}" --arch amd64 -rc platform/windows/windows.rc
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags="-s -w -H windowsgui" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_windows_amd64.exe" main.go
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -ldflags="-s -w -H windowsgui" -o "${{ env.APP_NAME }}_${{ env.APP_VERSION }}_windows_amd64.exe" src/app/main.go
         shell: bash
 
       # macOS Build
@@ -86,7 +86,7 @@ jobs:
           # Note: CFBundleExecutable should already be set to APP_NAME in Info.plist manually
 
           # Build the binary
-          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_binary" main.go
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${{ env.APP_NAME }}_binary" src/app/main.go
 
           # Create .app bundle
           APP_BUNDLE_NAME="${{ env.APP_NAME }}.app"
