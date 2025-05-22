@@ -9,7 +9,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/google/shlex"
 	"github.com/google/uuid"
 )
 
@@ -187,29 +186,22 @@ func TruncateSession(sessionID string, messageID string) error {
 	return errors.New("message not found")
 }
 
-func TestMCPServer(Name string, Transport string, URL string, Command string, Args string) (res bool) {
+func TestMCPServer(Name string, Transport string, URL string, Command string) (res bool) {
 	res = false
 	defer logger.BreakOnError()
-
-	argArray, err := shlex.Split(Args)
-	log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
 
 	mcp := &mcptools.MCPServer{
 		Name:      Name,
 		Transport: mcptools.MCPTransport(Transport),
 		URL:       URL,
 		Command:   Command,
-		Args:      argArray,
 	}
 
 	return mcp.Test()
 }
 
-func CreateMCPServer(Name string, Type string, URL string, Command string, Args string) (err error) {
+func CreateMCPServer(Name string, Type string, URL string, Command string) (err error) {
 	defer logger.BreakOnError()
-
-	argArray, err := shlex.Split(Args)
-	log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
 
 	mcp := &mcptools.MCPServer{
 		ID:        uuid.NewString(),
@@ -217,7 +209,6 @@ func CreateMCPServer(Name string, Type string, URL string, Command string, Args 
 		Transport: mcptools.MCPTransport(Type),
 		URL:       URL,
 		Command:   Command,
-		Args:      argArray,
 	}
 	err = mcp.LoadTools()
 	log.CheckE(err, nil, "failed to load MCP server")

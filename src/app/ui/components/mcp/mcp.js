@@ -42,13 +42,6 @@ class MCPList extends List {
                 type: 'text',
                 required: true,
                 visibleIf: { transport: 'stdio' }
-            },
-            {
-                name: 'args',
-                label: 'Command arguments',
-                type: 'text',
-                required: false,
-                visibleIf: { transport: 'stdio' }
             }
         ];
 

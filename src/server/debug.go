@@ -64,8 +64,7 @@ func initDB(c *gin.Context) {
 		name TEXT,
 		transport TEXT,
 		url TEXT,
-		command TEXT,
-		args TEXT
+		command TEXT
 	);`
 
 	// Execute the SQL statements to create the tables

@@ -388,7 +388,6 @@ type testMCPServerReq struct {
 	Transport string `json:"transport" binding:"required"`
 	URL       string `json:"url,omitempty"`
 	Command   string `json:"command,omitempty"`
-	Args      string `json:"args,omitempty"`
 }
 
 func testMCPServerHandler(c *gin.Context) {
@@ -398,7 +397,7 @@ func testMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Transport, req.URL, req.Command, req.Args)})
+	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Transport, req.URL, req.Command)})
 }
 
 /*
@@ -411,7 +410,6 @@ type createMCPServerReq struct {
 	Type    string `json:"type" binding:"required"`
 	URL     string `json:"url,omitempty"`
 	Command string `json:"command,omitempty"`
-	Args    string `json:"args,omitempty"`
 }
 
 func createMCPServerHandler(c *gin.Context) {
@@ -421,7 +419,7 @@ func createMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	err = agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command, req.Args)
+	err = agent.CreateMCPServer(req.Name, req.Type, req.URL, req.Command)
 	if err == nil {
 		c.JSON(200, map[string]any{"error": nil})
 	} else {

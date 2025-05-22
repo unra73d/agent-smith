@@ -182,7 +182,7 @@ func (self *APIProvider) LoadModels() (err error) {
 	for i, config := range list.Data {
 		self.Models[i] = &Model{
 			ID:       config["id"].(string),
-			Name:     self.Name + ": " + config["id"].(string),
+			Name:     config["id"].(string),
 			Provider: self,
 		}
 	}
@@ -470,14 +470,14 @@ func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]any {
 		}
 
 		if message.Origin == MessageOriginAI && len(message.ToolRequests) > 0 {
-			argsJSON, _ := json.Marshal(message.ToolRequests[0].Params)
+			paramJSON, _ := json.Marshal(message.ToolRequests[0].Params)
 			toolCalls := []map[string]any{}
 			toolCalls = append(toolCalls, map[string]any{
 				"id":   message.ToolRequests[0].ID,
 				"type": "function",
 				"function": map[string]string{
 					"name":      message.ToolRequests[0].Name,
-					"arguments": string(argsJSON),
+					"arguments": string(paramJSON),
 				},
 			})
 			bodyMessages[i+1]["tool_calls"] = toolCalls

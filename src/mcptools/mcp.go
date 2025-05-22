@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/shlex"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -37,7 +38,6 @@ type MCPServer struct {
 	Transport MCPTransport `json:"transport"`
 	URL       string       `json:"url"`
 	Command   string       `json:"command"`
-	Args      []string     `json:"args"`
 	Tools     []*Tool      `json:"tools"`
 }
 
@@ -51,7 +51,7 @@ func LoadMCPServers() []*MCPServer {
 	log.CheckE(err, nil, "Failed to open MCP server db")
 	defer db.Close()
 
-	query := "SELECT id, name, transport, url, command, args FROM mcp;"
+	query := "SELECT id, name, transport, url, command FROM mcp;"
 	rows, err := db.Query(query)
 	log.CheckE(err, nil, "Failed to select MCP servers from DB")
 	defer rows.Close()
@@ -60,11 +60,10 @@ func LoadMCPServers() []*MCPServer {
 
 	for rows.Next() {
 		var mcpServer MCPServer
-		var argsJSON sql.NullString
 		var url sql.NullString
 		var command sql.NullString
 
-		err = rows.Scan(&mcpServer.ID, &mcpServer.Name, &mcpServer.Transport, &url, &command, &argsJSON)
+		err = rows.Scan(&mcpServer.ID, &mcpServer.Name, &mcpServer.Transport, &url, &command)
 		if err != nil {
 			log.W("Failed to scan MCP server row:", err)
 			continue
@@ -86,17 +85,6 @@ func LoadMCPServers() []*MCPServer {
 		signal.Add(1)
 		go func() {
 			defer signal.Done()
-			// Unmarshal the JSON data from the 'args' column into Args
-			if argsJSON.Valid && argsJSON.String != "" {
-				err = json.Unmarshal([]byte(argsJSON.String), &mcpServer.Args)
-				if err != nil {
-					log.W("Failed to unmarshal args for MCP server:", mcpServer.ID, err)
-					mcpServer.Args = make([]string, 0)
-				}
-			} else {
-				mcpServer.Args = make([]string, 0)
-			}
-
 			err = mcpServer.LoadTools()
 			if err == nil {
 				mcpServers = append(mcpServers, &mcpServer)
@@ -119,22 +107,18 @@ func (self *MCPServer) Save() (err error) {
 	log.CheckE(err, nil, "Failed to open DB")
 	defer db.Close()
 
-	argsJSON, err := json.Marshal(self.Args)
-	log.CheckE(err, nil, "Failed to marshal args for MCP server ", self.ID)
-
 	// Use INSERT OR REPLACE (UPSERT) to handle both new and existing MCP servers
 	query := `
-	INSERT INTO mcp (id, name, transport, url, command, args)
-	VALUES (?, ?, ?, ?, ?, ?)
+	INSERT INTO mcp (id, name, transport, url, command)
+	VALUES (?, ?, ?, ?, ?)
 	ON CONFLICT(id) DO UPDATE SET
 		name=excluded.name,
 		transport=excluded.transport,
 		url=excluded.url,
-		command=excluded.command,
-		args=excluded.args;
+		command=excluded.command;
 	`
 
-	_, err = db.Exec(query, self.ID, self.Name, self.Transport, self.URL, self.Command, string(argsJSON))
+	_, err = db.Exec(query, self.ID, self.Name, self.Transport, self.URL, self.Command)
 	log.CheckW(err, "Failed to update MCP server DB")
 
 	log.D("Saved MCP server", self.ID)
@@ -168,7 +152,11 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 		c = client.NewClient(sseTransport)
 	} else {
 		if len(self.Command) > 0 {
-			stdioTransport := transport.NewStdio(self.Command, nil, self.Args...)
+			var cliArray []string
+			cliArray, err = shlex.Split(self.Command)
+			log.CheckE(err, nil, "failed to parse CLI arguments for MCP")
+
+			stdioTransport := transport.NewStdio(cliArray[0], nil, cliArray[1:]...)
 			err = stdioTransport.Start(ctx)
 			log.CheckE(err, nil, "failed to start stdio transport")
 			c = client.NewClient(stdioTransport)
@@ -189,7 +177,7 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 	go func() {
 		select {
 		case <-initDoneCh:
-		case <-time.After(60 * time.Second):
+		case <-time.After(180 * time.Second):
 			cancel()
 		}
 	}()
