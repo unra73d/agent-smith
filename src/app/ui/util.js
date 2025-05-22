@@ -99,7 +99,7 @@ function splitStringBySearchText(inputString, searchText) {
 function sendEvent(name, data = {}) {
     e = new CustomEvent(name, { detail: data });
     document.dispatchEvent(e)
-    console.debug(name)
+    // console.debug(name)
 }
 
 function monitor(obj, prop, eventName) {
@@ -273,7 +273,5 @@ async function loadCSS(url) {
         return null;
     }
 }
-
-// const gStyleSheet = await loadCSS('global.css')
 
 initShortcuts();

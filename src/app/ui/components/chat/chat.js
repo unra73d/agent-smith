@@ -147,9 +147,6 @@ class ChatView extends HTMLElement {
                             <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
                         </div>
                         <pre><code${cls ? cls : ''}>${code}</code></pre>
-                        <div class="code-block-footer">
-                            <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
-                        </div>
                     </div>
                     `;
                 }

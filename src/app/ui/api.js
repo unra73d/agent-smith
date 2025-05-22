@@ -1,6 +1,6 @@
 async function apiCreateSession() {
     try {
-        const response = await fetch('http://localhost:8008/agent/sessions/new');
+        const response = await fetch('/agent/sessions/new');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -20,7 +20,7 @@ async function apiCreateSession() {
 
 async function apiDeleteSession(sessionId) {
     try {
-        const response = await fetch(`http://localhost:8008/agent/sessions/delete/${sessionId}`);
+        const response = await fetch(`/agent/sessions/delete/${sessionId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -33,7 +33,7 @@ async function apiDeleteSession(sessionId) {
 
 async function apiListSessions() {
     try {
-        const response = await fetch('http://localhost:8008/agent/sessions/list');
+        const response = await fetch('/agent/sessions/list');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -52,7 +52,7 @@ async function apiListSessions() {
 
 async function apiTruncateSession(sessionId, messageId) {
     try {
-        const response = await fetch(`http://localhost:8008/agent/sessions/${sessionId}/truncate/${messageId}`)
+        const response = await fetch(`/agent/sessions/${sessionId}/truncate/${messageId}`)
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -67,7 +67,7 @@ async function apiTruncateSession(sessionId, messageId) {
 
 async function apiDeleteMessage(sessionId, messageId) {
     try {
-        const response = await fetch(`http://localhost:8008/agent/sessions/${sessionId}/messages/delete/${messageId}`);
+        const response = await fetch(`/agent/sessions/${sessionId}/messages/delete/${messageId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -108,7 +108,7 @@ async function apiDirectChatStreaming(sessionId, message, onMessage) {
     sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
     try {
-        const response = await fetch('http://localhost:8008/agent/directchat/stream', {
+        const response = await fetch('/agent/directchat/stream', {
             signal: controller.signal,
             method: 'POST',
             headers: {
@@ -138,7 +138,7 @@ async function apiToolChatStreaming(sessionId, message) {
     sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
     try {
-        const response = await fetch('http://localhost:8008/agent/toolchat/stream', {
+        const response = await fetch('/agent/toolchat/stream', {
             signal: controller.signal,
             method: 'POST',
             headers: {
@@ -164,7 +164,7 @@ async function apiToolChatStreaming(sessionId, message) {
 
 async function apiListModels() {
     try {
-        const response = await fetch('http://localhost:8008/agent/models/list');
+        const response = await fetch('/agent/models/list');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -184,7 +184,7 @@ async function apiListModels() {
 
 async function apiListProviders() {
     try {
-        const response = await fetch('http://localhost:8008/agent/providers/list');
+        const response = await fetch('/agent/providers/list');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -204,7 +204,7 @@ async function apiListProviders() {
 
 async function apiTestProvider(provider, signal) {
     try {
-        const response = await fetch('http://localhost:8008/agent/provider/test', {
+        const response = await fetch('/agent/provider/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(provider),
@@ -224,7 +224,7 @@ async function apiTestProvider(provider, signal) {
 
 async function apiUpdateProvider(provider) {
     try {
-        const response = await fetch('http://localhost:8008/agent/provider/update', {
+        const response = await fetch('/agent/provider/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(provider)
@@ -243,7 +243,7 @@ async function apiUpdateProvider(provider) {
 
 async function apiCreateProvider(provider) {
     try {
-        const response = await fetch('http://localhost:8008/agent/provider/create', {
+        const response = await fetch('/agent/provider/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(provider)
@@ -262,7 +262,7 @@ async function apiCreateProvider(provider) {
 
 async function apiDeleteProvider(id) {
     try {
-        const response = await fetch(`http://localhost:8008/agent/provider/delete/${id}`);
+        const response = await fetch(`/agent/provider/delete/${id}`);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -276,7 +276,7 @@ async function apiDeleteProvider(id) {
 
 async function apiListRoles() {
     try {
-        const response = await fetch('http://localhost:8008/agent/roles/list');
+        const response = await fetch('/agent/roles/list');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -296,7 +296,7 @@ async function apiListRoles() {
 
 async function apiListMCPServers() {
     try {
-        const response = await fetch('http://localhost:8008/agent/mcp/list');
+        const response = await fetch('/agent/mcp/list');
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -316,7 +316,7 @@ async function apiListMCPServers() {
 
 async function apiMCPTest(mcp, signal) {
     try {
-        const response = await fetch('http://localhost:8008/agent/mcp/test', {
+        const response = await fetch('/agent/mcp/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(mcp),
@@ -336,7 +336,7 @@ async function apiMCPTest(mcp, signal) {
 
 async function apiMCPCreate(mcp) {
     try {
-        const response = await fetch('http://localhost:8008/agent/mcp/create', {
+        const response = await fetch('/agent/mcp/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -362,7 +362,7 @@ async function apiMCPCreate(mcp) {
 
 async function apiMCPUpdate(mcp) {
     try {
-        const response = await fetch('http://localhost:8008/agent/mcp/update', {
+        const response = await fetch('/agent/mcp/update', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -388,7 +388,7 @@ async function apiMCPUpdate(mcp) {
 
 async function apiMCPDelete(id) {
     try {
-        const response = await fetch(`http://localhost:8008/agent/mcp/delete/${id}`);
+        const response = await fetch(`/agent/mcp/delete/${id}`);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -400,7 +400,7 @@ async function apiMCPDelete(id) {
 }
 
 async function apiAgentConnect() {
-    var stream = new EventSource('http://localhost:8008/agent/sse');
+    var stream = new EventSource('/agent/sse');
 
     stream.onopen = function (event) {
         console.log('Connection opened:', event);

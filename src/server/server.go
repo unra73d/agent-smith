@@ -4,10 +4,12 @@ package server
 import (
 	"agentsmith/src/logger"
 	"context"
+	"embed"
+	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -16,9 +18,7 @@ import (
 
 var log = logger.Logger("server", 1, 1, 1)
 
-const listenPort = 8008
-
-func StartServer() {
+func StartServer(fsEmbed embed.FS, port string, readyCh chan string) {
 	log.D("Starting agent server")
 
 	quit := make(chan os.Signal, 1)
@@ -33,28 +33,32 @@ func StartServer() {
 	router.Use(gin.Recovery())
 	router.Use(CORSMiddleware)
 
+	uiFS, err := fs.Sub(fsEmbed, "ui")
+	log.CheckE(err, nil, "Failed to create sub FS for ui")
+	router.StaticFS("/ui", http.FS(uiFS))
+
 	if logger.DEBUG == 1 {
 		router.Use(gin.Logger())
 	}
 
-	server := &http.Server{
-		Addr:    ":" + strconv.Itoa(listenPort),
-		Handler: router,
-	}
+	server := &http.Server{Handler: router}
+	listener, err := net.Listen("tcp", "127.0.0.1:"+port)
+	log.CheckE(err, nil, "Failed to bind server port")
+	addr := listener.Addr().String()
 
 	initRoutes(router, server)
 
 	go func() {
-		err := server.ListenAndServe()
+		err := server.Serve(listener)
 		log.CheckE(err, nil, "Server listen failed")
 	}()
 
-	log.D("Server started")
+	log.D("Server started at ", addr)
+	readyCh <- addr
 
 	<-quit
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer func() {
-		// extra handling here
 		cancel()
 	}()
 	server.Shutdown(ctx)
@@ -73,7 +77,6 @@ func CORSMiddleware(c *gin.Context) {
 	c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 	c.Header("Access-Control-Allow-Headers", "authorization, origin, content-type, accept")
 	c.Header("Allow", "HEAD,GET,POST,PUT,PATCH,DELETE,OPTIONS")
-	c.Header("Content-Type", "application/json")
 	if c.Request.Method != "OPTIONS" {
 		c.Next()
 	} else {

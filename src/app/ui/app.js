@@ -15,6 +15,10 @@ var Storage = {
     currentSession: null
 }
 
+var UserPref = {
+
+}
+
 monitor(Storage, 'models', 'storage:models')
 monitor(Storage, 'sessions', 'storage:sessions')
 monitor(Storage, 'roles', 'storage:roles')
