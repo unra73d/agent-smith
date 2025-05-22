@@ -46,7 +46,7 @@ jobs:
 
           - os_runner: macos-latest
             goos: darwin
-            goarch: amd64
+            goarch: arm64
             deps: ""
             output_suffix: "_macos_amd64.zip"
             # macOS build handled in the run step
