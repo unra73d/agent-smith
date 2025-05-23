@@ -44,19 +44,17 @@ jobs:
             output_suffix: "_linux_amd64"
             # We'll construct the full output name in the run step
 
-          - os_runner: macos-latest
-            goos: darwin
-            goarch: arm64
-            deps: ""
-            output_suffix: "_macos_amd64.zip"
-            # macOS build handled in the run step
-
+          # - os_runner: macos-latest
+          #   goos: darwin
+          #   goarch: arm64
+          #   deps: ""
+          #   output_suffix: "_macos_amd64.zip"
+          # macOS build handled in the run step
           - os_runner: windows-latest
             goos: windows
             goarch: amd64
-            deps: 'go install github.com/tc-hib/go-winres@latest && go-winres make --product-version "$APP_VERSION" --file-version "$APP_VERSION.${{ github.run_number }}" --arch amd64 -rc platform/windows/windows.rc'
+            deps: 'go install github.com/tc-hib/go-winres@latest && go-winres make --product-version "$APP_VERSION" --file-version "$APP_VERSION.${{ github.run_number }}" --arch amd64 --in platform/windows/winres.json'
             output_suffix: "_windows_amd64.exe"
-            # We'll construct the full output name in the run step
 
     runs-on: ${{ matrix.os_config.os_runner }}
     env:
