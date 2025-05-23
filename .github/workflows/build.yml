@@ -53,7 +53,7 @@ jobs:
           - os_runner: windows-latest
             goos: windows
             goarch: amd64
-            deps: 'go install github.com/tc-hib/go-winres@latest && go-winres make --product-version "$APP_VERSION" --file-version "$APP_VERSION.${{ github.run_number }}" --arch amd64 --in platform/windows/winres.json --out src/app/rsrc_windows_amd64.syso'
+            deps: 'go install github.com/tc-hib/go-winres@latest && go-winres make --product-version "$APP_VERSION" --file-version "$APP_VERSION.${{ github.run_number }}" --arch amd64 --in platform/windows/winres.json --out src/app/rsrc'
             output_suffix: "_windows_amd64.exe"
 
     runs-on: ${{ matrix.os_config.os_runner }}
