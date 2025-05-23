@@ -1,7 +1,18 @@
 {
     "RT_GROUP_ICON": {
         "APP": {
-            "0000": "../../assets/icon.ico"
+            "0000": "../../assets/icon.ico",
+            "0409": "../../assets/icon.ico"
+        }
+    },
+    "RT_MANIFEST": {
+        "#1": {
+            "0409": {
+                "execution-level": "as invoker",
+                "ui-access": true,
+                "long-path-aware": true,
+                "use-common-controls-v6": false
+            }
         }
     }
 }
