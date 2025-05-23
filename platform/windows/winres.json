@@ -1,5 +1,5 @@
 {
-    "Resources": {
-        "platform/windows/windows.rc": {}
-    }
+    "Icon": "../../assets/icon.ico",
+    "Manifest": "",
+    "Resources": {}
 }
