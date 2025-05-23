@@ -1,7 +1,7 @@
 {
     "RT_GROUP_ICON": {
-        "#42": {
-            "0409": "../../assets/icon.ico"
+        "APP": {
+            "0000": "../../assets/icon.ico"
         }
     }
 }
