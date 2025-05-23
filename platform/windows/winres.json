@@ -1,9 +1,7 @@
 {
-    "Icon": "../../assets/icon.ico",
-    "Manifest": "",
-    "Resources": {
-        "rc": [
-            "platform/windows/windows.rc"
-        ]
+    "RT_GROUP_ICON": {
+        "#1": {
+            "0409": "../../assets/icon.ico"
+        }
     }
 }
