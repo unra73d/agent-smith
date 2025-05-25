@@ -101,8 +101,6 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 			}
 		}
 
-		sysPrompt = sysPrompt + toolUsePrompt
-
 		modelResponseCh := make(chan string)
 		modelDoneCh := make(chan error)
 		toolCh := make(chan []*mcptools.ToolCallRequest)
@@ -111,6 +109,17 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 		session.AddMessage(ai.MessageOriginAI, "", nil)
 
 		var toolCalls []*mcptools.ToolCallRequest
+		selectedTools := make([]*mcptools.Tool, 0, len(Agent.mcps)*4)
+		for _, mcp := range Agent.mcps {
+			if mcp.Active {
+				selectedTools = append(selectedTools, mcp.Tools...)
+			}
+		}
+
+		if len(selectedTools) > 0 {
+			sysPrompt = sysPrompt + toolUsePrompt
+		}
+
 		go func() {
 			log.D("Starting initial chat completion")
 			err := model.Provider.ChatCompletionStream(
@@ -118,7 +127,7 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 				session.Messages[:len(session.Messages)-1],
 				sysPrompt,
 				model,
-				GetTools(),
+				selectedTools,
 				modelResponseCh,
 				toolCh,
 			)

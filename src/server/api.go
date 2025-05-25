@@ -306,9 +306,7 @@ func dynamicAgentChatHandler(c *gin.Context) {
 API for sending message to AI through an agent. Internally agent and LLM can exchange multiple messages
 and evet include user in this loop. Loop can be broken by LLM, user prompt or if agent detects recursion
 LLM can call tools or dynamic agents.
-Response is SSE stream:
-{
-}
+Response is SSE stream
 */
 var toolChatStreamURI = "/toolchat/stream"
 
