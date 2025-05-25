@@ -245,6 +245,18 @@ class ChatView extends HTMLElement {
         if (message.origin === 'assistant') {
             const { messageContent, thinkContent, thinkSummary, toolContent } = this.initAssisstantMessageElement(messageInnerContent);
             this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, message.text, message.toolRequests);
+        } else if (message.origin === 'tool') {
+            messageInnerContent.innerHTML = `
+                <div class="tool-block">
+                    <div class="tool-summary"><span class="icon">&#xe029;</span> Tool response</div>
+                    <div class="tool-content">${message.text}</div>
+                </div>
+            `;
+            const toolBlock = messageInnerContent.querySelector('.tool-block');
+            const toolSummary = messageInnerContent.querySelector('.tool-summary');
+            toolSummary.addEventListener('click', () => {
+                toolBlock.classList.toggle('open');
+            });
         } else {
             messageInnerContent.textContent = message.text;
         }

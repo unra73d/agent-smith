@@ -194,81 +194,79 @@ body {
                     background-color: #fff;
                 }
             }
-
-            .thinking-block,
-            .tool-block {
-                margin: 4px 0;
-                color: #bdc1c6;
-                font-size: 0.9em;
-
-                .thinking-summary,
-                .tool-summary {
-                    padding: 3px 8px;
-                    cursor: pointer;
-                    background-color: transparent;
-                    border-radius: 4px 4px 0 0;
-                    position: relative;
-                    border: 1px solid #313335;
-                    max-width: 30%;
-
-                    &.in-progress {
-                        animation: border-animation 2s linear infinite;
-                    }
-
-                    &::before {
-                        content: '⟩';
-                        display: inline-block;
-                        margin-right: 6px;
-                        font-size: 0.8em;
-                        transition: transform 0.2s ease-in-out;
-                    }
-                }
-
-                .thinking-content,
-                .tool-content {
-                    padding: 4px 8px;
-                    background-color: #161617;
-                    color: #6f7071;
-                    white-space: pre-wrap;
-                }
-
-                &.open {
-
-                    >.thinking-summary::before,
-                    >.tool-summary::before {
-                        transform: rotate(90deg);
-                    }
-                }
-
-                &:not(.open) {
-
-                    >.thinking-content,
-                    >.tool-content {
-                        display: none;
-                    }
-
-                    >.thinking-summary,
-                    >.tool-summary {
-                        border-radius: 4px;
-                    }
-                }
-
-                &:has(.thinking-content-empty),
-                &:has(.tool-content-empty) {
-                    display: none;
-                }
-            }
         }
 
         &.tool .message-inner-content {
-            background-color: #2a2b2d;
-            margin-left: 10%;
+            margin-left: 9%;
             margin-right: auto;
-            border: 1px dashed #5f6368;
-            font-size: 0.9em;
+            max-width: 82%;
+            border-left: 1px solid #313335;
+            border-radius: 0px;
+            padding: 0px 12px;
+        }
+
+        .thinking-block,
+        .tool-block {
+            margin: 4px 0;
             color: #bdc1c6;
-            max-width: 80%;
-            width: fit-content;
+            font-size: 0.9em;
+
+            .thinking-summary,
+            .tool-summary {
+                padding: 3px 8px;
+                cursor: pointer;
+                background-color: transparent;
+                border-radius: 4px 4px 0 0;
+                position: relative;
+                border: 1px solid #313335;
+                max-width: 30%;
+
+                &.in-progress {
+                    animation: border-animation 2s linear infinite;
+                }
+
+                &::before {
+                    content: '⟩';
+                    display: inline-block;
+                    margin-right: 6px;
+                    font-size: 0.8em;
+                    transition: transform 0.2s ease-in-out;
+                }
+            }
+
+            .thinking-content,
+            .tool-content {
+                padding: 4px 8px;
+                background-color: #161617;
+                color: #6f7071;
+                white-space: pre-wrap;
+            }
+
+            &.open {
+
+                >.thinking-summary::before,
+                >.tool-summary::before {
+                    transform: rotate(90deg);
+                }
+            }
+
+            &:not(.open) {
+
+                >.thinking-content,
+                >.tool-content {
+                    display: none;
+                }
+
+                >.thinking-summary,
+                >.tool-summary {
+                    border-radius: 4px;
+                }
+            }
+
+            &:has(.thinking-content-empty),
+            &:has(.tool-content-empty) {
+                display: none;
+            }
         }
 
         .copy-delete-buttons {

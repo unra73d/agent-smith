@@ -70,7 +70,7 @@ document.addEventListener('roles:reload', async (e) => {
 document.addEventListener('roles:reloaded', (e) => {
     let roles = e.detail
     if (roles) {
-        Storage.roles = roles
+        Storage.roles = roles.sort((a, b) => a.config.name.localeCompare(b.config.name))
         populateRoleSelector()
     }
 })
@@ -171,7 +171,7 @@ async function populateRoleSelector() {
     if (roles && roles.length > 0) {
         const options = [
             { value: '', label: 'Select a Role', disabled: true, selected: true },
-            ...roles.sort((a, b) => a.config.name.localeCompare(b.config.name)).map((role, idx) => ({
+            ...roles.map((role, idx) => ({
                 value: role.id,
                 label: role.config.name,
                 selected: idx === 0

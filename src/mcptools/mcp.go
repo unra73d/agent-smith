@@ -196,6 +196,7 @@ func (self *MCPServer) LoadTools() (err error) {
 
 	ctx, cancel, c, err := self.connect()
 	log.CheckE(err, nil, "failed to connect to MCP")
+	defer c.Close()
 
 	var mcpTools *mcp.ListToolsResult
 	loadedCh := make(chan *mcp.ListToolsResult)
@@ -264,10 +265,9 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 	defer logger.BreakOnError()
 
 	var ctx context.Context
-	var cancel context.CancelFunc
 	var c *client.Client
-	ctx, cancel, c, err = self.connect()
-	defer cancel()
+	ctx, _, c, err = self.connect()
+	defer c.Close()
 	log.CheckE(err, nil, "failed to connect to MCP")
 
 	toolRequest := mcp.CallToolRequest{
@@ -297,5 +297,5 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 func (self *MCPServer) Test() bool {
 	res := self.LoadTools()
 
-	return res == nil
+	return res == nil && len(self.Tools) > 0
 }
