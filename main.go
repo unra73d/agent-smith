@@ -14,27 +14,25 @@ import (
 
 var log = logger.Logger("main", 1, 1, 1)
 
-//go:embed ui
-//go:embed ui/**/*
+//go:embed src/ui
+//go:embed src/ui/**/*
 var uiFS embed.FS
 
 func main() {
 	defer logger.BreakOnError()
 
-	serverOnly := flag.Bool("server", false, "Run only the server without UI")
-	port := flag.Int("port", 0, "Specify the port for the server to listen on")
+	serverOnly := flag.Bool("server", false, "Run only server without UI")
+	port := flag.Int("port", 0, "Specify port for server to listen on")
 	flag.Parse()
 
-	entries, _ := uiFS.ReadDir("ui")
-	for _, e := range entries {
-		fmt.Println(e.Name())
-	}
-
 	os.Setenv("AS_AGENT_DB_FILE", "app.db")
+	_, err := os.Stat("app.db")
+	if os.IsNotExist(err) {
+		server.InitDB()
+	}
 
 	agent.LoadAgent()
 
-	// agent api server
 	serverReadyCh := make(chan string)
 	go server.StartServer(uiFS, fmt.Sprintf("%d", *port), serverReadyCh)
 
@@ -46,10 +44,10 @@ func main() {
 		select {}
 	} else {
 		w := webview.New(logger.DEBUG == 1)
-		defer w.Destroy() // Ensure cleanup
+		defer w.Destroy()
 
 		w.SetTitle("Agent Smith")
-		w.SetSize(1200, 800, webview.HintNone)
+		w.SetSize(1000, 800, webview.HintNone)
 
 		log.D("Navigating WebView to: ", serverURL)
 		w.Navigate(serverURL)

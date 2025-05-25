@@ -20,12 +20,21 @@ func InitDebugRoutes(router *gin.Engine, server *http.Server) {
 }
 
 func initDB(c *gin.Context) {
+	err := InitDB()
+	if err == nil {
+		c.Status(200)
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+func InitDB() (err error) {
 	log.D("Initializing sqlite DB")
 	defer logger.BreakOnError()
 
 	// Open a connection to the SQLite database
 	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
-	log.CheckE(err, func() { c.Status(500) }, "Cant open DB")
+	log.CheckE(err, nil, "Cant open DB")
 
 	defer db.Close()
 
@@ -69,19 +78,19 @@ func initDB(c *gin.Context) {
 
 	// Execute the SQL statements to create the tables
 	_, err = db.Exec(createSessionsTableSQL)
-	log.CheckW(err, "Failed to create sessions table")
+	log.CheckE(err, nil, "Failed to create sessions table")
 
 	_, err = db.Exec(createAIProvidersTableSQL)
-	log.CheckW(err, "Failed to create AI providers table")
+	log.CheckE(err, nil, "Failed to create AI providers table")
 
 	_, err = db.Exec(createRolesTableSQL)
-	log.CheckW(err, "Failed to create roles table")
+	log.CheckE(err, nil, "Failed to create roles table")
 
 	_, err = db.Exec(createMCPTableSQL)
-	log.CheckW(err, "Failed to create mcp table")
+	log.CheckE(err, nil, "Failed to create mcp table")
 
 	log.D("SQLite DB initialized")
-	c.JSON(200, map[string]string{"error": ""})
+	return
 }
 
 func stopServer(server *http.Server) {

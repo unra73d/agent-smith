@@ -33,7 +33,7 @@ func StartServer(fsEmbed embed.FS, port string, readyCh chan string) {
 	router.Use(gin.Recovery())
 	router.Use(CORSMiddleware)
 
-	uiFS, err := fs.Sub(fsEmbed, "ui")
+	uiFS, err := fs.Sub(fsEmbed, "src/ui")
 	log.CheckE(err, nil, "Failed to create sub FS for ui")
 	router.StaticFS("/ui", http.FS(uiFS))
 
