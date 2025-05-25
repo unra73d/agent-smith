@@ -48,7 +48,7 @@ class List extends HTMLElement {
 
     updateList() {
         if (this.items) {
-            this.list.innerHTML = '';
+            // this.list.innerHTML = '';
 
             const fragment = document.createDocumentFragment()
 
@@ -58,7 +58,9 @@ class List extends HTMLElement {
                 fragment.appendChild(item)
             }
 
-            this.list.appendChild(fragment)
+            // this.list.appendChild(fragment)
+            this.list.replaceChildren(fragment)
+
         }
     }
 

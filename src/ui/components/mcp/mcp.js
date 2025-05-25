@@ -103,6 +103,7 @@ class MCPList extends List {
             initialValues: {},
             validate,
             onSave: async (res) => {
+                res.active = true
                 await apiMCPCreate(res);
             }
         });
@@ -121,6 +122,7 @@ class MCPList extends List {
             validate,
             onSave: async (res) => {
                 res.id = mcp.id;
+                res.active = mcp.active
                 await apiMCPUpdate(res);
             }
         });
@@ -148,21 +150,15 @@ class MCPList extends List {
             const toolItem = document.createElement('div');
             toolItem.classList.add('tool-item');
             toolItem.innerHTML = `
-                <label class="tool-checkbox-area">
-                    <ui-checkbox ${data.active ? '' : 'disabled'} ${tool.active ? 'checked' : ''}></ui-checkbox>
-                </label>
                 <span class="item-text">${tool.name} - ${tool.description}</span>
             `;
             itemContent.appendChild(toolItem);
 
-            const toolCheckbox = toolItem.querySelector('ui-checkbox');
-            toolCheckbox.addEventListener('change', (e) => {
-                tool.active = e.target.checked; // Update the tool's active state
-            });
         }
 
-        selectAllCheckbox.addEventListener('change', (e) => {
+        selectAllCheckbox.addEventListener('change', async e => {
             data.active = e.target.checked
+            await apiMCPUpdate(data)
         });
 
         editIcon.addEventListener('click', e => this.handleEditMCP(data));

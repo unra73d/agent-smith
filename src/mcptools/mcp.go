@@ -41,14 +41,15 @@ type MCPServer struct {
 	Command   string       `json:"command"`
 	Tools     []*Tool      `json:"tools"`
 	Loaded    bool         `json:"loaded"`
+	Active    bool         `json:"active"`
 }
 
-func NewMCP(id string, name string, transport MCPTransport, url string, command string) *MCPServer {
+func NewMCP(id string, name string, transport MCPTransport, url string, command string, active bool) *MCPServer {
 	if id == "" {
 		id = uuid.NewString()
 	}
 
-	mcp := &MCPServer{id, name, transport, url, command, []*Tool{}, false}
+	mcp := &MCPServer{id, name, transport, url, command, []*Tool{}, false, active}
 
 	return mcp
 }
@@ -63,7 +64,7 @@ func LoadMCPServers(updateCb MCPUpdateCb) []*MCPServer {
 	log.CheckE(err, nil, "Failed to open MCP server db")
 	defer db.Close()
 
-	query := "SELECT id, name, transport, url, command FROM mcp;"
+	query := "SELECT id, name, transport, url, command, active FROM mcp;"
 	rows, err := db.Query(query)
 	log.CheckE(err, nil, "Failed to select MCP servers from DB")
 	defer rows.Close()
@@ -71,14 +72,16 @@ func LoadMCPServers(updateCb MCPUpdateCb) []*MCPServer {
 	for rows.Next() {
 		var url, command sql.NullString
 		var id, name, transport string
+		var active bool
 
-		err = rows.Scan(&id, &name, &transport, &url, &command)
+		err = rows.Scan(&id, &name, &transport, &url, &command, &active)
 		if err != nil {
 			log.W("Failed to scan MCP server row:", err)
 			continue
 		}
 
-		mcpServer := NewMCP(id, name, MCPTransport(transport), url.String, command.String)
+		mcpServer := NewMCP(id, name, MCPTransport(transport), url.String, command.String, active)
+		mcpServer.Active = active // Set the Active field
 		mcpServers = append(mcpServers, mcpServer)
 
 		go func() {
@@ -105,16 +108,17 @@ func (self *MCPServer) Save() (err error) {
 
 	// Use INSERT OR REPLACE (UPSERT) to handle both new and existing MCP servers
 	query := `
-	INSERT INTO mcp (id, name, transport, url, command)
-	VALUES (?, ?, ?, ?, ?)
+	INSERT INTO mcp (id, name, transport, url, command, active)
+	VALUES (?, ?, ?, ?, ?, ?)
 	ON CONFLICT(id) DO UPDATE SET
 		name=excluded.name,
 		transport=excluded.transport,
 		url=excluded.url,
-		command=excluded.command;
+		command=excluded.command,
+		active=excluded.active;
 	`
 
-	_, err = db.Exec(query, self.ID, self.Name, self.Transport, self.URL, self.Command)
+	_, err = db.Exec(query, self.ID, self.Name, self.Transport, self.URL, self.Command, self.Active)
 	log.CheckW(err, "Failed to update MCP server DB")
 
 	log.D("Saved MCP server", self.ID)

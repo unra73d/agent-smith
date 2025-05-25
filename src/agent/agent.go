@@ -193,7 +193,7 @@ func TruncateSession(sessionID string, messageID string) error {
 	return errors.New("message not found")
 }
 
-func TestMCPServer(name string, transport string, url string, command string) (res bool) {
+func TestMCPServer(name string, transport string, url string, command string, active bool) (res bool) {
 	res = false
 	defer logger.BreakOnError()
 
@@ -202,12 +202,13 @@ func TestMCPServer(name string, transport string, url string, command string) (r
 		Transport: mcptools.MCPTransport(transport),
 		URL:       url,
 		Command:   command,
+		Active:    active, // Set the Active field
 	}
 
 	return mcp.Test()
 }
 
-func CreateMCPServer(name string, transport string, url string, command string) (err error) {
+func CreateMCPServer(name string, transport string, url string, command string, active bool) (err error) {
 	defer logger.BreakOnError()
 
 	mcp := &mcptools.MCPServer{
@@ -216,6 +217,7 @@ func CreateMCPServer(name string, transport string, url string, command string) 
 		Transport: mcptools.MCPTransport(transport),
 		URL:       url,
 		Command:   command,
+		Active:    active,
 	}
 	go func() {
 		mcp.LoadTools()
@@ -237,13 +239,14 @@ func CreateMCPServer(name string, transport string, url string, command string) 
 	return
 }
 
-func UpdateMCPServer(id string, name string, transport string, url string, command string) (err error) {
+func UpdateMCPServer(id string, name string, transport string, url string, command string, active bool) (err error) {
 	defer logger.BreakOnError()
 
 	err = errors.New("trying to update non existing MCP")
 	for _, mcp := range Agent.mcps {
 		if mcp.ID == id {
 			mcp.Name = name
+			mcp.Active = active
 			if mcp.Transport != mcptools.MCPTransport(transport) || mcp.URL != url || mcp.Command != command {
 				mcp.Transport = mcptools.MCPTransport(transport)
 				mcp.URL = url

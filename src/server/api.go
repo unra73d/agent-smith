@@ -388,6 +388,7 @@ type testMCPServerReq struct {
 	Transport string `json:"transport" binding:"required"`
 	URL       string `json:"url,omitempty"`
 	Command   string `json:"command,omitempty"`
+	Active    bool   `json:"active"` // New field
 }
 
 func testMCPServerHandler(c *gin.Context) {
@@ -397,7 +398,7 @@ func testMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Transport, req.URL, req.Command)})
+	c.JSON(200, map[string]any{"response": agent.TestMCPServer(req.Name, req.Transport, req.URL, req.Command, req.Active)})
 }
 
 /*
@@ -410,6 +411,7 @@ type createMCPServerReq struct {
 	Transport string `json:"transport" binding:"required"`
 	URL       string `json:"url,omitempty"`
 	Command   string `json:"command,omitempty"`
+	Active    bool   `json:"active"` // New field
 }
 
 func createMCPServerHandler(c *gin.Context) {
@@ -419,7 +421,7 @@ func createMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	err = agent.CreateMCPServer(req.Name, req.Transport, req.URL, req.Command)
+	err = agent.CreateMCPServer(req.Name, req.Transport, req.URL, req.Command, req.Active)
 	if err == nil {
 		c.JSON(200, map[string]any{"error": nil})
 	} else {
@@ -438,6 +440,7 @@ type updateMCPServerReq struct {
 	Transport string `json:"transport" binding:"required"`
 	URL       string `json:"url,omitempty"`
 	Command   string `json:"command,omitempty"`
+	Active    bool   `json:"active"` // New field
 }
 
 func updateMCPServerHandler(c *gin.Context) {
@@ -447,7 +450,7 @@ func updateMCPServerHandler(c *gin.Context) {
 	err := c.Bind(&req)
 	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
 
-	err = agent.UpdateMCPServer(req.ID, req.Name, req.Transport, req.URL, req.Command)
+	err = agent.UpdateMCPServer(req.ID, req.Name, req.Transport, req.URL, req.Command, req.Active)
 	if err == nil {
 		c.JSON(200, map[string]any{"error": nil})
 	} else {

@@ -73,21 +73,22 @@ func InitDB() (err error) {
 		name TEXT,
 		transport TEXT,
 		url TEXT,
-		command TEXT
+		command TEXT,
+		active BOOLEAN DEFAULT FALSE
 	);`
 
 	// Execute the SQL statements to create the tables
 	_, err = db.Exec(createSessionsTableSQL)
-	log.CheckE(err, nil, "Failed to create sessions table")
+	log.CheckW(err, "Failed to create sessions table")
 
 	_, err = db.Exec(createAIProvidersTableSQL)
-	log.CheckE(err, nil, "Failed to create AI providers table")
+	log.CheckW(err, "Failed to create AI providers table")
 
 	_, err = db.Exec(createRolesTableSQL)
-	log.CheckE(err, nil, "Failed to create roles table")
+	log.CheckW(err, "Failed to create roles table")
 
 	_, err = db.Exec(createMCPTableSQL)
-	log.CheckE(err, nil, "Failed to create mcp table")
+	log.CheckW(err, "Failed to create mcp table")
 
 	log.D("SQLite DB initialized")
 	return
