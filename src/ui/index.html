@@ -36,13 +36,9 @@
                         <div class="tab-content-header">
                             <span class="tab-content-title">Chat sessions
                                 <div class="header-controls">
-                                    <span class="img-button" onclick="sendEvent('sessions:reload')">Z</span>
                                     <span class="img-button" onclick="sendEvent('sessions:new')">&#xe035;</span>
                                 </div>
                             </span>
-                        </div>
-                        <div class="session-controls">
-                            <input type="text" id="filterInput" class="filter-input" placeholder="Filter chats...">
                         </div>
                         <div class="session-list"><session-list></session-list></div>
                     </div>
@@ -50,7 +46,6 @@
                         <div class="tab-content-header">
                             <span class="tab-content-title">MCP servers & tools
                                 <div class="header-controls">
-                                    <span class="img-button" onclick="sendEvent('mcps:reload')">Z</span>
                                     <span class="img-button" onclick="sendEvent('mcps:new')">&#xe035;</span>
                                 </div>
                             </span>
@@ -61,17 +56,21 @@
                         <div class="tab-content-header">
                             <span class="tab-content-title">Models
                                 <div class="header-controls">
-                                    <span class="img-button" onclick="sendEvent('providers:reload')">Z</span>
                                     <span class="img-button" onclick="sendEvent('providers:new')">&#xe035;</span>
                                 </div>
                             </span>
                         </div>
-                        <div class="provider-list"><provider-list></mcp-list></div>
+                        <div class="provider-list"><provider-list></provider-list></div>
                     </div>
                     <div id="tab5" class="tab-content">
                         <div class="tab-content-header">
-                            <span class="tab-content-title">Roles</span>
+                            <span class="tab-content-title">Roles
+                                <div class="header-controls">
+                                    <span class="img-button" onclick="sendEvent('roles:new')">&#xe035;</span>
+                                </div>
+                            </span>
                         </div>
+                        <div class="role-list"><role-list></role-list></div>
                     </div>
                 </div>
             </div>
@@ -105,6 +104,7 @@
     <script src="components/chat/chat.js"></script>
     <script src="components/sessions/sessions.js"></script>
     <script src="components/providers/providers.js"></script>
+    <script src="components/roles/roles.js"></script>
 
     <script src="app.js"></script>
 </body>

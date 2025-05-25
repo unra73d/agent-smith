@@ -62,14 +62,27 @@ document.addEventListener('providers:reloaded', (e) => {
     }
 })
 
+document.addEventListener('roles:reload', async (e) => {
+    let roles = await apiListRoles()
+    sendEvent("roles:reloaded", roles)
+})
+
+document.addEventListener('roles:reloaded', (e) => {
+    let roles = e.detail
+    if (roles) {
+        Storage.roles = roles
+        populateRoleSelector()
+    }
+})
+
 document.addEventListener('DOMContentLoaded', async () => {
     await apiAgentConnect()
 
     populateModelSelector()
-    populateRoleSelector()
     sendEvent('providers:reload')
     sendEvent('sessions:reload')
     sendEvent('mcps:reload')
+    sendEvent('roles:reload')
 
     // --- Set initial active tab state based on HTML ---
     const initiallyActiveButton = document.querySelector('.top-tab-button.active');
@@ -154,13 +167,13 @@ function getSelectedModelId() {
 }
 
 async function populateRoleSelector() {
-    const roles = await apiListRoles();
+    const roles = Storage.roles
     if (roles && roles.length > 0) {
         const options = [
             { value: '', label: 'Select a Role', disabled: true, selected: true },
-            ...roles.sort((a, b) => a.name.localeCompare(b.name)).map((role, idx) => ({
+            ...roles.sort((a, b) => a.config.name.localeCompare(b.config.name)).map((role, idx) => ({
                 value: role.id,
-                label: role.name,
+                label: role.config.name,
                 selected: idx === 0
             }))
         ];

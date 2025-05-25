@@ -140,7 +140,6 @@ body {
                         padding: 6px;
                         overflow-x: auto;
                         white-space: pre-wrap;
-                        max-height: 50vh;
                         overflow-y: auto;
 
                         * {

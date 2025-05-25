@@ -215,6 +215,13 @@ class EditDialog extends HTMLElement {
                 this._fieldRows[field.name] = row;
                 this.fieldsEl.appendChild(row);
                 continue;
+            } else if (field.multiline) {
+                input = document.createElement('textarea');
+                input.id = field.name;
+                input.rows = 4;
+                input.style.resize = 'vertical';
+                input.value = this._values[field.name] ?? field.default ?? '';
+                input.addEventListener('input', () => this._onFieldChange(field.name));
             } else {
                 input = document.createElement('input');
                 if (field.type === 'number') {

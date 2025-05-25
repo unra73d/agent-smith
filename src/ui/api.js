@@ -103,7 +103,7 @@ document.addEventListener('loading:generation-stopped', (e) => {
     }
 })
 
-async function apiDirectChatStreaming(sessionId, message, onMessage) {
+async function apiDirectChatStreaming(sessionId, message) {
     let controller = new AbortController()
     sendEvent('loading:generation-started', { sessionId: sessionId, controller: controller })
 
@@ -125,7 +125,6 @@ async function apiDirectChatStreaming(sessionId, message, onMessage) {
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            onMessage(value)
         }
     } catch (error) {
         console.error("Failed to initiate streaming:", error);
@@ -294,6 +293,50 @@ async function apiListRoles() {
     }
 }
 
+async function apiCreateRole(role) {
+    try {
+        const response = await fetch('/agent/roles/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(role)
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data.role;
+    } catch (error) {
+        console.error("Failed to create role:", error);
+        return null;
+    }
+}
+
+async function apiUpdateRole(role) {
+    try {
+        const response = await fetch('/agent/roles/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(role)
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data.role;
+    } catch (error) {
+        console.error("Failed to update role:", error);
+        return null;
+    }
+}
+
+async function apiDeleteRole(id) {
+    try {
+        const response = await fetch(`/agent/roles/delete/${id}`);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to delete role:", error);
+        return null;
+    }
+}
+
 async function apiListMCPServers() {
     try {
         const response = await fetch('/agent/mcp/list');
@@ -459,18 +502,6 @@ async function apiAgentConnect() {
         } catch { }
     });
 
-    stream.addEventListener('session_list_update', function (event) {
-        try {
-            const parsedData = JSON.parse(event.data);
-        } catch { }
-    });
-
-    stream.addEventListener('model_list_update', function (event) {
-        try {
-            const parsedData = JSON.parse(event.data);
-        } catch { }
-    });
-
     stream.addEventListener('mcp_list_update', function (event) {
         try {
             const parsedData = JSON.parse(event.data);
@@ -484,4 +515,36 @@ async function apiAgentConnect() {
             sendEvent('providers:reloaded', parsedData)
         } catch { }
     });
+
+    stream.addEventListener('role_list_update', function (event) {
+        try {
+            const parsedData = JSON.parse(event.data);
+            sendEvent('roles:reloaded', parsedData)
+        } catch { }
+    });
+}
+
+async function apiOpenLink(url) {
+    try {
+        const response = await fetch('/agent/desktop/url/open', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                "url": url
+            })
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data) {
+            return data
+        }
+    } catch (error) {
+        console.error("Failed to open url:", error);
+        return null
+    }
 }

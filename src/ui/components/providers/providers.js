@@ -55,7 +55,7 @@ class ProviderList extends List {
 
     async showProviderDialog({ title, initialValues, onSave }) {
         const fields = [
-            { name: 'name', label: 'Provider Name', type: 'text', required: true },
+            { name: 'name', label: 'Name', type: 'text', required: true },
             { name: 'url', label: 'API URL', type: 'text', required: true },
             { name: 'apiKey', label: 'API Key', type: 'text', required: false },
             {

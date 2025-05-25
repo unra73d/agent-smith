@@ -147,6 +147,9 @@ class ChatView extends HTMLElement {
                             <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
                         </div>
                         <pre><code${cls ? cls : ''}>${code}</code></pre>
+                        <div class="code-block-footer">
+                            <button class="copy-code-btn img-button" title="Copy code">7 <span>copy</span></button>
+                        </div>
                     </div>
                     `;
                 }
@@ -165,6 +168,16 @@ class ChatView extends HTMLElement {
                     }
                 });
             });
+
+            messageElement.querySelectorAll('a').forEach(link => {
+                let href = link.href
+                link.setAttribute('data-href', href)
+                link.href = ""
+                link.addEventListener('click', (e) => {
+                    e.preventDefault()
+                    apiOpenLink(href)
+                })
+            })
 
             this.applySyntaxHighlighting(messageElement);
 
@@ -348,6 +361,16 @@ class ChatView extends HTMLElement {
     cancelGeneration() {
         sendEvent('loading:generation-cancel', { sessionId: this.chatSession.id })
     }
+
+    // handleExternalLinkClick(event) {
+    //     const linkElement = event.target.closest('a')
+
+    //     if (linkElement && linkElement.href) {
+    //         const url = new URL(linkElement.href)
+    //         event.preventDefault()
+    //         apiOpenLink(url.href)
+    //     }
+    // }
 
 }
 customElements.define('chat-view', ChatView)

@@ -3,13 +3,12 @@ package agent
 type SSEMessageType string
 
 const (
-	SSEMessageSessionListUpdate  = "session_list_update"
 	SSEMessageSessionUpdate      = "session_update"
 	SSEMessageNewMessage         = "new_message"
 	SSEMessageLastMessageUpdate  = "last_message_update"
-	SSEMessageModelListUpdate    = "model_list_update"
 	SSEMessageProviderListUpdate = "provider_list_update"
 	SSEMessageMCPListUpdate      = "mcp_list_update"
+	SSEMessageRoleListUpdate     = "role_list_update"
 )
 
 type SSEMessage struct {

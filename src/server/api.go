@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/skratchdot/open-golang/open"
 )
 
 /*
@@ -354,17 +355,83 @@ var listRolesURI = "/roles/list"
 
 func listRolesHandler(c *gin.Context) {
 	roles := agent.GetRoles()
-	roleList := make([]map[string]any, 0, len(roles))
-	for _, val := range roles {
-		roleList = append(roleList, map[string]any{
-			"name":               val.Config.Name,
-			"generalInstruction": val.Config.GeneralInstruction,
-			"role":               val.Config.Role,
-			"style":              val.Config.Style,
-			"id":                 val.ID,
-		})
+	c.JSON(200, map[string]any{"roles": roles})
+}
+
+type roleReq struct {
+	ID                 string `json:"id,omitempty"`
+	Name               string `json:"name" binding:"required"`
+	GeneralInstruction string `json:"generalInstruction"`
+	Role               string `json:"role"`
+	Style              string `json:"style"`
+}
+
+/*
+Create new role
+*/
+var createRoleURI = "/roles/create"
+
+func createRoleHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+	var req roleReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+	role, err := agent.CreateRole(agent.RoleConfig{
+		Name:               req.Name,
+		GeneralInstruction: req.GeneralInstruction,
+		Role:               req.Role,
+		Style:              req.Style,
+	})
+	if err == nil {
+		c.JSON(200, map[string]any{"role": role})
+	} else {
+		c.JSON(500, map[string]any{"error": err.Error()})
 	}
-	c.JSON(200, map[string]any{"roles": roleList})
+}
+
+/*
+Update role
+*/
+var updateRoleURI = "/roles/update"
+
+func updateRoleHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+	var req roleReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+	role, err := agent.UpdateRole(req.ID, agent.RoleConfig{
+		Name:               req.Name,
+		GeneralInstruction: req.GeneralInstruction,
+		Role:               req.Role,
+		Style:              req.Style,
+	})
+	if err == nil {
+		c.JSON(200, map[string]any{"role": role})
+	} else {
+		c.JSON(500, map[string]any{"error": err.Error()})
+	}
+}
+
+/*
+Delete role
+*/
+var deleteRoleURI = "/roles/delete/:id"
+
+type deleteRoleReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func deleteRoleHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+	var req deleteRoleReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+	err = agent.DeleteRole(req.ID)
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err.Error()})
+	}
 }
 
 /*
@@ -482,13 +549,38 @@ func deleteMCPServerHandler(c *gin.Context) {
 }
 
 /*
+Open URL in default browser
+*/
+var openLinkURI = "/desktop/url/open"
+
+type openLinkReq struct {
+	URL string `json:"url" binding:"required"`
+}
+
+func openLinkHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req openLinkReq
+	err := c.Bind(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = open.Run(req.URL)
+
+	if err == nil {
+		c.JSON(200, map[string]any{"error": nil})
+	} else {
+		c.JSON(500, map[string]any{"error": err})
+	}
+}
+
+/*
 SSE connection for receiving server updates. It implements following events:
 - session_update:{date, summary}
 - new_message:{origin, text}
 - last_message_update:{sessionId, text}
-- session_list_update:[{session}]
-- model_list_update:[{model}]
 - mcp_list_update:[{mcp}]
+- provider_list_update:[{provider}]
+- role_list_update:[{role}]
 */
 var sseURI = "/sse"
 
@@ -537,12 +629,17 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.POST(toolChatStreamURI, toolChatStreamHandler)
 
 		group.GET(listRolesURI, listRolesHandler)
+		group.POST(createRoleURI, createRoleHandler)
+		group.POST(updateRoleURI, updateRoleHandler)
+		group.GET(deleteRoleURI, deleteRoleHandler)
 
 		group.GET(listMCPServersURI, listMCPServersHandler)
 		group.POST(testMCPServerURI, testMCPServerHandler)
 		group.POST(createMCPServerURI, createMCPServerHandler)
 		group.POST(updateMCPServerURI, updateMCPServerHandler)
 		group.GET(deleteMCPServerURI, deleteMCPServerHandler)
+
+		group.POST(openLinkURI, openLinkHandler)
 
 		group.GET(sseURI, sseHandler)
 	}

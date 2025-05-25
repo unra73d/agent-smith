@@ -260,7 +260,7 @@ func UpdateMCPServer(id string, name string, transport string, url string, comma
 						Type: SSEMessageMCPListUpdate,
 						Data: Agent.mcps,
 					}
-					log.W(err, "failed to load MCP server")
+					log.CheckW(err, "failed to load MCP server")
 				}()
 			}
 			err = mcp.Save()
@@ -280,6 +280,7 @@ func DeleteMCPServer(ID string) (err error) {
 	err = errors.New("trying to delete non existing MCP")
 	for i, mcp := range Agent.mcps {
 		if mcp.ID == ID {
+			mcp.Delete()
 			Agent.mcps = append(Agent.mcps[:i], Agent.mcps[i+1:]...)
 			sseCh <- &SSEMessage{
 				Type: SSEMessageMCPListUpdate,
@@ -306,10 +307,22 @@ func UpdateProvider(ID string, Name string, APIURL string, APIKey string, RateLi
 	for _, provider := range Agent.apiProviders {
 		if provider.ID == ID {
 			provider.Name = Name
-			provider.APIURL = APIURL
-			provider.APIKey = APIKey
 			provider.RateLimit = RateLimit
+			if APIURL != provider.APIURL || APIKey != provider.APIKey {
+				provider.APIURL = APIURL
+				provider.APIKey = APIKey
+				go func() {
+					err := provider.LoadModels()
+					sseCh <- &SSEMessage{
+						Type: SSEMessageProviderListUpdate,
+						Data: Agent.apiProviders,
+					}
+					log.CheckW(err, "failed to load models")
+				}()
+			}
+
 			err = provider.Save()
+
 			sseCh <- &SSEMessage{SSEMessageProviderListUpdate, Agent.apiProviders}
 			break
 		}
@@ -338,6 +351,43 @@ func DeleteProvider(id string) (err error) {
 	}
 	log.E("trying to delete non existing provider", id)
 	return errors.New("provider not found")
+}
+
+func CreateRole(config RoleConfig) (*Role, error) {
+	role := &Role{
+		ID:     uuid.NewString(),
+		Config: config,
+	}
+	err := role.Save()
+	if err == nil {
+		Agent.roles = append(Agent.roles, role)
+		sseCh <- &SSEMessage{SSEMessageRoleListUpdate, Agent.roles}
+	}
+	return role, err
+}
+
+func UpdateRole(id string, config RoleConfig) (*Role, error) {
+	for _, role := range Agent.roles {
+		if role.ID == id {
+			role.Config = config
+			err := role.Save()
+			sseCh <- &SSEMessage{SSEMessageRoleListUpdate, Agent.roles}
+			return role, err
+		}
+	}
+	return nil, errors.New("role not found")
+}
+
+func DeleteRole(id string) error {
+	for i, role := range Agent.roles {
+		if role.ID == id {
+			role.Delete()
+			Agent.roles = append(Agent.roles[:i], Agent.roles[i+1:]...)
+			sseCh <- &SSEMessage{SSEMessageRoleListUpdate, Agent.roles}
+			return nil
+		}
+	}
+	return errors.New("role not found")
 }
 
 func findModel(modelID string) *ai.Model {
