@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
@@ -21,7 +22,7 @@ import (
 	"resty.dev/v3"
 )
 
-var log = logger.Logger("ai", 0, 1, 1)
+var log = logger.Logger("ai", 1, 1, 1)
 
 type APIType string
 
@@ -36,17 +37,58 @@ const (
 )
 
 type APIProvider struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	APIURL    string   `json:"url"`
-	APIKey    string   `json:"apiKey"`
-	APIType   APIType  `json:"type"`
-	RateLimit int      `json:"rateLimit"`
-	Models    []*Model `json:"models"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	APIURL      string       `json:"url"`
+	APIKey      string       `json:"apiKey"`
+	APIType     APIType      `json:"type"`
+	RateLimit   int          `json:"rateLimit"`
+	Models      []*Model     `json:"models"`
+	rateLimiter *rateLimiter `json:"-"`
+}
+
+type rateLimiter struct {
+	mu         sync.Mutex
+	timestamps []time.Time
+}
+
+func (self *APIProvider) WaitForAllowance() {
+	if self.RateLimit == 0 {
+		return
+	}
+	if self.rateLimiter == nil {
+		self.rateLimiter = &rateLimiter{}
+	}
+	rl := self.rateLimiter
+	for {
+		rl.mu.Lock()
+		now := time.Now()
+		oneMinuteAgo := now.Add(-1 * time.Minute)
+		// Remove timestamps older than 1 minute
+		i := 0
+		for ; i < len(rl.timestamps); i++ {
+			if rl.timestamps[i].After(oneMinuteAgo) {
+				break
+			}
+		}
+		rl.timestamps = rl.timestamps[i:]
+		if len(rl.timestamps) < self.RateLimit {
+			rl.timestamps = append(rl.timestamps, now)
+			rl.mu.Unlock()
+			return
+		}
+		// Wait until the oldest timestamp is out of the window
+		wait := rl.timestamps[0].Add(time.Minute).Sub(now)
+		rl.mu.Unlock()
+		if wait < time.Millisecond*100 {
+			wait = time.Millisecond * 100
+		}
+		time.Sleep(wait)
+	}
 }
 
 func NewProvider(id string, apiType APIType, name string, url string, apiKey string, rateLimit int) (provider *APIProvider, err error) {
-	provider = &APIProvider{id, name, url, apiKey, apiType, rateLimit, make([]*Model, 0, 16)}
+	provider = &APIProvider{id, name, url, apiKey, apiType, rateLimit, make([]*Model, 0, 16), nil}
 	err = provider.LoadModels()
 	return
 }
@@ -172,6 +214,7 @@ func (self *APIProvider) LoadModels() (err error) {
 
 	list := &OpenAIModelListRes{}
 	r.SetResult(list)
+	r.SetTimeout(10 * time.Second)
 	_, err = r.Get(url)
 	log.CheckE(err, nil, "failed to list models for provider: ", self.Name)
 	if list.Error != "" {
@@ -302,7 +345,7 @@ func (self *APIProvider) ChatCompletionStream(
 	defer logger.BreakOnError()
 	log.D("OpenAI chat completion streaming")
 
-	log.D("System prompt:", sysPrompt)
+	// log.D("System prompt:", sysPrompt)
 	url := self.APIURL + "/chat/completions"
 
 	body := map[string]any{
@@ -319,7 +362,7 @@ func (self *APIProvider) ChatCompletionStream(
 	bodyJSON, err = json.Marshal(body)
 	log.CheckE(err, nil, "failed to marshal request body")
 
-	log.D(string(bodyJSON))
+	// log.D(string(bodyJSON))
 
 	apiCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -343,7 +386,7 @@ func (self *APIProvider) ChatCompletionStream(
 	conn.SubscribeMessages(func(e sse.Event) {
 		defer logger.BreakOnError()
 		eventData := string(e.Data)
-		log.D("Received SSE Data:", eventData) // Log raw data for debugging
+		// log.D("Received SSE Data:", eventData) // Log raw data for debugging
 
 		if eventData == "[DONE]" {
 			log.D("Provider closing streaming ([DONE] received)")
@@ -429,9 +472,18 @@ func (self *APIProvider) ChatCompletionStream(
 	toolRequests := make([]*mcptools.ToolCallRequest, len(toolCallBuilders))
 	for i, toolCall := range toolCallBuilders {
 		var params map[string]any
-		err = json.Unmarshal([]byte(toolCall["params"].(string)), &params)
+		var rawParams string
+		paramKeys := []string{"params", "arguments", "args"}
+		for _, key := range paramKeys {
+			if p, ok := toolCall[key].(string); ok && p != "" {
+				rawParams = p
+				break
+			}
+		}
+
+		err = json.Unmarshal([]byte(rawParams), &params)
 		if err != nil {
-			log.E("failed to parse tool params json")
+			log.E("failed to parse tool params json: %v", err)
 		}
 
 		toolID := toolCall["id"].(string)

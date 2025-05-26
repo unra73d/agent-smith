@@ -9,8 +9,8 @@ import (
 func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, roleID string, query string, streamDoneCh chan bool) {
 	model := findModel(modelID)
 	if model != nil {
+		model.Provider.WaitForAllowance()
 		var session *Session
-
 		for _, s := range Agent.sessions {
 			if s.ID == sessionID {
 				session = s

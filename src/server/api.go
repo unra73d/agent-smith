@@ -339,6 +339,9 @@ func toolChatStreamHandler(c *gin.Context) {
 				return false
 			case <-c.Request.Context().Done():
 				return false
+			case <-time.After(30 * time.Second):
+				w.Write([]byte("."))
+				c.Writer.Flush()
 			case <-time.After(3600 * time.Second):
 				log.W("Stream message timed out")
 				c.Status(500)

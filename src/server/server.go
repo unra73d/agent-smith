@@ -41,7 +41,12 @@ func StartServer(fsEmbed embed.FS, port string, readyCh chan string) {
 		router.Use(gin.Logger())
 	}
 
-	server := &http.Server{Handler: router}
+	server := &http.Server{
+		Handler:      router,
+		ReadTimeout:  0,
+		WriteTimeout: 0,
+		IdleTimeout:  0,
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:"+port)
 	log.CheckE(err, nil, "Failed to bind server port")
 	addr := listener.Addr().String()

@@ -34,7 +34,7 @@ body {
             border-radius: 8px;
             border: 1px solid transparent;
             color: #e3e3e3;
-            white-space: nowrap;
+            /* white-space: nowrap; */
             position: relative;
 
             -webkit-user-select: auto;

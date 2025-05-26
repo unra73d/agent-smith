@@ -122,6 +122,7 @@ class ChatView extends HTMLElement {
                 }
             }
             let processedContent = content.replace(/<think>([\s\S]*?)<\/think>/g, '').trim();
+            processedContent = processedContent.replace("<tool_call>", "```").replace("</tool_call>", "").trim();
 
             // --- MODIFIED: Wrap code blocks with header/footer and copy icon ---
             const htmlContent = marked.parse(processedContent, {

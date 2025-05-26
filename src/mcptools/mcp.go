@@ -27,7 +27,7 @@ const (
 )
 
 type ToolCallRequest struct {
-	ID     string         `json:"id"`
+	ID     string         `json:"id,omitempty"`
 	Name   string         `json:"name"`
 	Params map[string]any `json:"params"`
 }
@@ -183,9 +183,13 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 	select {
 	case res := <-initDoneCh:
 		if !res {
+			err = errors.New("MCP init returned error")
+			c.Close()
 			cancel()
 		}
 	case <-time.After(60 * time.Second):
+		err = errors.New("MCP init timeout")
+		c.Close()
 		cancel()
 	}
 	return
@@ -196,7 +200,7 @@ func (self *MCPServer) LoadTools() (err error) {
 
 	ctx, cancel, c, err := self.connect()
 	log.CheckE(err, nil, "failed to connect to MCP")
-	defer c.Close()
+	defer cancel()
 
 	var mcpTools *mcp.ListToolsResult
 	loadedCh := make(chan *mcp.ListToolsResult)
@@ -213,7 +217,7 @@ func (self *MCPServer) LoadTools() (err error) {
 
 	select {
 	case mcpTools = <-loadedCh:
-	case <-time.After(120 * time.Second):
+	case <-time.After(30 * time.Second):
 		cancel()
 		return errors.New("timeout on loading tools for MCP")
 	}
@@ -265,9 +269,10 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 	defer logger.BreakOnError()
 
 	var ctx context.Context
+	var cancel context.CancelFunc
 	var c *client.Client
-	ctx, _, c, err = self.connect()
-	defer c.Close()
+	ctx, cancel, c, err = self.connect()
+	defer cancel()
 	log.CheckE(err, nil, "failed to connect to MCP")
 
 	toolRequest := mcp.CallToolRequest{
@@ -279,8 +284,24 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 	toolRequest.Params.Name = callRequest.Name
 	toolRequest.Params.Arguments = callRequest.Params
 
-	callResult, err := c.CallTool(ctx, toolRequest)
-	log.CheckE(err, nil, "Failed to call MCP tool: ", callRequest.Name)
+	var callResult *mcp.CallToolResult
+	callDoneCh := make(chan bool)
+	go func() {
+		callResult, err = c.CallTool(ctx, toolRequest)
+		log.CheckW(err, nil, "Failed to call MCP tool: ", callRequest.Name)
+		callDoneCh <- err == nil
+	}()
+
+	select {
+	case success := <-callDoneCh:
+		if !success {
+			err = errors.New("tool execution error")
+			return
+		}
+	case <-time.After(60 * time.Second):
+		err = errors.New("timeout on calling a tool")
+		return
+	}
 
 	for _, content := range callResult.Content {
 		if textContent, ok := content.(mcp.TextContent); ok {
