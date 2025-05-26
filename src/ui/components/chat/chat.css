@@ -64,7 +64,7 @@ body {
             padding: 0px 12px;
 
             .message-content {
-                white-space: nowrap;
+                white-space: wrap;
 
                 p,
                 ul,
@@ -238,7 +238,8 @@ body {
             .tool-content {
                 padding: 4px 8px;
                 background-color: #161617;
-                color: #6f7071;
+                /* color: #6f7071; */
+                color: #bdc1c6;
                 white-space: pre-wrap;
             }
 
