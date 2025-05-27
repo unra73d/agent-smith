@@ -220,7 +220,6 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 				return
 			}
 		}
-
 	} else {
 		log.E("Model not found")
 		streamDoneCh <- false

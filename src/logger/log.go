@@ -11,7 +11,7 @@ import (
 // DEBUG controls the global enablement of debug level logging.
 // Set to 1 to enable, 0 to disable. Affects log printouts only.
 // This setting is applied *after* per-logger tag level flags.
-const DEBUG = 1
+const DEBUG = 0
 
 // WARN controls the global enablement of warning level logging.
 // Set to 1 to enable, 0 to disable. Affects log printouts only.
