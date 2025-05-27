@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>API Documentation</title>
+    <link rel="stylesheet" type="text/css" href="swagger-ui/swagger-ui.css" />
+    <script src="swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="swagger-ui/swagger-ui-standalone-preset.js"></script>
+</head>
+
+<body>
+    <div id="swagger-ui"></div>
+    <script>
+        window.onload = function () {
+            const ui = SwaggerUIBundle({
+                url: "api-spec.yaml",
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout"
+            })
+        }
+    </script>
+</body>
+
+</html>

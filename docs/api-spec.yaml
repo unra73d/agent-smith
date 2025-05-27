@@ -1,0 +1,919 @@
+openapi: 3.0.0
+info:
+  title: Agent API
+  description: API for managing chat sessions, AI providers, roles, and MCP servers.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/agent
+    description: Local server
+
+paths:
+  /sessions/list:
+    get:
+      summary: Get list of chat sessions
+      description: Retrieves a list of all active chat sessions.
+      responses:
+        "200":
+          description: A list of chat sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "session123"
+                        name:
+                          type: string
+                          example: "Session 1"
+
+  /sessions/new:
+    get:
+      summary: Create new session
+      description: Creates a new chat session.
+      responses:
+        "200":
+          description: The newly created session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "session123"
+                      name:
+                        type: string
+                        example: "Session 1"
+
+  /sessions/delete/{id}:
+    get:
+      summary: Delete session by id
+      description: Deletes a chat session by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid session ID
+        "500":
+          description: Internal server error
+
+  /sessions/{sessionId}/truncate/{messageId}:
+    get:
+      summary: Truncate session messages
+      description: Deletes all messages from a session starting with a given message ID.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages truncated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid session or message ID
+        "500":
+          description: Internal server error
+
+  /sessions/{sessionId}/messages/delete/{messageId}:
+    get:
+      summary: Delete message by id
+      description: Deletes a specific message from a session.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid session or message ID
+        "500":
+          description: Internal server error
+
+  /models/list:
+    get:
+      summary: Get list of available models
+      description: Retrieves a list of all available AI models.
+      responses:
+        "200":
+          description: A list of AI models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "model123"
+                        name:
+                          type: string
+                          example: "Model 1"
+
+  /providers/list:
+    get:
+      summary: Get list of available AI providers
+      description: Retrieves a list of all available AI providers.
+      responses:
+        "200":
+          description: A list of AI providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "provider123"
+                        name:
+                          type: string
+                          example: "Provider 1"
+
+  /provider/test:
+    post:
+      summary: Test AI provider connectivity
+      description: Tests the connectivity of an AI provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Provider 1"
+                url:
+                  type: string
+                  example: "http://provider1.com"
+                apiKey:
+                  type: string
+                  example: "apiKey123"
+                rateLimit:
+                  type: integer
+                  example: 100
+      responses:
+        "200":
+          description: Connectivity test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "Provider is reachable"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /provider/update:
+    post:
+      summary: Update AI Provider
+      description: Updates the details of an existing AI provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "provider123"
+                name:
+                  type: string
+                  example: "Provider 1"
+                url:
+                  type: string
+                  example: "http://provider1.com"
+                apiKey:
+                  type: string
+                  example: "apiKey123"
+                rateLimit:
+                  type: integer
+                  example: 100
+      responses:
+        "200":
+          description: Provider updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /provider/create:
+    post:
+      summary: Create AI Provider
+      description: Creates a new AI provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Provider 1"
+                url:
+                  type: string
+                  example: "http://provider1.com"
+                apiKey:
+                  type: string
+                  example: "apiKey123"
+                rateLimit:
+                  type: integer
+                  example: 100
+      responses:
+        "200":
+          description: Provider created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /provider/delete/{id}:
+    get:
+      summary: Delete provider by id
+      description: Deletes an AI provider by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Provider deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid provider ID
+        "500":
+          description: Internal server error
+
+  /directchat/stream:
+    post:
+      summary: Send message to AI directly
+      description: Sends a message to an AI model directly and gets a response via SSE connection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionID:
+                  type: string
+                  example: "session123"
+                modelID:
+                  type: string
+                  example: "model123"
+                roleID:
+                  type: string
+                  example: "role123"
+                message:
+                  type: string
+                  example: "Hello, AI!"
+      responses:
+        "200":
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    example: "Hello, User!"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /dynamicagentchat:
+    post:
+      summary: Send message to agent in non-streaming mode
+      description: Sends a message to an agent in non-streaming mode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                modelID:
+                  type: string
+                  example: "model123"
+                message:
+                  type: string
+                  example: "Hello, Agent!"
+                sysPrompt:
+                  type: string
+                  example: "System prompt"
+      responses:
+        "200":
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    example: "Hello, User!"
+                  error:
+                    type: string
+                    example: ""
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /toolchat/stream:
+    post:
+      summary: Send message to AI through an agent
+      description: Sends a message to an AI model through an agent and gets a response via SSE connection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionID:
+                  type: string
+                  example: "session123"
+                modelID:
+                  type: string
+                  example: "model123"
+                roleID:
+                  type: string
+                  example: "role123"
+                message:
+                  type: string
+                  example: "Hello, AI!"
+      responses:
+        "200":
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    example: "Hello, User!"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /roles/list:
+    get:
+      summary: Get list of available roles
+      description: Retrieves a list of all available roles.
+      responses:
+        "200":
+          description: A list of roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "role123"
+                        name:
+                          type: string
+                          example: "Role 1"
+
+  /roles/create:
+    post:
+      summary: Create new role
+      description: Creates a new role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Role 1"
+                generalInstruction:
+                  type: string
+                  example: "General instruction"
+                role:
+                  type: string
+                  example: "Role description"
+                style:
+                  type: string
+                  example: "Style description"
+      responses:
+        "200":
+          description: Role created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "role123"
+                      name:
+                        type: string
+                        example: "Role 1"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /roles/update:
+    post:
+      summary: Update role
+      description: Updates the details of an existing role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "role123"
+                name:
+                  type: string
+                  example: "Role 1"
+                generalInstruction:
+                  type: string
+                  example: "General instruction"
+                role:
+                  type: string
+                  example: "Role description"
+                style:
+                  type: string
+                  example: "Style description"
+      responses:
+        "200":
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "role123"
+                      name:
+                        type: string
+                        example: "Role 1"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /roles/delete/{id}:
+    get:
+      summary: Delete role
+      description: Deletes a role by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Role deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid role ID
+        "500":
+          description: Internal server error
+
+  /mcp/list:
+    get:
+      summary: Get list of available MCP servers
+      description: Retrieves a list of all available MCP servers.
+      responses:
+        "200":
+          description: A list of MCP servers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mcpServers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "mcp123"
+                        name:
+                          type: string
+                          example: "MCP Server 1"
+
+  /mcp/test:
+    post:
+      summary: Test MCP server connectivity
+      description: Tests the connectivity of an MCP server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "MCP Server 1"
+                transport:
+                  type: string
+                  example: "http"
+                url:
+                  type: string
+                  example: "http://mcp1.com"
+                command:
+                  type: string
+                  example: "test command"
+                active:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: Connectivity test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "MCP server is reachable"
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /mcp/create:
+    post:
+      summary: Create new MCP server
+      description: Creates a new MCP server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "MCP Server 1"
+                transport:
+                  type: string
+                  example: "http"
+                url:
+                  type: string
+                  example: "http://mcp1.com"
+                command:
+                  type: string
+                  example: "test command"
+                active:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: MCP server created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /mcp/update:
+    post:
+      summary: Update MCP server
+      description: Updates the details of an existing MCP server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "mcp123"
+                name:
+                  type: string
+                  example: "MCP Server 1"
+                transport:
+                  type: string
+                  example: "http"
+                url:
+                  type: string
+                  example: "http://mcp1.com"
+                command:
+                  type: string
+                  example: "test command"
+                active:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: MCP server updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /mcp/delete/{id}:
+    get:
+      summary: Delete MCP server by id
+      description: Deletes an MCP server by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: MCP server deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid MCP server ID
+        "500":
+          description: Internal server error
+
+  /desktop/url/open:
+    post:
+      summary: Open URL in default browser
+      description: Opens a specified URL in the default web browser.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: "http://example.com"
+      responses:
+        "200":
+          description: URL opened successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: null
+        "400":
+          description: Invalid request body
+        "500":
+          description: Internal server error
+
+  /sse:
+    get:
+      summary: SSE connection for receiving server updates
+      description: Establishes an SSE connection to receive server updates. Events include session updates, new messages, and list updates for MCP servers, providers, and roles.
+      responses:
+        "200":
+          description: SSE connection established
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                properties:
+                  event:
+                    type: string
+                    example: "session_update"
+                  data:
+                    type: object
+                    properties:
+                      date:
+                        type: string
+                        example: "2023-10-01T12:00:00Z"
+                      summary:
+                        type: string
+                        example: "Session summary"
+        "500":
+          description: Internal server error
+
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "session123"
+        name:
+          type: string
+          example: "Session 1"
+
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "model123"
+        name:
+          type: string
+          example: "Model 1"
+
+    Provider:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "provider123"
+        name:
+          type: string
+          example: "Provider 1"
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "role123"
+        name:
+          type: string
+          example: "Role 1"
+        generalInstruction:
+          type: string
+          example: "General instruction"
+        role:
+          type: string
+          example: "Role description"
+        style:
+          type: string
+          example: "Style description"
+
+    MCPServers:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "mcp123"
+        name:
+          type: string
+          example: "MCP Server 1"
+        transport:
+          type: string
+          example: "http"
+        url:
+          type: string
+          example: "http://mcp1.com"
+        command:
+          type: string
+          example: "test command"
+        active:
+          type: boolean
+          example: true
