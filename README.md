@@ -22,7 +22,7 @@ go run main.go --server --port 8008
 ```
 
 ## Server API
-Server API is at https://unra73d.github.io/agent-smith/docs/
+Server API is at https://unra73d.github.io/agent-smith/
 
 General flow is still designed for desktop app, not for ready-to-go microservice - connect to SSE endpoint to receive updates from server, use other APIs to call features.
 
