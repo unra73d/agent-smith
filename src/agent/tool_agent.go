@@ -50,6 +50,13 @@ func inferNextAction(message string) (AgentAction, *mcptools.MCPServer, *mcptool
 
 		if err == nil {
 			tools := append(GetTools(), GetBuiltinTools()...)
+			// exact match first to avoid false substring hits (e.g. "time" inside "datetime")
+			for _, tool := range tools {
+				if callRequest.Name == tool.Name {
+					return AgentActionToolCall, tool.Server, &callRequest
+				}
+			}
+			// fall back to substring match for models that prefix/suffix the tool name
 			for _, tool := range tools {
 				if strings.Contains(callRequest.Name, tool.Name) {
 					callRequest.Name = tool.Name
@@ -199,12 +206,12 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 						log.D("Tool execution result: ", toolResult)
 
 						if err != nil {
-							log.E("Error during tool call")
-							session.AddMessage(ai.MessageOriginTool, "Tool returned an error", []*mcptools.ToolCallRequest{callRequest})
-							streamDoneCh <- false
-							return
+							log.E("Error during tool call: ", err)
+							// Don't terminate the stream — let the AI handle the failure
+							session.AddMessage(ai.MessageOriginTool, "Tool call failed: "+err.Error(), []*mcptools.ToolCallRequest{callRequest})
+						} else {
+							session.AddMessage(ai.MessageOriginTool, util.CutThinking(toolResult), []*mcptools.ToolCallRequest{callRequest})
 						}
-						session.AddMessage(ai.MessageOriginTool, toolResult, []*mcptools.ToolCallRequest{callRequest})
 						session.AddMessage(ai.MessageOriginAI, "", nil)
 
 						toolCalls = nil

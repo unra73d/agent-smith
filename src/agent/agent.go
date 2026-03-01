@@ -101,11 +101,20 @@ func GetMCPServers() []*mcptools.MCPServer {
 
 func GetTools() []*mcptools.Tool {
 	res := make([]*mcptools.Tool, 0, 32)
+	// Deduplicate by tool name: first active server that owns the name wins.
+	// This prevents sending duplicate tool definitions to the model and ensures
+	// GetMCPForTool always resolves to the same server that was listed.
+	seen := make(map[string]bool)
 	for _, mcp := range Agent.mcps {
-		res = append(res, mcp.Tools...)
+		if mcp.Active {
+			for _, tool := range mcp.Tools {
+				if !seen[tool.Name] {
+					seen[tool.Name] = true
+					res = append(res, tool)
+				}
+			}
+		}
 	}
-	// res = append(res, Agent.builtinTools...)
-
 	return res
 }
 
@@ -291,6 +300,55 @@ func DeleteMCPServer(ID string) (err error) {
 		}
 	}
 	return
+}
+
+func ReloadMCPServer(ID string) (err error) {
+	err = errors.New("trying to reload non existing MCP")
+	for _, mcp := range Agent.mcps {
+		if mcp.ID == ID {
+			mcp.Loaded = false
+			mcp.Tools = []*mcptools.Tool{}
+			sseCh <- &SSEMessage{
+				Type: SSEMessageMCPListUpdate,
+				Data: Agent.mcps,
+			}
+
+			go func() {
+				err := mcp.LoadTools()
+				mcp.Loaded = true
+				sseCh <- &SSEMessage{
+					Type: SSEMessageMCPListUpdate,
+					Data: Agent.mcps,
+				}
+				log.CheckW(err, "failed to reload MCP server")
+			}()
+			err = nil
+			break
+		}
+	}
+	return
+}
+
+func ReloadAllMCPServers() {
+	for _, mcp := range Agent.mcps {
+		mcp.Loaded = false
+		mcp.Tools = []*mcptools.Tool{}
+
+		go func(m *mcptools.MCPServer) {
+			err := m.LoadTools()
+			m.Loaded = true
+			sseCh <- &SSEMessage{
+				Type: SSEMessageMCPListUpdate,
+				Data: Agent.mcps,
+			}
+			log.CheckW(err, "failed to reload MCP server")
+		}(mcp)
+	}
+
+	sseCh <- &SSEMessage{
+		Type: SSEMessageMCPListUpdate,
+		Data: Agent.mcps,
+	}
 }
 
 func TesProvider(Name string, APIURL string, APIKey string, RateLimit int) (res bool) {

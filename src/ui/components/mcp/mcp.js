@@ -26,6 +26,7 @@ class MCPList extends List {
                 required: true,
                 options: [
                     { value: 'sse', label: 'SSE' },
+                    { value: 'http', label: 'HTTP' },
                     { value: 'stdio', label: 'stdio' }
                 ]
             },
@@ -34,7 +35,7 @@ class MCPList extends List {
                 label: 'URL endpoint',
                 type: 'text',
                 required: true,
-                visibleIf: { transport: 'sse' }
+                visibleIf: (values) => values.transport === 'sse' || values.transport === 'http'
             },
             {
                 name: 'command',
@@ -134,6 +135,7 @@ class MCPList extends List {
         item.innerHTML = `
             <div class="item-header">
                 <ui-checkbox class="select-all-checkbox" label="${data.loaded ? '' : '(Loading)'}${data.name}" ${data.active ? 'checked' : ''}></ui-checkbox>
+                <div alt="Reload" class="reload-icon img-button" data-id="${data.id}">&#x21bb;</div>
                 <div alt="Edit" class="edit-icon img-button" data-id="${data.id}">*</div>
                 <div alt="Delete" class="delete-icon img-button" data-id="${data.id}">&#xe053;</div>
             </div>
@@ -141,6 +143,7 @@ class MCPList extends List {
         `;
 
         const selectAllCheckbox = item.querySelector('ui-checkbox');
+        const reloadIcon = item.querySelector('.reload-icon');
         const editIcon = item.querySelector('.edit-icon');
         const deleteIcon = item.querySelector('.delete-icon');
         const itemContent = item.querySelector('.item-content');
@@ -159,6 +162,12 @@ class MCPList extends List {
         selectAllCheckbox.addEventListener('change', async e => {
             data.active = e.target.checked
             await apiMCPUpdate(data)
+        });
+
+        reloadIcon.addEventListener('click', async e => {
+            reloadIcon.style.opacity = '0.5';
+            await apiMCPReload(data.id);
+            setTimeout(() => { reloadIcon.style.opacity = '1'; }, 500);
         });
 
         editIcon.addEventListener('click', e => this.handleEditMCP(data));

@@ -552,6 +552,42 @@ func deleteMCPServerHandler(c *gin.Context) {
 }
 
 /*
+Reload MCP server by id
+*/
+var reloadMCPServerURI = "/mcp/reload/:id"
+
+type ReloadMCPServerReq struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+func reloadMCPServerHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	var req ReloadMCPServerReq
+	err := c.BindUri(&req)
+	log.CheckE(err, func() { c.Status(400) }, "Failed to unpack API parameters")
+
+	err = agent.ReloadMCPServer(req.ID)
+	if err != nil {
+		c.JSON(500, map[string]any{"error": err.Error()})
+	} else {
+		c.JSON(200, map[string]any{"error": nil})
+	}
+}
+
+/*
+Reload all MCP servers
+*/
+var reloadAllMCPServersURI = "/mcp/reload"
+
+func reloadAllMCPServersHandler(c *gin.Context) {
+	defer logger.BreakOnError()
+
+	agent.ReloadAllMCPServers()
+	c.JSON(200, map[string]any{"error": nil})
+}
+
+/*
 Open URL in default browser
 */
 var openLinkURI = "/desktop/url/open"
@@ -641,6 +677,8 @@ func InitAgentRoutes(router *gin.Engine) {
 		group.POST(createMCPServerURI, createMCPServerHandler)
 		group.POST(updateMCPServerURI, updateMCPServerHandler)
 		group.GET(deleteMCPServerURI, deleteMCPServerHandler)
+		group.GET(reloadMCPServerURI, reloadMCPServerHandler)
+		group.GET(reloadAllMCPServersURI, reloadAllMCPServersHandler)
 
 		group.POST(openLinkURI, openLinkHandler)
 

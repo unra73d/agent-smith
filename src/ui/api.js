@@ -181,6 +181,34 @@ async function apiListModels() {
     }
 }
 
+async function apiMCPReload(mcpId) {
+    try {
+        const response = await fetch(`/agent/mcp/reload/${mcpId}`, {
+            method: 'GET',
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to reload mcp server:", error);
+        return { error: error.message };
+    }
+}
+
+async function apiMCPReloadAll() {
+    try {
+        const response = await fetch('/agent/mcp/reload', {
+            method: 'GET',
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to reload all mcp servers:", error);
+        return { error: error.message };
+    }
+}
+
 async function apiListProviders() {
     try {
         const response = await fetch('/agent/providers/list');

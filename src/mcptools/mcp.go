@@ -3,11 +3,13 @@ package mcptools
 
 import (
 	"agentsmith/src/logger"
+	"agentsmith/src/util"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/shlex"
@@ -24,6 +26,7 @@ type MCPTransport string
 const (
 	MCPTransportStdio = "stdio"
 	MCPTransportSSE   = "sse"
+	MCPTransportHTTP  = "http"
 )
 
 type ToolCallRequest struct {
@@ -150,6 +153,15 @@ func (self *MCPServer) connect() (ctx context.Context, cancel context.CancelFunc
 		log.CheckE(err, nil, "failed to start sse transport")
 
 		c = client.NewClient(sseTransport)
+	} else if self.Transport == MCPTransportHTTP {
+		var httpTransport *transport.StreamableHTTP
+		httpTransport, err = transport.NewStreamableHTTP(self.URL)
+		log.CheckE(err, nil, "failed to create http transport")
+
+		err = httpTransport.Start(ctx)
+		log.CheckE(err, nil, "failed to start http transport")
+
+		c = client.NewClient(httpTransport)
 	} else {
 		if len(self.Command) > 0 {
 			var cliArray []string
@@ -285,31 +297,58 @@ func (self *MCPServer) CallTool(callRequest *ToolCallRequest) (result string, er
 	toolRequest.Params.Arguments = callRequest.Params
 
 	var callResult *mcp.CallToolResult
+	var rawErr error
 	callDoneCh := make(chan bool)
 	go func() {
-		callResult, err = c.CallTool(ctx, toolRequest)
-		log.CheckW(err, nil, "Failed to call MCP tool: ", callRequest.Name)
-		callDoneCh <- err == nil
+		callResult, rawErr = c.CallTool(ctx, toolRequest)
+		log.CheckW(rawErr, nil, "Failed to call MCP tool: ", callRequest.Name)
+		callDoneCh <- rawErr == nil
 	}()
 
 	select {
 	case success := <-callDoneCh:
 		if !success {
-			err = errors.New("tool execution error")
+			// Transport / protocol error — try to extract content if present
+			if callResult != nil && len(callResult.Content) > 0 {
+				for _, content := range callResult.Content {
+					if textContent, ok := content.(mcp.TextContent); ok {
+						result += textContent.Text
+					}
+				}
+				result = util.CutThinking(strings.TrimSpace(result))
+				return
+			}
+			// "content is missing" from ParseCallToolResult means the server returned
+			// a bare error string rather than the MCP envelope — treat the raw error
+			// message itself as the tool result so the AI can reason about it.
+			if rawErr != nil && strings.Contains(rawErr.Error(), "content is missing") {
+				result = "Tool returned an error (no content in response)"
+				err = nil
+				return
+			}
+			err = rawErr
 			return
 		}
-	case <-time.After(60 * time.Second):
+	case <-time.After(time.Hour):
 		err = errors.New("timeout on calling a tool")
 		return
 	}
 
+	var sb strings.Builder
 	for _, content := range callResult.Content {
 		if textContent, ok := content.(mcp.TextContent); ok {
-			result = textContent.Text
+			sb.WriteString(textContent.Text)
 		} else {
 			jsonBytes, _ := json.MarshalIndent(content, "", "  ")
-			result = string(jsonBytes)
+			sb.Write(jsonBytes)
 		}
+	}
+	result = util.CutThinking(strings.TrimSpace(sb.String()))
+
+	// If the tool itself flagged an error but returned content, pass it through
+	// so the AI can read it; the caller decides whether to abort.
+	if callResult.IsError {
+		log.W("MCP tool flagged isError=true for ", callRequest.Name, "; passing content to AI")
 	}
 
 	return
