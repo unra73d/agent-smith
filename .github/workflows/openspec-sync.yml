@@ -78,7 +78,11 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf .confluence-staging
-          mapfile -t files < <(git diff --name-only --diff-filter=AM HEAD -- 'openspec/specs' | grep '\.md$' || true)
+          # Stage first so NEW (untracked) spec files created by `archive` are
+          # detected — plain `git diff HEAD` only reports tracked files, which
+          # silently misses first-time/new-capability specs.
+          git add -A openspec/specs
+          mapfile -t files < <(git diff --cached --name-only --diff-filter=AM -- 'openspec/specs' | grep '\.md$' || true)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "archive produced no spec-file changes to publish."
