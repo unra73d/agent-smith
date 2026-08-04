@@ -11,14 +11,12 @@ help: ## Show available targets
 ## Env required by init_spec (Confluence auth). Fail fast if missing.
 REQUIRED_ENV := CONFLUENCE_URL JIRA_USERNAME JIRA_API_TOKEN CONFLUENCE_PARENT_ID
 
-init_spec: ## Bootstrap openspec/specs from Confluence (source of truth)
+init_spec: ## Hydrate openspec/specs from Confluence (source of truth)
 	@for v in $(REQUIRED_ENV); do \
 		if [ -z "$$(printenv $$v)" ]; then echo "ERROR: env $$v is not set"; exit 1; fi; \
 	done
 	@command -v opencode >/dev/null 2>&1 || { echo "ERROR: opencode CLI not installed"; exit 1; }
-	@command -v openspec >/dev/null 2>&1 || { echo "ERROR: openspec CLI not installed (npm i -g @fission-ai/openspec)"; exit 1; }
-	# Idempotent scaffold of the openspec/ project (specs/, changes/, project.md).
-	@test -d openspec || openspec init --yes
+	@test -f openspec/project.md || { echo "ERROR: OpenSpec not initialized. Run once and commit: openspec init --tools opencode --force"; exit 1; }
 	docker pull ghcr.io/sooperset/mcp-atlassian:latest
 	opencode run --agent spec-importer \
 		"Import Confluence pages under parent ID $$CONFLUENCE_PARENT_ID into openspec/specs/ as OpenSpec spec files."

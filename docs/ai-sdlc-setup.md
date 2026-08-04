@@ -35,19 +35,21 @@ Same OpenSpec flow, two contexts — no versioning, feature branches cut from `m
 
 ## Spec lifecycle & git tracking
 
-**Confluence is the permanent home for specs. `main` holds code only — no
-`openspec/`.** Specs exist in git only transiently, on feature branches.
+**Confluence is the permanent home for spec *content*.** `main` holds code plus
+the committed OpenSpec scaffold — `openspec/project.md` and the `/opsx-*` commands
+under `.opencode/commands/` — but **no `openspec/specs/` or `openspec/changes/`**.
+Those exist in git only transiently, on feature branches.
 
-1. Cut `feature/JIRA-123` off `main` (code only).
+1. Cut `feature/JIRA-123` off `main` (code + `openspec/project.md`, no specs).
 2. `make init_spec` downloads the current specs from Confluence into
    `openspec/specs/` (the base `openspec archive` folds deltas onto).
-3. `/opsx:propose` + `/opsx:apply` run; the feature branch commits code + the whole
-   `openspec/` tree (hydrated specs + `openspec/changes/JIRA-123/` deltas) so the
-   PR shows the spec work for review.
-4. **On merge to `main`**, `openspec-sync.yml`: runs `openspec archive` to fold the
-   deltas into the specs → publishes **only the spec pages that changed** to
-   Confluence (diffed from what `archive` touched) → `rm -rf openspec/` and commits
-   the deletion, so only code lands on `main`.
+3. `/opsx:propose` + `/opsx:apply` run; the feature branch commits code + the
+   hydrated `openspec/specs/` + `openspec/changes/JIRA-123/` deltas so the PR
+   shows the spec work for review.
+4. **On merge to `main`**, `openspec-sync.yml`: archives each delta into the specs
+   → publishes **only the spec pages that changed** to Confluence (diffed from
+   what `archive` touched) → removes `openspec/specs/` + `openspec/changes/` (keeps
+   `project.md`) and commits, so only code + scaffold land on `main`.
 
 > Note: the archive base is whatever Confluence held when the feature branch was
 > hydrated. If two tickets touch the same capability concurrently, the second
@@ -56,7 +58,18 @@ Same OpenSpec flow, two contexts — no versioning, feature branches cut from `m
 
 ## Setup — steps only you can do
 
-### 1. Seed Confluence with an initial spec set (only if starting empty)
+### 1. Initialize OpenSpec once and commit
+Generate the OpenSpec project + the opencode `/opsx-*` commands, then commit them.
+CI and local both rely on these being in the repo (they are not regenerated):
+```bash
+openspec init --tools opencode --force
+git add openspec/project.md .opencode/commands .opencode/skills
+git commit -m "chore: initialize OpenSpec (opencode integration)"
+```
+> The `/opsx-*` commands install to `.opencode/commands/`. These persist on `main`;
+> only `openspec/specs/` and `openspec/changes/` are transient.
+
+### 2. Seed Confluence with an initial spec set (only if starting empty)
 CI hydrates specs from Confluence on every run, so Confluence must contain them.
 If you're adopting this on an existing system with no specs yet, generate a first
 set and publish them to Confluence once:
@@ -67,7 +80,7 @@ make init_spec        # or `openspec init` + write specs by hand
 ```
 If Confluence already documents the system, skip this — the importer reads it.
 
-### 2. Rotate the exposed token, then store secrets
+### 3. Rotate the exposed token, then store secrets
 The token in `tokens.md` was shared in plaintext (now gitignored). If this repo
 is or will be public, **rotate it** at https://id.atlassian.com/manage-profile/security/api-tokens.
 Then add these under **Settings → Secrets and variables → Actions**:
@@ -85,7 +98,7 @@ Then add these under **Settings → Secrets and variables → Actions**:
 > The same `JIRA_API_TOKEN` / `JIRA_USERNAME` are reused for Confluence auth by
 > both the MCP server and the publish action.
 
-### 3. Trigger: use a Jira Automation rule (not the legacy webhook)
+### 4. Trigger: use a Jira Automation rule (not the legacy webhook)
 The SDD's webhook JQL `status CHANGED TO "In Progress"` can't be expressed in a
 webhook scope filter. Use **Project settings → Automation → Create rule** instead:
 
@@ -100,7 +113,7 @@ webhook scope filter. Use **Project settings → Automation → Create rule** in
     { "event_type": "jira-task-assigned", "client_payload": { "jira_key": "{{issue.key}}" } }
     ```
 
-### 4. Confluence publishing (already wired — nothing to configure)
+### 5. Confluence publishing (already wired — nothing to configure)
 `openspec-sync.yml` injects the required frontmatter automatically: for each
 changed `spec.md` it derives a unique `connie-title` from the capability folder
 name and sets `connie-publish: true`, then publishes only those staged files

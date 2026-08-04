@@ -50,12 +50,18 @@ jobs:
         if: steps.deltas.outputs.present == 'true'
         run: npm install -g @fission-ai/openspec@latest
 
-      # Fold the merged deltas into the committed canonical specs and remove the
-      # archived change dirs. `archive` has the base specs it needs because they
-      # are committed.
+      # Fold each merged delta into the hydrated specs and remove its change dir.
+      # Archive by name (--yes skips prompts) so multiple deltas in one merge are
+      # handled deterministically.
       - name: Archive OpenSpec Deltas
         if: steps.deltas.outputs.present == 'true'
-        run: openspec archive --yes
+        run: |
+          set -euo pipefail
+          for d in openspec/changes/*/; do
+            name="$(basename "$d")"
+            echo "Archiving $name"
+            openspec archive "$name" --yes
+          done
 
       # Determine exactly which canonical spec files `archive` created or modified
       # (relative to the pre-archive HEAD), and stage only those for publishing.
@@ -105,16 +111,17 @@ jobs:
           contentRoot: '.confluence-staging/openspec/specs'
           folderToPublish: '.confluence-staging/openspec/specs'
 
-      # Remove openspec/ entirely and commit the deletion so the main branch
-      # holds only code. The published Confluence pages are now the canonical
-      # record of the spec changes.
+      # Remove the transient specs/ and changes/ (Confluence now holds the
+      # canonical record) but KEEP openspec/project.md and the committed
+      # .opencode/commands so main stays a valid, code-only OpenSpec project that
+      # the next feature branch can build on.
       - name: Strip specs from git
         if: steps.deltas.outputs.present == 'true'
         run: |
-          rm -rf .confluence-staging openspec/
+          rm -rf .confluence-staging openspec/specs openspec/changes
           git config user.name "Virtual Worker CI"
           git config user.email "virtual-worker-ci@users.noreply.github.com"
           git add -A openspec/
           git diff-index --quiet HEAD || \
-            git commit -m "chore(docs): publish specs to Confluence and strip from git [skip ci]"
+            git commit -m "chore(docs): publish specs to Confluence and strip deltas [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
