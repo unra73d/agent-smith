@@ -55,8 +55,11 @@ finished Pull Request entirely on your own.
 - Cut `feature/${JIRA_KEY}` off `main`.
 - `/opsx-propose` → `openspec/changes/${JIRA_KEY}/` (proposal, tasks, spec deltas).
 - Delegate to `@coder` / run `/opsx-apply` to implement the tasks.
-- Run the Go checks: `go build ./...`, `go vet ./...`, `go test ./...`. If they
-  fail and you cannot fix them, post the failure to Jira instead of opening a PR.
+- Run the Go checks: `go build ./...`, `go vet ./...`, `go test ./...`. The runner
+  is already provisioned with the project's build dependencies — **do NOT install
+  system packages or otherwise reconfigure the CI environment.** If a check fails
+  because of your code, fix it. If it fails for an environment reason you cannot
+  fix in code, note it in the PR description and proceed — do not fight the runner.
 - Commit the code changes **and** the `openspec/` tree (hydrated specs +
   `openspec/changes/${JIRA_KEY}/` deltas) so the PR shows the spec work. The
   post-merge workflow publishes the changes to Confluence and strips `openspec/`

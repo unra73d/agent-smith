@@ -38,6 +38,13 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # agent-smith is a webview/GTK desktop app; without these, `go build ./...`
+      # fails to compile (cgo) and the agent wastes turns trying to fix the env.
+      - name: Install native build deps (webview/GTK)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
       - name: Install AI CLI Tools
         # opencode ships on npm as `opencode-ai`; installing globally puts the
         # `opencode` binary on the PATH that setup-node already configures.
