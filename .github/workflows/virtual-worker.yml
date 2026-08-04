@@ -14,7 +14,9 @@ concurrency:
 jobs:
   execute-jira-task:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The full propose→apply→checks→PR loop with this model is slow; give it room.
+    # (agent-smith is a public repo, so Actions minutes are free.)
+    timeout-minutes: 90
     permissions:
       contents: write
       pull-requests: write
@@ -83,3 +85,13 @@ jobs:
           git config user.email "virtual-worker@users.noreply.github.com"
           echo "Processing Jira Ticket: $JIRA_KEY"
           opencode run --agent jira-worker "Process Jira ticket $JIRA_KEY"
+
+      # Capture OpenCode's detailed logs (including subagent activity) so you can
+      # inspect a run that failed or timed out. Download from the run's Artifacts.
+      - name: Upload OpenCode logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-logs
+          path: ~/.local/share/opencode/log/
+          if-no-files-found: ignore
