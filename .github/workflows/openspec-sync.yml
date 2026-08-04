@@ -1,0 +1,120 @@
+name: Post-Merge Spec Archive, Confluence Sync & Cleanup
+
+# Runs when a feature PR is merged into main. The merged branch carries the
+# hydrated specs (openspec/specs/) plus the working deltas (openspec/changes/)
+# from the feature branch. This workflow folds the deltas into the specs,
+# publishes ONLY the changed spec pages to Confluence, then removes openspec/ from
+# git entirely so main holds code only. Confluence is the permanent home for specs.
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: openspec-sync-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  archive-and-publish:
+    runs-on: ubuntu-latest
+    # Skip the bot's own cleanup commit to avoid an infinite loop.
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # Nothing to do unless the merge actually brought spec deltas with it.
+      - name: Detect pending spec deltas
+        id: deltas
+        run: |
+          if [ -d openspec/changes ] && [ -n "$(ls -A openspec/changes 2>/dev/null)" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No openspec/changes/ in this push — skipping."
+          fi
+
+      - name: Setup Node.js
+        if: steps.deltas.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenSpec CLI
+        if: steps.deltas.outputs.present == 'true'
+        run: npm install -g @fission-ai/openspec@latest
+
+      # Fold the merged deltas into the committed canonical specs and remove the
+      # archived change dirs. `archive` has the base specs it needs because they
+      # are committed.
+      - name: Archive OpenSpec Deltas
+        if: steps.deltas.outputs.present == 'true'
+        run: openspec archive --yes
+
+      # Determine exactly which canonical spec files `archive` created or modified
+      # (relative to the pre-archive HEAD), and stage only those for publishing.
+      # Each staged file gets fresh frontmatter: a unique `connie-title` derived
+      # from the capability slug (every file is spec.md, so without a distinct
+      # title they would all collide onto one Confluence page) and
+      # `connie-publish: true`. Any pre-existing leading frontmatter is stripped
+      # first so we do not depend on `archive` preserving it.
+      - name: Stage changed spec pages
+        if: steps.deltas.outputs.present == 'true'
+        id: changed
+        run: |
+          set -euo pipefail
+          rm -rf .confluence-staging
+          mapfile -t files < <(git diff --name-only --diff-filter=AM HEAD -- 'openspec/specs' | grep '\.md$' || true)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "archive produced no spec-file changes to publish."
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            dst=".confluence-staging/$f"
+            mkdir -p "$(dirname "$dst")"
+            slug="$(basename "$(dirname "$f")")"
+            title="$(echo "$slug" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++)$i=toupper(substr($i,1,1)) substr($i,2)}1')"
+            {
+              printf -- '---\nconnie-title: "%s Spec"\nconnie-publish: true\n---\n\n' "$title"
+              # Drop a leading YAML frontmatter block if the source file has one.
+              awk 'NR==1 && $0=="---"{f=1; next} f && $0=="---"{f=0; next} !f{print}' "$f"
+            } > "$dst"
+          done
+          printf 'Publishing %s changed page(s):\n' "${#files[@]}"
+          printf '  %s\n' "${files[@]}"
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
+      # Publish only the staged (changed) spec pages to Confluence. contentRoot is
+      # scoped to the staging folder so nothing else in the repo is scanned; the
+      # folderToPublish default gives every staged file publish status.
+      - name: Sync changed pages to Confluence
+        if: steps.changed.outputs.present == 'true'
+        uses: markdown-confluence/publish-action@v5
+        with:
+          confluenceBaseUrl: ${{ secrets.CONFLUENCE_URL }}
+          confluenceParentId: ${{ secrets.CONFLUENCE_PARENT_ID }}
+          atlassianUserName: ${{ secrets.JIRA_USERNAME }}
+          atlassianApiToken: ${{ secrets.JIRA_API_TOKEN }}
+          contentRoot: '.confluence-staging/openspec/specs'
+          folderToPublish: '.confluence-staging/openspec/specs'
+
+      # Remove openspec/ entirely and commit the deletion so the main branch
+      # holds only code. The published Confluence pages are now the canonical
+      # record of the spec changes.
+      - name: Strip specs from git
+        if: steps.deltas.outputs.present == 'true'
+        run: |
+          rm -rf .confluence-staging openspec/
+          git config user.name "Virtual Worker CI"
+          git config user.email "virtual-worker-ci@users.noreply.github.com"
+          git add -A openspec/
+          git diff-index --quiet HEAD || \
+            git commit -m "chore(docs): publish specs to Confluence and strip from git [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}

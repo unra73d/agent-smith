@@ -1,0 +1,77 @@
+name: Virtual Worker Execution Pipeline
+
+# Triggered serverlessly by a Jira Automation rule that POSTs to the GitHub
+# repository_dispatch API when a ticket assigned to the virtual worker is
+# transitioned to "In Progress". See docs/ai-sdlc-setup.md.
+on:
+  repository_dispatch:
+    types: [jira-task-assigned]
+
+concurrency:
+  group: virtual-worker-queue
+  cancel-in-progress: false
+
+jobs:
+  execute-jira-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install AI CLI Tools
+        run: |
+          npm install -g @fission-ai/openspec@latest
+          curl -fsSL https://opencode.ai/install.sh | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Pre-pull Atlassian MCP image
+        run: docker pull ghcr.io/sooperset/mcp-atlassian:latest
+
+      # main holds no specs, so download the current canonical specs from
+      # Confluence into openspec/specs/ before the worker can propose deltas.
+      - name: Hydrate specs from Confluence
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          CONFLUENCE_PARENT_ID: ${{ secrets.CONFLUENCE_PARENT_ID }}
+        run: make init_spec
+
+      - name: Execute OpenCode Headless Agent
+        env:
+          # Auth for the "go" OpenCode provider (model opencode-go/deepseek-v4-flash).
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          # Consumed by the Atlassian MCP container via opencode.json.
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
+          # Used by the `gh` CLI and git for pushing the branch / opening the PR.
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+          JIRA_KEY: ${{ github.event.client_payload.jira_key }}
+        run: |
+          set -euo pipefail
+          git config user.name "Virtual Worker"
+          git config user.email "virtual-worker@users.noreply.github.com"
+          echo "Processing Jira Ticket: $JIRA_KEY"
+          opencode run --agent jira-worker "Process Jira ticket $JIRA_KEY"

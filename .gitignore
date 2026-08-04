@@ -1,4 +1,6 @@
 .vscode
+tokens.md
+.env
 go.sum
 app.db
 .DS_Store
