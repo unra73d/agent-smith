@@ -44,6 +44,15 @@ markup lives in `src/ui/index.html`; shared styles live in `src/ui/styles.css`.
   absolutely-positioned button inside a relatively-positioned wrapper, shown
   only while the field has text.
 
+- **Style the search field from the main document stylesheet, not the shadow
+  root.** Because the field markup is in the light DOM, its styles must live in
+  `src/ui/styles.css` (loaded via `<link>` in `index.html`). The
+  `sessions.css` stylesheet is adopted only into the `<session-list>` shadow
+  root and would not reach the field — initially the styles were placed there,
+  which made the input render with the default white browser style and let the
+  clear button wrap to the next line (review feedback). The fix moved the
+  `.session-search*` rules into `styles.css`.
+
 - **Match against the displayed title and raw message text.**
   The list shows `session.summary` (or "New chat" when empty), so matching uses
   the same fallback. Message matching iterates `session.messages` and checks
@@ -51,10 +60,18 @@ markup lives in `src/ui/index.html`; shared styles live in `src/ui/styles.css`.
 
 - **Reuse existing CSS patterns.**
   Colors, borders, and the `img-button` icon styling follow the existing dark
-  theme (`#313335` input backgrounds, `#3c4043` borders, `#8ab4f8` focus).
+  theme (`#313335` input backgrounds, `#3c4043` borders, `#8ab4f8` focus) — the
+  same palette used by the `.filter-input` and the dropdown `<select>`, so the
+  search field is visually consistent with the app's other text inputs.
 
 ## Risks / Trade-offs
 
+- [Search field styling lives in the wrong document (shadow root vs light DOM)]
+  → The search field markup is in the light DOM, so its styles must be in
+  `src/ui/styles.css`. Placing them in `sessions.css` (adopted into the
+  `session-list` shadow root) leaves the field unstyled — white input and the
+  clear button on its own line. This was caught in review and fixed; the note in
+  `sessions.css` guards against regression.
 - [List max-height may overflow with the added search bar] → Adjust the
   `.session-list` max-height in `src/ui/styles.css` so the list remains its own
   scroll area with the search bar pinned above it.

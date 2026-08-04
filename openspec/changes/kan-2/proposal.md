@@ -14,6 +14,11 @@ summaries.
   in the text of any message inside the chat. Matching is case-insensitive.
 - A clear ("x") button inside the field lets the user reset the search and
   restore the full list instantly.
+- The search field matches the app's dark theme and the styling of the other
+  text inputs (same dark background, border, and text colors); the clear button
+  sits on the same line as the field (inside the input, vertically centered).
+  This addresses the review feedback that the field rendered white (default
+  browser style) with the clear button wrapping to the next line.
 
 ## Capabilities
 
@@ -33,7 +38,8 @@ summaries.
 - `src/ui/index.html`: add the search field markup to the Chat sessions tab.
 - `src/ui/components/sessions/sessions.js`: add filter state and real-time
   filtering of the session list.
-- `src/ui/components/sessions/sessions.css`: style the search field, inline
-  clear button, and active-filter states.
-- `src/ui/styles.css`: adjust the session list max-height so the list remains
-  scrollable with the search bar pinned above it.
+- `src/ui/styles.css`: style the search field, inline clear button, and
+  active-filter states in the main document stylesheet (the field markup lives
+  in the light DOM, so its styles must be loaded by the main document, not the
+  `session-list` shadow root), and adjust the session list max-height so the
+  list remains scrollable with the search bar pinned above it.
