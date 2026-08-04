@@ -99,20 +99,39 @@ Then add these under **Settings → Secrets and variables → Actions**:
 > The same `JIRA_API_TOKEN` / `JIRA_USERNAME` are reused for Confluence auth by
 > both the MCP server and the publish action.
 
-### 4. Trigger: use a Jira Automation rule (not the legacy webhook)
-The SDD's webhook JQL `status CHANGED TO "In Progress"` can't be expressed in a
-webhook scope filter. Use **Project settings → Automation → Create rule** instead:
+### 4. Trigger: a Jira Automation rule on assignment
+Fire the pipeline when a ticket is assigned to the bot user (`JIRA_USERNAME`).
+Use **Project settings → Automation → Create rule** (legacy webhooks can't send an
+`Authorization` header, so they can't authenticate to GitHub — use Automation):
 
-- **Trigger:** *Issue transitioned* → To status: `In Progress`
-- **Condition:** *Issue fields condition* → Assignee = the virtual-worker account
+- **Trigger:** *Issue assigned*
+- **Condition:** *Issue fields condition* → Field **Assignee**, condition **equals**,
+  value = the bot user (`JIRA_USERNAME`)
 - **Action:** *Send web request*
   - URL: `https://api.github.com/repos/<OWNER>/<REPO>/dispatches`
+    (this repo: `https://api.github.com/repos/unra73d/agent-smith/dispatches`)
   - Method: `POST`
   - Headers: `Authorization: Bearer <BOT_GITHUB_TOKEN>`, `Accept: application/vnd.github+json`
-  - Body:
+  - Body → Custom data:
     ```json
     { "event_type": "jira-task-assigned", "client_payload": { "jira_key": "{{issue.key}}" } }
     ```
+
+Test the GitHub side without Jira (should return `204`, then check the Actions tab):
+```bash
+curl -X POST -H "Authorization: Bearer <BOT_GITHUB_TOKEN>" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/unra73d/agent-smith/dispatches \
+  -d '{"event_type":"jira-task-assigned","client_payload":{"jira_key":"KAN-2"}}'
+```
+
+Notes:
+- `repository_dispatch` only runs workflows from the **default branch** (`main`) —
+  `virtual-worker.yml` is there. ✓
+- The `BOT_GITHUB_TOKEN` PAT must be able to trigger dispatch: **classic** PAT with
+  `repo` scope, or **fine-grained** with *Contents: Read and write* on this repo.
+- Using your own account as `JIRA_USERNAME` means assigning any ticket to yourself
+  fires the agent. For production, use a dedicated `virtual-dev` account.
 
 ### 5. Confluence publishing (already wired — nothing to configure)
 `openspec-sync.yml` injects the required frontmatter automatically: for each

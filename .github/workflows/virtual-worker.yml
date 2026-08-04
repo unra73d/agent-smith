@@ -1,8 +1,8 @@
 name: Virtual Worker Execution Pipeline
 
 # Triggered serverlessly by a Jira Automation rule that POSTs to the GitHub
-# repository_dispatch API when a ticket assigned to the virtual worker is
-# transitioned to "In Progress". See docs/ai-sdlc-setup.md.
+# repository_dispatch API when a ticket is assigned to the virtual-worker user.
+# See docs/ai-sdlc-setup.md.
 on:
   repository_dispatch:
     types: [jira-task-assigned]
@@ -37,10 +37,18 @@ jobs:
           go-version-file: go.mod
 
       - name: Install AI CLI Tools
+        # opencode ships on npm as `opencode-ai`; installing globally puts the
+        # `opencode` binary on the PATH that setup-node already configures.
+        run: npm install -g @fission-ai/openspec@latest opencode-ai@latest
+
+      - name: Configure OpenCode provider auth
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
-          npm install -g @fission-ai/openspec@latest
-          curl -fsSL https://opencode.ai/install.sh | bash
-          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          # opencode-go authenticates via auth.json ({type,key}), not an env var.
+          mkdir -p "$HOME/.local/share/opencode"
+          jq -n --arg k "$OPENCODE_API_KEY" '{"opencode-go":{type:"api",key:$k}}' \
+            > "$HOME/.local/share/opencode/auth.json"
 
       - name: Pre-pull Atlassian MCP image
         run: docker pull ghcr.io/sooperset/mcp-atlassian:latest
@@ -49,10 +57,10 @@ jobs:
       # Confluence into openspec/specs/ before the worker can propose deltas.
       - name: Hydrate specs from Confluence
         env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
+          JIRA_URL: ${{ secrets.JIRA_URL }}
           JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
           CONFLUENCE_PARENT_ID: ${{ secrets.CONFLUENCE_PARENT_ID }}
         run: make init_spec
 
