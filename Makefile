@@ -1,4 +1,4 @@
-.PHONY: help init_env init_spec dev tui run server
+.PHONY: help init_env init_spec dev tui run server test vet build
 
 # Auto-load .env (KEY=VALUE) and export to every recipe, if the file exists.
 # This is why you don't need `set -a; . ./.env; set +a` before make targets.
@@ -45,4 +45,19 @@ tui: ## Launch the interactive opencode TUI with .env auto-loaded
 # ---------------------------------------------------------------------------
 # App targets
 # ---------------------------------------------------------------------------
+
+run: ## Run the desktop application
+	go run main.go
+
+server: ## Run only the HTTP server (no UI) on port 8008
+	go run main.go --server --port 8008
+
+test: ## Run the Go test suite
+	go test ./...
+
+vet: ## Run go vet analysis on all packages
+	go vet ./...
+
+build: ## Build the application binary into build/agentsmith
+	go build -o build/agentsmith .
 

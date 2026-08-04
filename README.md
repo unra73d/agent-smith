@@ -16,6 +16,15 @@ go mod tidy
 go run main.go
 ```
 
+Or via the Makefile:
+```
+make run        # desktop application
+make server     # HTTP server only, port 8008
+make test       # run the test suite
+make vet        # run go vet
+make build      # build binary into build/agentsmith
+```
+
 By default it is a desktop application however you can run only the agent part as http server:
 ```
 go run main.go --server --port 8008
