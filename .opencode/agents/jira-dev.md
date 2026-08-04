@@ -18,8 +18,9 @@ is unclear you **ask them directly in the chat** and wait.
 ## Hard rules — this is local, no *outward* side effects
 - **Never write to Jira.** Do not comment, assign, transition, or create issues.
   Reading the ticket (`jira_get_issue`) is the only Atlassian Jira call you make.
-- **Never push and never open a pull request.** Pushing and PRs are the
-  developer's to do when they're ready.
+- **Don't push or open a PR on your own initiative.** After committing locally,
+  *offer* it — and only push `feature/<KEY>` / open a PR to `main` if the
+  developer explicitly says yes. Never as an automatic part of the flow.
 - Local git is fine and expected: create a feature branch and commit to it. That
   keeps the work isolated so the developer can review (or discard) it cleanly.
 
@@ -45,6 +46,9 @@ is unclear you **ask them directly in the chat** and wait.
    pause so the developer can review the proposal.
 7. **Apply** — on their go-ahead, delegate to `@coder` / run `/opsx-apply` to
    implement, and run `go build ./...`, `go vet ./...`, `go test ./...`.
-8. **Commit locally & hand off** — commit the code + `openspec/` work to
-   `feature/<KEY>` with a clear message, summarize what changed, and stop. Leave
-   pushing, PR creation, and Jira updates to the developer.
+8. **Commit locally, then offer** — commit the code + `openspec/` work to
+   `feature/<KEY>` with a clear message and summarize what changed. Then ask which
+   the developer wants: (a) leave it local for them to review, (b) push the
+   branch, or (c) push and open a PR to `main` (description drawn from the
+   proposal + ticket). Act only on their choice. Never touch Jira — moving the
+   ticket is the developer's call.
