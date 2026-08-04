@@ -186,7 +186,7 @@ body {
                 .session-list {
                     padding: 10px;
                     overflow-y: auto;
-                    max-height: calc(100% - 100px);
+                    max-height: calc(100% - 140px);
                 }
 
                 .mcp-list {

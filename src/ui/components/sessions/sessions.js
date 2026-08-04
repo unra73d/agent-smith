@@ -11,6 +11,31 @@ class SessionList extends List {
         document.addEventListener('session:update', e => this.items = Storage.sessions || []);
         document.addEventListener('storage:current-session', e => this.updateSessionHighlight());
 
+        this.filter = '';
+        this.searchInput = document.getElementById('sessionSearch');
+        this.searchClear = document.getElementById('sessionSearchClear');
+
+        if (this.searchInput) {
+            this.searchInput.addEventListener('input', e => {
+                this.filter = e.target.value.trim().toLowerCase();
+                this.updateClearButton();
+                this.updateList();
+            });
+        }
+
+        if (this.searchClear) {
+            this.searchClear.addEventListener('click', e => {
+                this.filter = '';
+                if (this.searchInput) {
+                    this.searchInput.value = '';
+                    this.searchInput.focus();
+                }
+                this.updateClearButton();
+                this.updateList();
+            });
+        }
+
+        this.updateClearButton();
         this._initStyle();
     }
 
@@ -40,6 +65,49 @@ class SessionList extends List {
         item.querySelector('.delete-icon').addEventListener('click', e => this.handleDeleteSession(e, session.id));
         item.addEventListener('click', e => this.onItemClick(item, session))
         return item;
+    }
+
+    updateList() {
+        if (this.items) {
+            const fragment = document.createDocumentFragment();
+
+            for (let data of this.items) {
+                if (this.matchesFilter(data)) {
+                    const item = this.getItem(data);
+                    item.classList.add('list-item');
+                    fragment.appendChild(item);
+                }
+            }
+
+            this.list.replaceChildren(fragment);
+        }
+    }
+
+    matchesFilter(session) {
+        if (!this.filter) {
+            return true;
+        }
+
+        const title = (session.summary ? session.summary : 'New chat').toLowerCase();
+        if (title.includes(this.filter)) {
+            return true;
+        }
+
+        if (session.messages && Array.isArray(session.messages)) {
+            for (let message of session.messages) {
+                if (message.text && message.text.toLowerCase().includes(this.filter)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    updateClearButton() {
+        if (this.searchClear) {
+            this.searchClear.classList.toggle('visible', !!this.filter);
+        }
     }
 
     onItemClick(item, session) {
