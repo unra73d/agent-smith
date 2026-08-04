@@ -1,10 +1,12 @@
+# chat-history-search Specification
+
 ## Purpose
 
 Lets users find a specific conversation in the chat history by typing into a
 search field at the top of the chats list, filtering sessions by title or
 message content in real time.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Search field at the top of the chats list
 
