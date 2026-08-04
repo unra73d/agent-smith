@@ -94,7 +94,7 @@ Then add these under **Settings → Secrets and variables → Actions**:
 | `JIRA_API_TOKEN` | Atlassian API token (the one in `tokens.md`, rotated) |
 | `CONFLUENCE_URL` | `https://<your-domain>.atlassian.net/wiki` |
 | `CONFLUENCE_PARENT_ID` | root page ID for published specs (from the page URL) |
-| `BOT_GITHUB_TOKEN` | PAT (or fine-grained token) with repo + PR scope |
+| `BOT_GITHUB_TOKEN` | PAT with repo + PR scope. **Only for the Jira-triggered CI path** (the Jira Automation web request's Bearer token + the `virtual-worker` agent pushing/PR-ing). `openspec-sync.yml` uses the built-in `GITHUB_TOKEN`, so the post-merge test needs no PAT. |
 
 > The same `JIRA_API_TOKEN` / `JIRA_USERNAME` are reused for Confluence auth by
 > both the MCP server and the publish action.
