@@ -112,7 +112,7 @@ jobs:
           folderToPublish: '.confluence-staging/openspec/specs'
 
       # Remove the transient specs/ and changes/ (Confluence now holds the
-      # canonical record) but KEEP openspec/project.md and the committed
+      # canonical record) but KEEP openspec/config.yaml and the committed
       # .opencode/commands so main stays a valid, code-only OpenSpec project that
       # the next feature branch can build on.
       - name: Strip specs from git

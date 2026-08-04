@@ -30,26 +30,26 @@ Same OpenSpec flow, two contexts — no versioning, feature branches cut from `m
   comments clarifications, reassigns on ambiguity, opens the PR. Triggered by the
   Jira → `repository_dispatch` webhook.
 - **Local (`jira-dev`)** — interactive. Reads the ticket as input, hydrates specs,
-  runs `/opsx:propose` + `/opsx:apply`, and **asks you in the chat** when unclear.
+  runs `/opsx-propose` + `/opsx-apply`, and **asks you in the chat** when unclear.
   Never writes to Jira, never pushes or opens a PR — you drive git.
 
 ## Spec lifecycle & git tracking
 
 **Confluence is the permanent home for spec *content*.** `main` holds code plus
-the committed OpenSpec scaffold — `openspec/project.md` and the `/opsx-*` commands
+the committed OpenSpec scaffold — `openspec/config.yaml` and the `/opsx-*` commands
 under `.opencode/commands/` — but **no `openspec/specs/` or `openspec/changes/`**.
 Those exist in git only transiently, on feature branches.
 
-1. Cut `feature/JIRA-123` off `main` (code + `openspec/project.md`, no specs).
+1. Cut `feature/JIRA-123` off `main` (code + `openspec/config.yaml`, no specs).
 2. `make init_spec` downloads the current specs from Confluence into
    `openspec/specs/` (the base `openspec archive` folds deltas onto).
-3. `/opsx:propose` + `/opsx:apply` run; the feature branch commits code + the
+3. `/opsx-propose` + `/opsx-apply` run; the feature branch commits code + the
    hydrated `openspec/specs/` + `openspec/changes/JIRA-123/` deltas so the PR
    shows the spec work for review.
 4. **On merge to `main`**, `openspec-sync.yml`: archives each delta into the specs
    → publishes **only the spec pages that changed** to Confluence (diffed from
    what `archive` touched) → removes `openspec/specs/` + `openspec/changes/` (keeps
-   `project.md`) and commits, so only code + scaffold land on `main`.
+   `config.yaml`) and commits, so only code + scaffold land on `main`.
 
 > Note: the archive base is whatever Confluence held when the feature branch was
 > hydrated. If two tickets touch the same capability concurrently, the second
@@ -63,7 +63,7 @@ Generate the OpenSpec project + the opencode `/opsx-*` commands, then commit the
 CI and local both rely on these being in the repo (they are not regenerated):
 ```bash
 openspec init --tools opencode --force
-git add openspec/project.md .opencode/commands .opencode/skills
+git add openspec/config.yaml .opencode/commands .opencode/skills
 git commit -m "chore: initialize OpenSpec (opencode integration)"
 ```
 > The `/opsx-*` commands install to `.opencode/commands/`. These persist on `main`;
@@ -151,18 +151,21 @@ and it comments on Jira and opens PRs.)
 opencode auth login                # pick the opencode-go provider
 docker pull ghcr.io/sooperset/mcp-atlassian:latest
 
-# Load Atlassian env into your shell (opencode reads process env — no .env autoload)
-cp .env.example .env               # then fill in JIRA_* / CONFLUENCE_URL
-set -a; . ./.env; set +a
+# Create and fill in .env (make targets auto-load it; no manual sourcing needed)
+make init_env                      # then edit .env: JIRA_* / CONFLUENCE_*
 
 # Hydrate the canonical specs from Confluence (baseline for OpenSpec)
 make init_spec
 
-# Work a ticket interactively — asks you when the ticket is ambiguous
-opencode                           # then, in the TUI, switch to the `jira-dev` agent
-# or one-shot:
-opencode run --agent jira-dev "Implement Jira ticket KAN-1"
+# Work a ticket with the interactive jira-dev agent — asks you when unclear
+make dev JIRA_KEY=KAN-1
 ```
 
-> For a quick connectivity check before anything else, read-only:
-> `opencode run "Fetch Jira issue KAN-1 via the atlassian MCP and print its summary."`
+Running `opencode` directly (outside make) instead? It reads the process env and
+does **not** auto-load `.env`, so load it into your shell first:
+```bash
+set -a; . ./.env; set +a
+opencode                           # TUI — switch to the `jira-dev` agent
+# quick read-only connectivity check:
+opencode run "Fetch Jira issue KAN-1 via the atlassian MCP and print its summary."
+```

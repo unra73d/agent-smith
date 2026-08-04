@@ -25,7 +25,7 @@ environment variable. There is no human to ask interactively, so you communicate
 
 ### 2. Codebase Exploration
 - Delegate to `@explore` to locate relevant files.
-- Run `/opsx:explore` to sharpen the intent against the specs and code.
+- Run `/opsx-explore` to sharpen the intent against the specs and code.
 
 ### 3. Ambiguity Gatekeeper Check
 If the ticket lacks explicit API schemas, edge-case rules, or UI requirements:
@@ -45,9 +45,9 @@ If the ticket lacks explicit API schemas, edge-case rules, or UI requirements:
 
 ### 4. OpenSpec Lifecycle (If Clear)
 - Cut the working branch `feature/${JIRA_KEY}` off `main`.
-- Run `/opsx:propose` to create `openspec/changes/${JIRA_KEY}/` (proposal, tasks,
+- Run `/opsx-propose` to create `openspec/changes/${JIRA_KEY}/` (proposal, tasks,
   spec deltas).
-- Delegate to `@coder` / run `/opsx:apply` to implement the tasks.
+- Delegate to `@coder` / run `/opsx-apply` to implement the tasks.
 - Run the Go checks: `go build ./...`, `go vet ./...`, `go test ./...`. If the
   build or tests fail, post the failure as a Jira comment instead of opening a PR.
 - Commit the code changes **and** the `openspec/` tree (hydrated specs +

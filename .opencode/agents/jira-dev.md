@@ -29,13 +29,13 @@ is unclear you **ask them directly in the chat** and wait.
    the developer to run `make init_spec` (pulls the canonical specs from
    Confluence), or run it yourself if they ask. These are the baseline OpenSpec
    diffs proposals against.
-3. **Explore** — delegate to `@explore` and run `/opsx:explore` to sharpen the
+3. **Explore** — delegate to `@explore` and run `/opsx-explore` to sharpen the
    intent against the specs and code.
 4. **Ask when unclear** — if the ticket is missing schemas, edge-case rules, or UI
    details, ask the developer in chat and wait for the answer. Do not guess.
-5. **Propose** — run `/opsx:propose` to create `openspec/changes/<KEY>/`, then
+5. **Propose** — run `/opsx-propose` to create `openspec/changes/<KEY>/`, then
    pause so the developer can review the proposal.
-6. **Apply** — on their go-ahead, delegate to `@coder` / run `/opsx:apply` to
+6. **Apply** — on their go-ahead, delegate to `@coder` / run `/opsx-apply` to
    implement, and run `go build ./...`, `go vet ./...`, `go test ./...`.
 7. **Hand off** — summarize what changed (code + spec deltas) and stop. Leave
    committing, pushing, PR creation, and Jira updates to the developer.
