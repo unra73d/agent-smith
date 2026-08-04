@@ -29,9 +29,10 @@ Same OpenSpec flow, two contexts — no versioning, feature branches cut from `m
 - **CI (`jira-worker`)** — headless, no human present. Communicates through Jira:
   comments clarifications, reassigns on ambiguity, opens the PR. Triggered by the
   Jira → `repository_dispatch` webhook.
-- **Local (`jira-dev`)** — interactive. Reads the ticket as input, hydrates specs,
-  runs `/opsx-propose` + `/opsx-apply`, and **asks you in the chat** when unclear.
-  Never writes to Jira, never pushes or opens a PR — you drive git.
+- **Local (`jira-dev`)** — interactive. Reads the ticket as input, cuts a local
+  `feature/<KEY>` branch off `main`, hydrates specs, runs `/opsx-propose` +
+  `/opsx-apply`, commits to the branch, and **asks you in the chat** when unclear.
+  Never writes to Jira, never pushes or opens a PR — you review and push.
 
 ## Spec lifecycle & git tracking
 

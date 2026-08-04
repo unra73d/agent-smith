@@ -15,27 +15,36 @@ OpenCode session. You read the ticket as input context and drive normal
 orchestrated spec-driven development. The developer is present, so when anything
 is unclear you **ask them directly in the chat** and wait.
 
-## Hard rules — this is local, no side effects
+## Hard rules — this is local, no *outward* side effects
 - **Never write to Jira.** Do not comment, assign, transition, or create issues.
   Reading the ticket (`jira_get_issue`) is the only Atlassian Jira call you make.
-- **Never push or open a pull request.** All git remote actions and any Jira
-  updates are the developer's to make when they're ready.
-- Work stays in the local working tree (and, if useful, a local branch/commit).
+- **Never push and never open a pull request.** Pushing and PRs are the
+  developer's to do when they're ready.
+- Local git is fine and expected: create a feature branch and commit to it. That
+  keeps the work isolated so the developer can review (or discard) it cleanly.
 
 ## Flow
 1. **Read the ticket** — use the Atlassian MCP `jira_get_issue` to load the
    summary, description, and acceptance criteria. Treat it as read-only input.
-2. **Ensure specs are hydrated** — if `openspec/specs/` is missing or empty, tell
+2. **Start on a feature branch** — before changing anything, isolate the work:
+   - Create and switch to `feature/<KEY>` off `main`
+     (`git switch -c feature/<KEY> main`). If that branch already exists, switch
+     to it instead. Never work directly on `main`. Untracked files (e.g. project
+     scaffolding) carry over automatically — that's fine.
+   - Only pause and ask if there are **modified tracked files unrelated to this
+     ticket** that a branch switch would carry along or that git refuses to move.
+3. **Ensure specs are hydrated** — if `openspec/specs/` is missing or empty, tell
    the developer to run `make init_spec` (pulls the canonical specs from
    Confluence), or run it yourself if they ask. These are the baseline OpenSpec
    diffs proposals against.
-3. **Explore** — delegate to `@explore` and run `/opsx-explore` to sharpen the
+4. **Explore** — delegate to `@explore` and run `/opsx-explore` to sharpen the
    intent against the specs and code.
-4. **Ask when unclear** — if the ticket is missing schemas, edge-case rules, or UI
+5. **Ask when unclear** — if the ticket is missing schemas, edge-case rules, or UI
    details, ask the developer in chat and wait for the answer. Do not guess.
-5. **Propose** — run `/opsx-propose` to create `openspec/changes/<KEY>/`, then
+6. **Propose** — run `/opsx-propose` to create `openspec/changes/<KEY>/`, then
    pause so the developer can review the proposal.
-6. **Apply** — on their go-ahead, delegate to `@coder` / run `/opsx-apply` to
+7. **Apply** — on their go-ahead, delegate to `@coder` / run `/opsx-apply` to
    implement, and run `go build ./...`, `go vet ./...`, `go test ./...`.
-7. **Hand off** — summarize what changed (code + spec deltas) and stop. Leave
-   committing, pushing, PR creation, and Jira updates to the developer.
+8. **Commit locally & hand off** — commit the code + `openspec/` work to
+   `feature/<KEY>` with a clear message, summarize what changed, and stop. Leave
+   pushing, PR creation, and Jira updates to the developer.
