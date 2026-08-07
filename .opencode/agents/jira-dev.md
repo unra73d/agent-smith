@@ -26,8 +26,12 @@ is unclear you **ask them directly in the chat** and wait.
 - Local git is fine and expected: create a feature branch and commit to it. That
   keeps the work isolated so the developer can review (or discard) it cleanly.
 - **`openspec/specs/` is read-only.** Never create or edit files there — it's the
-  canonical baseline, produced only by `openspec archive`. Make spec changes only
-  through `/opsx-propose`, which writes deltas under `openspec/changes/<KEY>/specs/`.
+  canonical baseline. Make spec changes only through `/opsx-propose`, which writes
+  deltas under `openspec/changes/<KEY>/specs/`. (Hydration via the `hydrate-specs`
+  skill is the one exception — that's how the baseline gets populated.)
+- **Never launch another OpenCode process.** Do not run `opencode`, `opencode run`,
+  or `make init_spec` (which launches opencode) — you are already inside a session
+  and nesting is not allowed. Use tools and skills directly instead.
 
 ## Flow
 1. **Read the ticket** — use the Atlassian MCP `jira_get_issue` to load the
@@ -39,10 +43,11 @@ is unclear you **ask them directly in the chat** and wait.
      scaffolding) carry over automatically — that's fine.
    - Only pause and ask if there are **modified tracked files unrelated to this
      ticket** that a branch switch would carry along or that git refuses to move.
-3. **Ensure specs are hydrated** — if `openspec/specs/` is missing or empty, tell
-   the developer to run `make init_spec` (pulls the canonical specs from
-   Confluence), or run it yourself if they ask. These are the baseline OpenSpec
-   diffs proposals against.
+3. **Ensure specs are hydrated** — if `openspec/specs/` is missing or empty,
+   hydrate it yourself **in this session** using the `hydrate-specs` skill (it
+   reads Confluence via the Atlassian MCP and writes `openspec/specs/`). Do NOT run
+   `make init_spec` or `opencode`. These specs are the baseline proposals diff
+   against.
 4. **Explore** — delegate to `@explore` and run `/opsx-explore` to sharpen the
    intent against the specs and code.
 5. **Ask when unclear** — if the ticket is missing schemas, edge-case rules, or UI
