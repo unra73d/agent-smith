@@ -32,11 +32,19 @@ jobs:
           fetch-depth: 0
 
       # Nothing to do unless the merge actually brought spec deltas with it.
+      # Also capture WHICH capabilities the deltas touch, BEFORE archive removes
+      # openspec/changes/. This is the reliable "what to publish" signal: the
+      # feature branch commits the full openspec/specs/ tree, so a git diff against
+      # HEAD sees no change even though these specs are new to Confluence.
       - name: Detect pending spec deltas
         id: deltas
         run: |
+          set -euo pipefail
           if [ -d openspec/changes ] && [ -n "$(ls -A openspec/changes 2>/dev/null)" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
+            find openspec/changes -mindepth 3 -maxdepth 3 -type d -path '*/specs/*' \
+              | while read -r d; do basename "$d"; done | sort -u > /tmp/changed-caps.txt
+            echo "Capabilities touched by this merge:"; sed 's/^/  - /' /tmp/changed-caps.txt
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No openspec/changes/ in this push — skipping."
@@ -65,43 +73,42 @@ jobs:
             openspec archive "$name" --yes
           done
 
-      # Determine exactly which canonical spec files `archive` created or modified
-      # (relative to the pre-archive HEAD), and stage only those for publishing.
-      # Each staged file gets fresh frontmatter: a unique `connie-title` derived
-      # from the capability slug (every file is spec.md, so without a distinct
-      # title they would all collide onto one Confluence page) and
-      # `connie-publish: true`. Any pre-existing leading frontmatter is stripped
-      # first so we do not depend on `archive` preserving it.
+      # Stage the canonical spec page for each capability the deltas touched (read
+      # AFTER archive folded them in). Each gets a unique `connie-title` derived
+      # from the capability slug (files are all spec.md, so a shared title would
+      # collide onto one Confluence page) plus `connie-publish: true`; any
+      # pre-existing leading frontmatter is stripped first.
       - name: Stage changed spec pages
         if: steps.deltas.outputs.present == 'true'
         id: changed
         run: |
           set -euo pipefail
           rm -rf .confluence-staging
-          # Stage first so NEW (untracked) spec files created by `archive` are
-          # detected — plain `git diff HEAD` only reports tracked files, which
-          # silently misses first-time/new-capability specs.
-          git add -A openspec/specs
-          mapfile -t files < <(git diff --cached --name-only --diff-filter=AM -- 'openspec/specs' | grep '\.md$' || true)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "archive produced no spec-file changes to publish."
-            exit 0
-          fi
-          for f in "${files[@]}"; do
-            dst=".confluence-staging/$f"
+          count=0
+          while IFS= read -r cap; do
+            [ -z "$cap" ] && continue
+            src="openspec/specs/$cap/spec.md"
+            if [ ! -f "$src" ]; then
+              echo "WARN: no canonical spec at $src after archive — skipping $cap"
+              continue
+            fi
+            dst=".confluence-staging/openspec/specs/$cap/spec.md"
             mkdir -p "$(dirname "$dst")"
-            slug="$(basename "$(dirname "$f")")"
-            title="$(echo "$slug" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++)$i=toupper(substr($i,1,1)) substr($i,2)}1')"
+            title="$(echo "$cap" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++)$i=toupper(substr($i,1,1)) substr($i,2)}1')"
             {
               printf -- '---\nconnie-title: "%s Spec"\nconnie-publish: true\n---\n\n' "$title"
-              # Drop a leading YAML frontmatter block if the source file has one.
-              awk 'NR==1 && $0=="---"{f=1; next} f && $0=="---"{f=0; next} !f{print}' "$f"
+              awk 'NR==1 && $0=="---"{f=1; next} f && $0=="---"{f=0; next} !f{print}' "$src"
             } > "$dst"
-          done
-          printf 'Publishing %s changed page(s):\n' "${#files[@]}"
-          printf '  %s\n' "${files[@]}"
-          echo "present=true" >> "$GITHUB_OUTPUT"
+            count=$((count+1))
+            echo "Staged: $cap -> \"$title Spec\""
+          done < /tmp/changed-caps.txt
+          if [ "$count" -eq 0 ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No canonical spec files to publish."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Publishing $count page(s)."
+          fi
 
       # Publish only the staged (changed) spec pages to Confluence. contentRoot is
       # scoped to the staging folder so nothing else in the repo is scanned; the

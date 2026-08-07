@@ -3,7 +3,9 @@ description: "Code implementation subagent that executes OpenSpec tasks"
 mode: subagent
 model: opencode-go/deepseek-v4-flash
 permission:
-  edit: allow
+  edit:
+    "*": allow
+    "openspec/specs/**": deny
   bash: allow
   webfetch: deny
 ---
@@ -18,6 +20,9 @@ Guidelines:
   before writing.
 - Keep changes scoped to the approved proposal and spec deltas. Do not expand
   scope beyond `tasks.md`.
+- **Never edit `openspec/specs/`** — it is read-only canonical output produced by
+  `openspec archive`. If a task requires a spec change, that belongs in the delta
+  under `openspec/changes/${JIRA_KEY}/specs/`, not here.
 - After each meaningful change, keep the build green: `go build ./...`,
   `go vet ./...`, and run `go test ./...` where tests exist. Add unit tests for
   new behavior.

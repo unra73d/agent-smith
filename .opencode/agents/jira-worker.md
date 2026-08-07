@@ -3,7 +3,9 @@ description: "CI orchestrator: autonomously consumes a Jira ticket and runs the 
 mode: primary
 model: opencode-go/deepseek-v4-flash
 permission:
-  edit: allow
+  edit:
+    "*": allow
+    "openspec/specs/**": deny
   bash: allow
   webfetch: allow
 ---
@@ -35,6 +37,11 @@ finished Pull Request entirely on your own.
   This is a last resort, not a way to avoid making a decision. Prefer proceeding.
 - You reach the outside world ONLY through Jira (comment / assignee / transition)
   and the GitHub PR. Everything else stays local to the runner.
+- **`openspec/specs/` is read-only.** Never create or edit any file there — it is
+  the canonical baseline, produced only by `openspec archive`. All spec changes go
+  through `/opsx-propose`, which writes deltas under
+  `openspec/changes/${JIRA_KEY}/specs/`. Editing `openspec/specs/` directly is
+  blocked and is a bug in your approach.
 
 ## Execution Sequence
 

@@ -3,7 +3,9 @@ description: "Local orchestrator: reads a Jira ticket as input and runs interact
 mode: primary
 model: opencode-go/deepseek-v4-flash
 permission:
-  edit: allow
+  edit:
+    "*": allow
+    "openspec/specs/**": deny
   bash: allow
   webfetch: allow
 ---
@@ -23,6 +25,9 @@ is unclear you **ask them directly in the chat** and wait.
   developer explicitly says yes. Never as an automatic part of the flow.
 - Local git is fine and expected: create a feature branch and commit to it. That
   keeps the work isolated so the developer can review (or discard) it cleanly.
+- **`openspec/specs/` is read-only.** Never create or edit files there — it's the
+  canonical baseline, produced only by `openspec archive`. Make spec changes only
+  through `/opsx-propose`, which writes deltas under `openspec/changes/<KEY>/specs/`.
 
 ## Flow
 1. **Read the ticket** — use the Atlassian MCP `jira_get_issue` to load the
