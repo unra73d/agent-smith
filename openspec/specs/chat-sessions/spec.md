@@ -6,6 +6,8 @@ Manage multiple independent chat conversations (sessions) that persist across ap
 
 ### Requirement: Users can create, list, and delete sessions
 
+The system SHALL allow users to create, list, and delete chat sessions.
+
 #### Scenario: Create and delete a session
 - WHEN a user creates a session
 - THEN it appears in the session list
@@ -14,11 +16,15 @@ Manage multiple independent chat conversations (sessions) that persist across ap
 
 ### Requirement: Multiple sessions run in parallel
 
+The system SHALL support multiple sessions running in parallel, each with its own message history.
+
 #### Scenario: Independent concurrent sessions
 - WHEN several sessions are active at once
 - THEN each has its own message history without interfering with one another
 
 ### Requirement: Sessions and messages persist locally
+
+The system SHALL persist sessions and messages locally so history survives an application restart.
 
 #### Scenario: History survives a restart
 - WHEN conversations occur
@@ -26,6 +32,8 @@ Manage multiple independent chat conversations (sessions) that persist across ap
 - AND history survives an application restart
 
 ### Requirement: Users can prune history
+
+The system SHALL allow users to truncate a session from a chosen message onward and to delete individual messages.
 
 #### Scenario: Truncate from a message onward
 - WHEN a user chooses a message in a session
@@ -36,6 +44,8 @@ Manage multiple independent chat conversations (sessions) that persist across ap
 - THEN only that message is removed from the session
 
 ### Requirement: Session activity is broadcast in real time
+
+The system SHALL broadcast session and message changes to connected clients via SSE events.
 
 #### Scenario: SSE events on session and message changes
 - WHEN a session or message changes

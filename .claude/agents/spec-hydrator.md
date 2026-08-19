@@ -27,10 +27,20 @@ If you cannot resolve it, stop and say so — do not guess a page id.
    kebab-case name derived from the page title with a trailing " Spec" removed
    (e.g. "Chat Sessions Spec" → `openspec/specs/chat-sessions/spec.md`).
 3. Convert each page into the OpenSpec shape: a `## Purpose` section plus one or
-   more `## Requirements`, each with a `### Requirement:` header and at least one
-   `#### Scenario:`. Preserve the documented rules; do not invent requirements.
+   more `## Requirements`, each with a `### Requirement:` header, a normative
+   description sentence using SHALL or MUST (never "should"/"may" — `openspec
+   archive`'s strict validation rejects a requirement whose description lacks
+   SHALL/MUST), and at least one `#### Scenario:`. Preserve the documented
+   rules; do not invent requirements — phrase the existing rule normatively
+   (e.g. a page saying "users can create, list, and delete sessions" becomes
+   "The system SHALL allow users to create, list, and delete sessions.").
 4. Skip pages that are not behavioral specs (README, meeting notes, changelogs).
-5. Report which pages you imported and which you skipped.
+5. Run `openspec validate --specs --strict` and fix anything it reports before
+   finishing — a hydration that fails strict validation is incomplete, since
+   `openspec archive` runs the same strict check against the merged baseline
+   the first time any change touches that capability, and a defect caught
+   there blocks that unrelated PR's pipeline instead of this hydration.
+6. Report which pages you imported and which you skipped.
 
 ## Note on permissions
 Writing under `openspec/specs/` triggers a permission prompt — that is by design.
