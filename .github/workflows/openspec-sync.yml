@@ -117,10 +117,10 @@ jobs:
         if: steps.changed.outputs.present == 'true'
         uses: markdown-confluence/publish-action@v5
         with:
-          confluenceBaseUrl: ${{ secrets.CONFLUENCE_URL }}
+          confluenceBaseUrl: https://${{ secrets.ATLASSIAN_DOMAIN }}
           confluenceParentId: ${{ secrets.CONFLUENCE_PARENT_ID }}
-          atlassianUserName: ${{ secrets.JIRA_USERNAME }}
-          atlassianApiToken: ${{ secrets.JIRA_API_TOKEN }}
+          atlassianUserName: ${{ secrets.ATLASSIAN_EMAIL }}
+          atlassianApiToken: ${{ secrets.ATLASSIAN_API_TOKEN }}
           contentRoot: '.confluence-staging/openspec/specs'
           folderToPublish: '.confluence-staging/openspec/specs'
 
