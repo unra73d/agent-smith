@@ -4,9 +4,11 @@ import (
 	"agentsmith/src/ai"
 	"agentsmith/src/logger"
 	"agentsmith/src/mcptools"
+	"agentsmith/src/util"
 	"database/sql"
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -142,10 +144,6 @@ func (s *Session) AddMessage(origin ai.MessageOrigin, text string, toolRequests 
 	s.Messages = append(s.Messages, message)
 	s.Date = time.Now()
 
-	if len(s.Messages) == 1 {
-		s.Summary = s.Messages[0].Text
-	}
-
 	sseCh <- &SSEMessage{Type: SSEMessageNewMessage, Data: map[string]any{"message": message, "sessionId": s.ID}}
 	sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: s}
 
@@ -173,4 +171,91 @@ func (s *Session) UpdateLastMessage(newText string) {
 
 func (s *Session) ClearMessages() {
 	s.Messages = make([]*ai.Message, 0, 32)
+}
+
+const titleGenerationSysPrompt = `You are naming a chat conversation based on its content so far. ` +
+	`Respond with a short, human-readable title of 2-4 words summarizing what the conversation is about. ` +
+	`Respond with only the title text - no punctuation, no quotes, no explanation.`
+
+// filterMessagesForTitle keeps only user/assistant messages with non-empty
+// (post-trim) text, which is the content used to generate a session title.
+func filterMessagesForTitle(messages []*ai.Message) []*ai.Message {
+	filtered := make([]*ai.Message, 0, len(messages))
+	for _, message := range messages {
+		if message.Origin != ai.MessageOriginUser && message.Origin != ai.MessageOriginAI {
+			continue
+		}
+		if strings.TrimSpace(message.Text) == "" {
+			continue
+		}
+		filtered = append(filtered, message)
+	}
+	return filtered
+}
+
+// sanitizeGeneratedTitle strips any reasoning/thinking content the model may
+// have emitted before the actual title, then trims whitespace and any
+// surrounding quotes left over from the model's response formatting.
+func sanitizeGeneratedTitle(raw string) string {
+	title := util.CutThinking(raw)
+	title = strings.TrimSpace(title)
+	title = strings.Trim(title, `"'`)
+	return strings.TrimSpace(title)
+}
+
+// MaybeGenerateTitle (re)generates the session's Summary from the
+// conversation content so far, if the session is eligible: it is not
+// temporary, and it has had between 1 and 3 user messages so far. Title
+// (re)generation runs asynchronously so it never delays the chat response;
+// on success it persists the new Summary and broadcasts it via the existing
+// SSEMessageSessionUpdate mechanism.
+func (s *Session) MaybeGenerateTitle(model *ai.Model) {
+	if s.temporary {
+		return
+	}
+
+	userMessageCount := 0
+	for _, message := range s.Messages {
+		if message.Origin == ai.MessageOriginUser {
+			userMessageCount++
+		}
+	}
+	if userMessageCount == 0 || userMessageCount > 3 {
+		return
+	}
+
+	if model == nil {
+		return
+	}
+
+	filtered := filterMessagesForTitle(s.Messages)
+	if len(filtered) == 0 {
+		return
+	}
+
+	go func() {
+		defer logger.BreakOnError()
+
+		model.Provider.WaitForAllowance()
+		response, err := model.Provider.ChatCompletion(filtered, titleGenerationSysPrompt, model, nil)
+		if err != nil {
+			log.W("Failed to generate session title:", err)
+			return
+		}
+
+		title := sanitizeGeneratedTitle(response)
+		if title == "" {
+			return
+		}
+
+		s.Summary = title
+
+		if !s.temporary {
+			if err := s.Save(); err != nil {
+				log.W("Failed to save session after title generation:", err)
+			}
+		}
+
+		sseCh <- &SSEMessage{Type: SSEMessageSessionUpdate, Data: s}
+	}()
 }

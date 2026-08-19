@@ -189,6 +189,7 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 					return
 				case AgentActionAnswer:
 					log.D("Model will answer ")
+					session.MaybeGenerateTitle(model)
 					streamDoneCh <- true
 					return
 				case AgentActionToolCall:
