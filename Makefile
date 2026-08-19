@@ -1,9 +1,8 @@
-.PHONY: help init_env init_spec dev tui run server test vet build
+.PHONY: help init_env init_spec dev tui check run server test vet build
 
 # Auto-load .env (KEY=VALUE) and export to every recipe, if the file exists.
 # This is why you don't need `set -a; . ./.env; set +a` before make targets.
 -include .env
-export JIRA_URL JIRA_USERNAME JIRA_API_TOKEN CONFLUENCE_URL CONFLUENCE_PARENT_ID OPENCODE_API_KEY
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -16,31 +15,36 @@ init_env: ## Create .env from .env.example (fill it in afterwards)
 		cp .env.example .env && echo "Created .env from .env.example — fill in your values."; \
 	fi
 	@echo "Make targets auto-load .env. To load it into your own shell for running"
-	@echo "opencode directly:  set -a; . ./.env; set +a"
+	@echo "claude directly:  set -a; . ./.env; set +a"
 
 # ---------------------------------------------------------------------------
-# AI SDLC targets
+# AI SDLC targets  (Claude Code — see CLAUDE.md)
 # ---------------------------------------------------------------------------
 
-## Env required by init_spec (Confluence auth). Fail fast if missing.
-REQUIRED_ENV := CONFLUENCE_URL JIRA_USERNAME JIRA_API_TOKEN CONFLUENCE_PARENT_ID
+## Env the Atlassian MCP server needs. Fail fast if missing.
+REQUIRED_ENV := ATLASSIAN_DOMAIN ATLASSIAN_EMAIL ATLASSIAN_API_TOKEN
 
-init_spec: ## Hydrate openspec/specs from Confluence (source of truth)
+check: ## Verify .env and tooling are ready for the AI SDLC targets
+	@test -f .env || { echo "ERROR: no .env — run: make init_env"; exit 1; }
 	@for v in $(REQUIRED_ENV); do \
-		if [ -z "$$(printenv $$v)" ]; then echo "ERROR: env $$v is not set"; exit 1; fi; \
+		grep -qE "^$$v=.+" .env || { echo "ERROR: $$v is not set in .env"; exit 1; }; \
 	done
-	@command -v opencode >/dev/null 2>&1 || { echo "ERROR: opencode CLI not installed"; exit 1; }
-	@test -f openspec/config.yaml || { echo "ERROR: OpenSpec not initialized. Run once and commit: openspec init --tools opencode --force"; exit 1; }
-	docker pull ghcr.io/sooperset/mcp-atlassian:latest
-	opencode run --agent spec-importer \
-		"Import Confluence pages under parent ID $$CONFLUENCE_PARENT_ID into openspec/specs/ as OpenSpec spec files."
+	@command -v claude >/dev/null 2>&1 || { echo "ERROR: claude CLI not installed"; exit 1; }
+	@command -v openspec >/dev/null 2>&1 || { echo "ERROR: openspec CLI not installed"; exit 1; }
+	@command -v npx >/dev/null 2>&1 || { echo "ERROR: npx not installed (the Atlassian MCP server runs via npx)"; exit 1; }
+	@test -f openspec/config.yaml || { echo "ERROR: OpenSpec not initialized. Run once and commit: openspec init --tools claude --force"; exit 1; }
+	@echo "OK — ready. Try: make dev JIRA_KEY=KAN-1"
 
-dev: ## Work a ticket headless in one shot with jira-dev (set JIRA_KEY)
+init_spec: check ## Hydrate openspec/specs from Confluence (source of truth)
+	@grep -qE '^CONFLUENCE_PARENT_ID=.+' .env || { echo "ERROR: CONFLUENCE_PARENT_ID is not set in .env"; exit 1; }
+	claude "Use the spec-hydrator subagent to hydrate openspec/specs/ from Confluence."
+
+dev: check ## Work a ticket interactively with /implement (set JIRA_KEY)
 	@test -n "$${JIRA_KEY}" || { echo "ERROR: set JIRA_KEY, e.g. make dev JIRA_KEY=KAN-1"; exit 1; }
-	opencode run --agent jira-dev "Implement Jira ticket $${JIRA_KEY}"
+	claude "/implement $${JIRA_KEY}"
 
-tui: ## Launch the interactive opencode TUI with .env auto-loaded
-	opencode
+tui: ## Launch an interactive Claude Code session in this project
+	claude
 
 # ---------------------------------------------------------------------------
 # App targets

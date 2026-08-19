@@ -63,6 +63,7 @@ func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, 
 			nil,
 		)
 		modelDoneCh <- true
+		session.MaybeGenerateTitle(model)
 		streamDoneCh <- true
 	} else {
 		log.E("Model not found")
