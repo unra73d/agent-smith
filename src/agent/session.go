@@ -193,12 +193,60 @@ func filterMessagesForTitle(messages []*ai.Message) []*ai.Message {
 	return filtered
 }
 
+// buildTitlePrompt flattens the filtered conversation into a single user
+// turn. Passing the raw multi-turn history straight to the model - which
+// necessarily ends on an assistant turn, since that's the last thing said in
+// the real conversation - leaves some models (observed with LM Studio
+// serving a non-reasoning instruct model) confused about whose turn it is:
+// they emit an empty completion and stop immediately instead of continuing.
+// Ending on a user turn asking for the title reliably elicits an actual
+// response.
+func buildTitlePrompt(messages []*ai.Message) string {
+	var b strings.Builder
+	for _, message := range messages {
+		role := "User"
+		if message.Origin == ai.MessageOriginAI {
+			role = "Assistant"
+		}
+		b.WriteString(role)
+		b.WriteString(": ")
+		b.WriteString(strings.TrimSpace(message.Text))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// maxSanitizedTitleLen is well above any real 2-4 word title. A sanitized
+// result longer than this is treated as a leaked reasoning trace rather than
+// a title.
+const maxSanitizedTitleLen = 60
+
 // sanitizeGeneratedTitle strips any reasoning/thinking content the model may
 // have emitted before the actual title, then trims whitespace and any
 // surrounding quotes left over from the model's response formatting.
+//
+// Some providers (observed with LM Studio serving a reasoning model, once
+// the conversation history already contains a prior assistant turn) don't
+// wrap reasoning in <think> tags at all - reasoning and the final title are
+// both plain text with no delimiter, so CutThinking has nothing to strip.
+// These traces consistently end with the actual short title as the last
+// paragraph, separated by a blank line, so once CutThinking has done what it
+// can, fall back to the last non-empty line whenever what's left is still
+// clearly too long to be a 2-4 word title.
 func sanitizeGeneratedTitle(raw string) string {
 	title := util.CutThinking(raw)
 	title = strings.TrimSpace(title)
+
+	if len(title) > maxSanitizedTitleLen || strings.Contains(title, "\n") {
+		lines := strings.Split(title, "\n")
+		for i := len(lines) - 1; i >= 0; i-- {
+			if candidate := strings.TrimSpace(lines[i]); candidate != "" {
+				title = candidate
+				break
+			}
+		}
+	}
+
 	title = strings.Trim(title, `"'`)
 	return strings.TrimSpace(title)
 }
@@ -232,12 +280,15 @@ func (s *Session) MaybeGenerateTitle(model *ai.Model) {
 	if len(filtered) == 0 {
 		return
 	}
+	promptMessages := []*ai.Message{
+		{Origin: ai.MessageOriginUser, Text: buildTitlePrompt(filtered)},
+	}
 
 	go func() {
 		defer logger.BreakOnError()
 
 		model.Provider.WaitForAllowance()
-		response, err := model.Provider.ChatCompletion(filtered, titleGenerationSysPrompt, model, nil)
+		response, err := model.Provider.ChatCompletion(promptMessages, titleGenerationSysPrompt, model, nil)
 		if err != nil {
 			log.W("Failed to generate session title:", err)
 			return

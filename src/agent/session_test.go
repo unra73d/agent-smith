@@ -172,6 +172,20 @@ func TestFilterMessagesForTitle_ExcludesToolAndEmptyMessages(t *testing.T) {
 	}
 }
 
+func TestBuildTitlePrompt_EndsOnUserTurn(t *testing.T) {
+	messages := []*ai.Message{
+		{ID: "1", Origin: ai.MessageOriginUser, Text: "hi"},
+		{ID: "2", Origin: ai.MessageOriginAI, Text: "Hi! How can I assist you today?"},
+	}
+
+	prompt := buildTitlePrompt(messages)
+
+	want := "User: hi\nAssistant: Hi! How can I assist you today?\n"
+	if prompt != want {
+		t.Fatalf("buildTitlePrompt() = %q, want %q", prompt, want)
+	}
+}
+
 func TestSanitizeGeneratedTitle_StripsThinkingContent(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -202,6 +216,19 @@ func TestSanitizeGeneratedTitle_StripsThinkingContent(t *testing.T) {
 			name:  "think tag plus quotes",
 			input: "<think>hmm</think>'Trip Planning'",
 			want:  "Trip Planning",
+		},
+		{
+			name: "untagged reasoning trace falls back to last paragraph",
+			input: "The user just said \"say 123\", which is a simple instruction to output " +
+				"the number 123. I need a short 2-4 word title.\n\n" +
+				"Possible titles: Number 123, Digit Output, Simple Request.\n\n" +
+				"I'll go with \"Number 123\" as the title.\n\n\nNumber 123",
+			want: "Number 123",
+		},
+		{
+			name:  "short multi-line response reduces to its last non-empty line",
+			input: "Trip\nPlanning",
+			want:  "Planning",
 		},
 	}
 
