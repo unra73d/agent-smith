@@ -291,13 +291,13 @@ class ChatView extends HTMLElement {
         })
     }
 
-    searchTextNodes() {
-        const nodes = []
-        const roots = [
+    searchTextNodeGroups() {
+        const groups = [
             ...this.chatView.querySelectorAll('.message.user .message-inner-content'),
             ...this.chatView.querySelectorAll('.message.assistant .message-content')
         ]
-        roots.forEach(root => {
+        return groups.map(root => {
+            const nodes = []
             const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
                 acceptNode: node => {
                     if (!node.nodeValue || node.parentElement.closest('.thinking-block, .tool-block, mark, button, .find-panel')) return NodeFilter.FILTER_REJECT
@@ -306,8 +306,8 @@ class ChatView extends HTMLElement {
             })
             let node
             while (node = walker.nextNode()) nodes.push(node)
+            return nodes
         })
-        return nodes
     }
 
     applySearch() {
@@ -319,24 +319,48 @@ class ChatView extends HTMLElement {
             return
         }
         const query = this.searchQuery
-        this.searchTextNodes().forEach(node => {
-            const text = node.nodeValue
+        this.searchTextNodeGroups().forEach(nodes => {
+            // Markdown and syntax highlighting can split one visible word across
+            // adjacent text nodes (for example, "Lore" + "m"). Search the
+            // rendered text as a stream, but keep the DOM structure intact.
+            const text = nodes.map(node => node.nodeValue).join('')
             let offset = 0
-            const fragments = []
+            const matchRanges = []
             let index
             while ((index = text.indexOf(query, offset)) !== -1) {
-                if (index > offset) fragments.push(document.createTextNode(text.slice(offset, index)))
-                const mark = document.createElement('mark')
-                mark.className = 'chat-search-match'
-                mark.textContent = text.slice(index, index + query.length)
-                fragments.push(mark)
-                this.searchMatches.push(mark)
+                matchRanges.push({ start: index, end: index + query.length })
                 offset = index + query.length
             }
-            if (fragments.length) {
-                if (offset < text.length) fragments.push(document.createTextNode(text.slice(offset)))
-                node.replaceWith(...fragments)
-            }
+            const matchMarks = matchRanges.map(() => null)
+            let position = 0
+            nodes.forEach(node => {
+                const nodeStart = position
+                const nodeEnd = position + node.nodeValue.length
+                const fragments = []
+                let localOffset = 0
+                matchRanges.forEach((range, matchIndex) => {
+                    const matchStart = Math.max(range.start, nodeStart)
+                    const matchEnd = Math.min(range.end, nodeEnd)
+                    if (matchStart < matchEnd) {
+                        const localStart = matchStart - nodeStart
+                        const localEnd = matchEnd - nodeStart
+                        if (localStart > localOffset) fragments.push(document.createTextNode(node.nodeValue.slice(localOffset, localStart)))
+                        const mark = document.createElement('mark')
+                        mark.className = 'chat-search-match'
+                        mark.dataset.searchMatch = String(this.searchMatches.length + matchIndex)
+                        mark.textContent = node.nodeValue.slice(localStart, localEnd)
+                        fragments.push(mark)
+                        if (!matchMarks[matchIndex]) matchMarks[matchIndex] = mark
+                        localOffset = localEnd
+                    }
+                })
+                if (fragments.length) {
+                    if (localOffset < node.nodeValue.length) fragments.push(document.createTextNode(node.nodeValue.slice(localOffset)))
+                    node.replaceWith(...fragments)
+                }
+                position = nodeEnd
+            })
+            this.searchMatches.push(...matchMarks)
         })
         if (this.searchMatches.length) this.activeSearchMatch = 0
         this.updateSearchControls()
@@ -356,7 +380,9 @@ class ChatView extends HTMLElement {
     }
 
     setActiveSearchMatch() {
-        this.searchMatches.forEach((mark, index) => mark.classList.toggle('active', index === this.activeSearchMatch))
+        this.chatView.querySelectorAll('mark.chat-search-match').forEach(mark => {
+            mark.classList.toggle('active', Number(mark.dataset.searchMatch) === this.activeSearchMatch)
+        })
         if (this.activeSearchMatch >= 0) this.searchMatches[this.activeSearchMatch].scrollIntoView({ block: 'nearest' })
     }
 
