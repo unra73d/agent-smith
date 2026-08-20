@@ -17,6 +17,53 @@ body {
     flex-direction: column;
 }
 
+.find-panel {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px;
+    background: #232324;
+    border: 1px solid #3c4043;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px #0008;
+
+    &[hidden] { display: none; }
+
+    .find-input {
+        width: 180px;
+        color: #e3e3e3;
+        background: #1e1f20;
+        border: 1px solid #555;
+        border-radius: 3px;
+        padding: 4px 6px;
+    }
+
+    .find-count { min-width: 58px; color: #a7a9ad; font-size: 0.8em; }
+
+    button {
+        color: #e3e3e3;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px 5px;
+        &:disabled { color: #666; cursor: default; }
+    }
+}
+
+mark.chat-search-match {
+    color: inherit;
+    background: #786d3c;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+mark.chat-search-match.active { background: #d49b35; color: #171717; }
+
 .chat-view {
     flex: 1;
     flex-grow: 1;

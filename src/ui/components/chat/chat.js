@@ -6,10 +6,21 @@ class ChatView extends HTMLElement {
 
         this.chatSession = null
         this.toolsSelected = true
+        this.searchQuery = ''
+        this.searchTimer = null
+        this.searchMatches = []
+        this.activeSearchMatch = -1
 
         const shadowRoot = this.attachShadow({ mode: 'open' })
 
         this.shadowRoot.innerHTML = `
+        <div class="find-panel" hidden>
+            <input class="find-input" type="search" aria-label="Find in chat" placeholder="Find">
+            <span class="find-count">0 matches</span>
+            <button class="find-previous" title="Previous match" aria-label="Previous match">↑</button>
+            <button class="find-next" title="Next match" aria-label="Next match">↓</button>
+            <button class="find-close" title="Close" aria-label="Close">×</button>
+        </div>
         <div class="chat-view">
         </div>
         <div class="chat-input-area">
@@ -28,6 +39,9 @@ class ChatView extends HTMLElement {
         this.chatView = this.shadowRoot.querySelector('.chat-view')
         this.chatInput = this.shadowRoot.querySelector('#chatInput')
         this.cancelButton = this.shadowRoot.querySelector('.cancel-button')
+        this.findPanel = this.shadowRoot.querySelector('.find-panel')
+        this.findInput = this.shadowRoot.querySelector('.find-input')
+        this.findCount = this.shadowRoot.querySelector('.find-count')
 
         document.addEventListener('chat:last-message-update', e => this.onLastMessageUpdate(e.detail.sessionId))
         document.addEventListener('chat:send', e => this.sendMessageStreaming())
@@ -40,6 +54,21 @@ class ChatView extends HTMLElement {
                 this.appendMessage(e.detail)
             }
         })
+        document.addEventListener('keydown', e => this.onDocumentKeydown(e))
+
+        this.findInput.addEventListener('input', () => this.queueSearch(this.findInput.value))
+        this.findInput.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                this.closeSearch()
+            } else if (e.key === 'Enter') {
+                e.preventDefault()
+                this.navigateSearch(e.shiftKey ? -1 : 1)
+            }
+        })
+        this.shadowRoot.querySelector('.find-close').addEventListener('click', () => this.closeSearch())
+        this.shadowRoot.querySelector('.find-previous').addEventListener('click', () => this.navigateSearch(-1))
+        this.shadowRoot.querySelector('.find-next').addEventListener('click', () => this.navigateSearch(1))
 
         this.chatInput.addEventListener('input', () => {
             let isScrolledToBottom = this.chatView.scrollHeight - this.chatView.scrollTop <= (this.chatView.clientHeight + 15);
@@ -96,6 +125,7 @@ class ChatView extends HTMLElement {
                 const toolContent = messageElement.querySelector('.tool-content');
                 const messageContent = messageElement.querySelector('.message-content')
                 this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, this.chatSession.messages[this.chatSession.messages.length - 1].text, this.chatSession.messages[this.chatSession.messages.length - 1].toolRequests)
+                this.reapplySearch()
             } catch {
                 console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId} `)
             }
@@ -203,6 +233,163 @@ class ChatView extends HTMLElement {
                 hljs.highlightElement(block);
             } catch { }
         });
+    }
+
+    onDocumentKeydown(event) {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+            const target = event.composedPath ? event.composedPath()[0] : event.target
+            if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable) return
+            event.preventDefault()
+            this.openSearch()
+        } else if (event.key === 'Escape' && !this.findPanel.hidden) {
+            event.preventDefault()
+            this.closeSearch()
+        }
+    }
+
+    openSearch() {
+        this.findPanel.hidden = false
+        this.findInput.focus()
+        this.findInput.select()
+        this.reapplySearch()
+    }
+
+    closeSearch() {
+        this.cancelSearchTimer()
+        this.findPanel.hidden = true
+        this.searchQuery = ''
+        this.clearSearchHighlights()
+        this.searchMatches = []
+        this.activeSearchMatch = -1
+        this.updateSearchControls()
+    }
+
+    cancelSearchTimer() {
+        if (this.searchTimer !== null) {
+            clearTimeout(this.searchTimer)
+            this.searchTimer = null
+        }
+    }
+
+    queueSearch(query) {
+        this.cancelSearchTimer()
+        this.searchQuery = query
+        this.clearSearchHighlights()
+        this.searchMatches = []
+        this.activeSearchMatch = -1
+        this.updateSearchControls()
+        if (!query) return
+        this.searchTimer = setTimeout(() => {
+            this.searchTimer = null
+            if (!this.findPanel.hidden && this.searchQuery === query) this.applySearch()
+        }, 500)
+    }
+
+    clearSearchHighlights() {
+        this.chatView.querySelectorAll('mark.chat-search-match').forEach(mark => {
+            mark.replaceWith(document.createTextNode(mark.textContent))
+        })
+    }
+
+    searchTextNodeGroups() {
+        const groups = [
+            ...this.chatView.querySelectorAll('.message.user .message-inner-content'),
+            ...this.chatView.querySelectorAll('.message.assistant .message-content')
+        ]
+        return groups.map(root => {
+            const nodes = []
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode: node => {
+                    if (!node.nodeValue || node.parentElement.closest('.thinking-block, .tool-block, mark, button, .find-panel')) return NodeFilter.FILTER_REJECT
+                    return NodeFilter.FILTER_ACCEPT
+                }
+            })
+            let node
+            while (node = walker.nextNode()) nodes.push(node)
+            return nodes
+        })
+    }
+
+    applySearch() {
+        this.clearSearchHighlights()
+        this.searchMatches = []
+        this.activeSearchMatch = -1
+        if (!this.searchQuery) {
+            this.updateSearchControls()
+            return
+        }
+        const query = this.searchQuery
+        this.searchTextNodeGroups().forEach(nodes => {
+            // Markdown and syntax highlighting can split one visible word across
+            // adjacent text nodes (for example, "Lore" + "m"). Search the
+            // rendered text as a stream, but keep the DOM structure intact.
+            const text = nodes.map(node => node.nodeValue).join('')
+            let offset = 0
+            const matchRanges = []
+            let index
+            while ((index = text.indexOf(query, offset)) !== -1) {
+                matchRanges.push({ start: index, end: index + query.length })
+                offset = index + query.length
+            }
+            const matchMarks = matchRanges.map(() => null)
+            let position = 0
+            nodes.forEach(node => {
+                const nodeStart = position
+                const nodeEnd = position + node.nodeValue.length
+                const fragments = []
+                let localOffset = 0
+                matchRanges.forEach((range, matchIndex) => {
+                    const matchStart = Math.max(range.start, nodeStart)
+                    const matchEnd = Math.min(range.end, nodeEnd)
+                    if (matchStart < matchEnd) {
+                        const localStart = matchStart - nodeStart
+                        const localEnd = matchEnd - nodeStart
+                        if (localStart > localOffset) fragments.push(document.createTextNode(node.nodeValue.slice(localOffset, localStart)))
+                        const mark = document.createElement('mark')
+                        mark.className = 'chat-search-match'
+                        mark.dataset.searchMatch = String(this.searchMatches.length + matchIndex)
+                        mark.textContent = node.nodeValue.slice(localStart, localEnd)
+                        fragments.push(mark)
+                        if (!matchMarks[matchIndex]) matchMarks[matchIndex] = mark
+                        localOffset = localEnd
+                    }
+                })
+                if (fragments.length) {
+                    if (localOffset < node.nodeValue.length) fragments.push(document.createTextNode(node.nodeValue.slice(localOffset)))
+                    node.replaceWith(...fragments)
+                }
+                position = nodeEnd
+            })
+            this.searchMatches.push(...matchMarks)
+        })
+        if (this.searchMatches.length) this.activeSearchMatch = 0
+        this.updateSearchControls()
+        this.setActiveSearchMatch()
+    }
+
+    reapplySearch() {
+        if (!this.findPanel || this.findPanel.hidden || !this.searchQuery) return
+        this.applySearch()
+    }
+
+    updateSearchControls() {
+        this.findCount.textContent = `${this.searchMatches.length} match${this.searchMatches.length === 1 ? '' : 'es'}`
+        const disabled = this.searchMatches.length === 0
+        this.shadowRoot.querySelector('.find-previous').disabled = disabled
+        this.shadowRoot.querySelector('.find-next').disabled = disabled
+    }
+
+    setActiveSearchMatch() {
+        this.chatView.querySelectorAll('mark.chat-search-match').forEach(mark => {
+            mark.classList.toggle('active', Number(mark.dataset.searchMatch) === this.activeSearchMatch)
+        })
+        if (this.activeSearchMatch >= 0) this.searchMatches[this.activeSearchMatch].scrollIntoView({ block: 'nearest' })
+    }
+
+    navigateSearch(direction) {
+        if (!this.searchMatches.length) return
+        this.activeSearchMatch = (this.activeSearchMatch + direction + this.searchMatches.length) % this.searchMatches.length
+        this.setActiveSearchMatch()
     }
 
     scrollToBottom() {
@@ -327,9 +514,11 @@ class ChatView extends HTMLElement {
 
         this.chatView.appendChild(messageElement);
         this.scrollToBottom();
+        this.reapplySearch()
     }
 
     async sendMessageStreaming() {
+        this.closeSearch()
         sendEvent('sessions:touch')
         const messageText = this.chatInput.value.trim();
         if (!messageText) {
@@ -365,6 +554,7 @@ class ChatView extends HTMLElement {
                     this.appendMessage(message);
                 });
                 this.scrollToBottom();
+                this.reapplySearch();
             }
         } else {
             console.error('trying to change null session')
