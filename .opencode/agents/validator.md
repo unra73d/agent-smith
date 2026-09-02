@@ -1,7 +1,6 @@
 ---
 description: "Independent implementation and OpenSpec validation subagent"
 mode: subagent
-model: opencode-go/deepseek-v4-flash
 permission:
   edit:
     "*": deny

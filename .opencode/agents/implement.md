@@ -1,7 +1,6 @@
 ---
 description: "Interactive Jira-to-implementation OpenSpec workflow"
 mode: primary
-model: opencode-go/deepseek-v4-flash
 permission:
   edit: allow
   bash: allow

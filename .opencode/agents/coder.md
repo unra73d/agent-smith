@@ -1,7 +1,6 @@
 ---
 description: "Code implementation subagent that executes OpenSpec tasks"
 mode: subagent
-model: opencode-go/deepseek-v4-flash
 permission:
   edit:
     "*": allow

@@ -8,6 +8,7 @@ context: |
 rules:
   proposal:
     - State unresolved decisions explicitly; do not infer material requirements. Design proposal always must include automation tests.
+    - For changes to interfaces, state ownership, concurrency, or data flow, explain the existing design intent, why it is insufficient, and why the proposal does not create a parallel path or duplicate ownership.
   tasks:
     - Separate production implementation tasks from automated test tasks.
 

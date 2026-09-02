@@ -21,6 +21,27 @@ new frameworks or layers of abstraction.
   compatibility, and existing behavior unless an approved OpenSpec change
   explicitly changes them.
 
+## Preserve Architectural Intent
+
+- Before changing a function signature, return type, state ownership, or
+  communication path, determine the responsibility the existing design assigns
+  to that boundary.
+- Treat current data flow as intentional unless an approved requirement requires
+  changing it. Trace where data is produced, persisted, transported, and
+  consumed before adding another path for the same data.
+- Prefer extending the established mechanism over adding a parallel one. Do not
+  add return values, callbacks, shared state, or events when the information
+  already has an intentional delivery path.
+- Streaming and asynchronous functions may communicate through their supplied
+  channels, callbacks, events, or owned state rather than return values. Preserve
+  that contract unless a caller needs synchronous ownership of a result.
+- Keep ownership singular: one component owns each concern, including session
+  persistence, stream delivery, UI notification, and request lifecycle. Do not
+  duplicate ownership just to make a local change easier.
+- When a boundary's intent is unclear, inspect callers, neighboring functions,
+  tests, and consumers before proposing a change. Ask the user when the evidence
+  remains inconclusive.
+
 ## Error Handling
 
 - Use the project logger's error helpers for operational failures instead of
@@ -84,5 +105,7 @@ new frameworks or layers of abstraction.
   assumptions before implementation.
 - Use the OpenSpec workflow for behavior changes: explore, propose, user
   approval, implementation, automated tests, validation, sync, and archive.
+- In a proposal, state any architectural boundary being changed, why the existing
+  path is insufficient, and the compatibility impact.
 - Work on a concise `feature/<jira-summary>` branch. Never commit, push, open a
   pull request, or change Jira without explicit user approval.

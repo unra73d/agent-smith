@@ -1,7 +1,6 @@
 ---
 description: "Automated test authoring subagent for an approved OpenSpec change"
 mode: subagent
-model: opencode-go/deepseek-v4-flash
 permission:
   edit:
     "*": allow
