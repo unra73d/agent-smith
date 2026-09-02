@@ -28,7 +28,7 @@ point.
    and linked Jira items. Use `knowledgebase` to read relevant Confluence material.
    Explore the repository and invoke `/opsx-explore` to compare the ticket with
    existing code and specs.
-2. Create or switch to `feature/<short-kebab-summary>` from `main`, where the
+2. Create or switch to `feature/(<ticket-key>)<short-kebab-summary>` from `main`, where the
    summary is a concise, meaningful, lowercase, kebab-case form of the Jira
    summary. Omit the Jira key, remove filler words and punctuation, keep it under
    50 characters, and retain enough words to distinguish the change. If that

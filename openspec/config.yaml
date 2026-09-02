@@ -7,7 +7,7 @@ context: |
 
 rules:
   proposal:
-    - State unresolved decisions explicitly; do not infer material requirements.
+    - State unresolved decisions explicitly; do not infer material requirements. Design proposal always must include automation tests.
   tasks:
     - Separate production implementation tasks from automated test tasks.
 
@@ -24,4 +24,3 @@ operations:
   archive:
     guidance:
       - Run after sync and before the optional local commit.
-      - Do not publish to Confluence, delete canonical specs, push, or open a pull request.
