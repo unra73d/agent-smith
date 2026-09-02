@@ -1,32 +1,27 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Go desktop/server application with a web UI.
+  Canonical OpenSpec files under openspec/specs/ are version controlled in Git.
+  Jira and Confluence are read-only research sources accessed through Atlassian MCP.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - State unresolved decisions explicitly; do not infer material requirements.
+  tasks:
+    - Separate production implementation tasks from automated test tasks.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - Implement only after the user approves the proposal and spec deltas.
+      - Delegate production changes to coder and automated coverage to test-writer.
+      - Validator must report passing build, vet, tests, and OpenSpec verification before finalization.
+  sync:
+    guidance:
+      - Run only after validator success and explicit user approval.
+      - Preserve merged canonical specs under openspec/specs/ in Git.
+  archive:
+    guidance:
+      - Run after sync and before the optional local commit.
+      - Do not publish to Confluence, delete canonical specs, push, or open a pull request.

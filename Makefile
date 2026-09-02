@@ -1,4 +1,4 @@
-.PHONY: help init_env init_spec dev tui check run server test vet build
+.PHONY: help init_env dev tui check run server test vet build
 
 # Auto-load .env (KEY=VALUE) and export to every recipe, if the file exists.
 # This is why you don't need `set -a; . ./.env; set +a` before make targets.
@@ -15,10 +15,10 @@ init_env: ## Create .env from .env.example (fill it in afterwards)
 		cp .env.example .env && echo "Created .env from .env.example — fill in your values."; \
 	fi
 	@echo "Make targets auto-load .env. To load it into your own shell for running"
-	@echo "claude directly:  set -a; . ./.env; set +a"
+	@echo "opencode directly:  set -a; . ./.env; set +a"
 
 # ---------------------------------------------------------------------------
-# AI SDLC targets  (Claude Code — see CLAUDE.md)
+# AI SDLC targets  (OpenCode — see CLAUDE.md)
 # ---------------------------------------------------------------------------
 
 ## Env the Atlassian MCP server needs. Fail fast if missing.
@@ -29,22 +29,18 @@ check: ## Verify .env and tooling are ready for the AI SDLC targets
 	@for v in $(REQUIRED_ENV); do \
 		grep -qE "^$$v=.+" .env || { echo "ERROR: $$v is not set in .env"; exit 1; }; \
 	done
-	@command -v claude >/dev/null 2>&1 || { echo "ERROR: claude CLI not installed"; exit 1; }
+	@command -v opencode >/dev/null 2>&1 || { echo "ERROR: opencode CLI not installed"; exit 1; }
 	@command -v openspec >/dev/null 2>&1 || { echo "ERROR: openspec CLI not installed"; exit 1; }
 	@command -v npx >/dev/null 2>&1 || { echo "ERROR: npx not installed (the Atlassian MCP server runs via npx)"; exit 1; }
-	@test -f openspec/config.yaml || { echo "ERROR: OpenSpec not initialized. Run once and commit: openspec init --tools claude --force"; exit 1; }
+	@test -f openspec/config.yaml || { echo "ERROR: OpenSpec is not initialized."; exit 1; }
 	@echo "OK — ready. Try: make dev JIRA_KEY=KAN-1"
 
-init_spec: check ## Hydrate openspec/specs from Confluence (source of truth)
-	@grep -qE '^CONFLUENCE_PARENT_ID=.+' .env || { echo "ERROR: CONFLUENCE_PARENT_ID is not set in .env"; exit 1; }
-	claude "Use the spec-hydrator subagent to hydrate openspec/specs/ from Confluence."
-
-dev: check ## Work a ticket interactively with /implement (set JIRA_KEY)
+dev: check ## Work a ticket interactively with the implement agent (set JIRA_KEY)
 	@test -n "$${JIRA_KEY}" || { echo "ERROR: set JIRA_KEY, e.g. make dev JIRA_KEY=KAN-1"; exit 1; }
-	claude "/implement $${JIRA_KEY}"
+	opencode --agent implement --prompt "Implement Jira ticket $${JIRA_KEY}."
 
-tui: ## Launch an interactive Claude Code session in this project
-	claude
+tui: ## Launch an interactive OpenCode session in this project
+	opencode
 
 # ---------------------------------------------------------------------------
 # App targets

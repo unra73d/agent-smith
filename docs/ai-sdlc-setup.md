@@ -1,191 +1,124 @@
-# AI SDLC — Autonomous Virtual Worker Setup
+# AI SDLC Setup
 
-This repo implements the spec-driven autonomous worker described in [`sdd.md`](../sdd.md),
-built on **OpenCode** (headless AI runtime) + **OpenSpec** (spec engine), with
-**mcp-atlassian** bridging Jira and Confluence.
+This repository uses an interactive, spec-driven delivery workflow built on
+OpenCode, OpenSpec, and the Atlassian MCP. Select the `implement` agent to work
+a Jira ticket with a developer present.
 
-Flow: Jira transition → GitHub `repository_dispatch` → Actions runner → OpenCode
-(`jira-worker` agent) → OpenSpec propose/apply → PR → human merge → post-merge
-archive + Confluence sync.
+There is no unattended Jira worker, Jira automation rule, automatic Confluence
+publishing, automatic push, or pull-request creation. Jira and Confluence are
+read-only sources of context. Canonical OpenSpec files are committed under
+`openspec/specs/`.
 
-## What's already in the repo
+## Prerequisites
 
-| File | Purpose |
-|------|---------|
-| `.opencode/opencode.json` | OpenCode model + Atlassian MCP (Docker) config |
-| `.opencode/agents/jira-worker.md` | **CI** orchestrator — autonomous, Jira comments, opens PR |
-| `.opencode/agents/jira-dev.md` | **Local** orchestrator — interactive, asks you, no Jira writes / no PR |
-| `.opencode/agents/explore.md` | Read-only exploration subagent |
-| `.opencode/agents/coder.md` | Implementation subagent |
-| `.opencode/agents/spec-importer.md` | Confluence → OpenSpec importer agent |
-| `.github/workflows/virtual-worker.yml` | Webhook-triggered CI execution pipeline |
-| `.github/workflows/openspec-sync.yml` | Post-merge archive + scoped Confluence sync |
-| `Makefile` | `make init_spec` hydrates specs from Confluence; `run`/`server` |
+Install and authenticate the local tools:
 
-## Two ways to run the pipeline
-
-Same OpenSpec flow, two contexts — no versioning, feature branches cut from `main`:
-
-- **CI (`jira-worker`)** — headless, no human present. Communicates through Jira:
-  comments clarifications, reassigns on ambiguity, opens the PR. Triggered by the
-  Jira → `repository_dispatch` webhook.
-- **Local (`jira-dev`)** — interactive. Reads the ticket as input, cuts a local
-  `feature/<KEY>` branch off `main`, hydrates specs, runs `/opsx-propose` +
-  `/opsx-apply`, commits to the branch, and **asks you in the chat** when unclear.
-  Never writes to Jira, never pushes or opens a PR — you review and push.
-
-## Spec lifecycle & git tracking
-
-**Confluence is the permanent home for spec *content*.** `main` holds code plus
-the committed OpenSpec scaffold — `openspec/config.yaml` and the `/opsx-*` commands
-under `.opencode/commands/` — but **no `openspec/specs/` or `openspec/changes/`**.
-Those exist in git only transiently, on feature branches.
-
-1. Cut `feature/JIRA-123` off `main` (code + `openspec/config.yaml`, no specs).
-2. `make init_spec` downloads the current specs from Confluence into
-   `openspec/specs/` (the base `openspec archive` folds deltas onto).
-3. `/opsx-propose` + `/opsx-apply` run; the feature branch commits code + the
-   hydrated `openspec/specs/` + `openspec/changes/JIRA-123/` deltas so the PR
-   shows the spec work for review.
-4. **On merge to `main`**, `openspec-sync.yml`: archives each delta into the specs
-   → publishes **only the spec pages that changed** to Confluence (diffed from
-   what `archive` touched) → removes `openspec/specs/` + `openspec/changes/` (keeps
-   `config.yaml`) and commits, so only code + scaffold land on `main`.
-
-> Note: the archive base is whatever Confluence held when the feature branch was
-> hydrated. If two tickets touch the same capability concurrently, the second
-> merge publishes over the first — serialize such tickets, or add a re-hydrate +
-> conflict check if that becomes real.
-
-## Setup — steps only you can do
-
-### 1. Initialize OpenSpec once and commit
-Generate the OpenSpec project + the opencode `/opsx-*` commands, then commit them.
-CI and local both rely on these being in the repo (they are not regenerated):
 ```bash
-openspec init --tools opencode --force
-git add openspec/config.yaml .opencode/commands .opencode/skills
-git commit -m "chore: initialize OpenSpec (opencode integration)"
-```
-> The `/opsx-*` commands install to `.opencode/commands/`. These persist on `main`;
-> only `openspec/specs/` and `openspec/changes/` are transient.
-
-### 2. Seed Confluence with an initial spec set (only if starting empty)
-CI hydrates specs from Confluence on every run, so Confluence must contain them.
-If you're adopting this on an existing system with no specs yet, generate a first
-set and publish them to Confluence once:
-```bash
-export CONFLUENCE_URL=... JIRA_USERNAME=... JIRA_API_TOKEN=... CONFLUENCE_PARENT_ID=...
-make init_spec        # or `openspec init` + write specs by hand
-# then publish openspec/specs/ to Confluence (see the sync workflow's action)
-```
-If Confluence already documents the system, skip this — the importer reads it.
-
-### 3. Rotate the exposed token, then store secrets
-The token in `tokens.md` was shared in plaintext (now gitignored). If this repo
-is or will be public, **rotate it** at https://id.atlassian.com/manage-profile/security/api-tokens.
-Then add these under **Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|--------|-------|
-| `OPENCODE_API_KEY` | API key for your `go` OpenCode provider (rename to match its expected env var) |
-| `JIRA_URL` | `https://<your-domain>.atlassian.net` |
-| `JIRA_USERNAME` | your Atlassian account email |
-| `JIRA_API_TOKEN` | Atlassian API token (the one in `tokens.md`, rotated) |
-| `CONFLUENCE_URL` | `https://<your-domain>.atlassian.net/wiki` |
-| `CONFLUENCE_PARENT_ID` | root page ID for published specs (from the page URL) |
-| `BOT_GITHUB_TOKEN` | PAT with repo + PR scope. **Only for the Jira-triggered CI path** (the Jira Automation web request's Bearer token + the `virtual-worker` agent pushing/PR-ing). `openspec-sync.yml` uses the built-in `GITHUB_TOKEN`, so the post-merge test needs no PAT. |
-
-> The same `JIRA_API_TOKEN` / `JIRA_USERNAME` are reused for Confluence auth by
-> both the MCP server and the publish action.
-
-### 4. Trigger: a Jira Automation rule on assignment
-Fire the pipeline when a ticket is assigned to the bot user (`JIRA_USERNAME`).
-Use **Project settings → Automation → Create rule** (legacy webhooks can't send an
-`Authorization` header, so they can't authenticate to GitHub — use Automation):
-
-- **Trigger:** *Issue assigned*
-- **Condition:** *Issue fields condition* → Field **Assignee**, condition **equals**,
-  value = the bot user (`JIRA_USERNAME`)
-- **Action:** *Send web request*
-  - URL: `https://api.github.com/repos/<OWNER>/<REPO>/dispatches`
-    (this repo: `https://api.github.com/repos/unra73d/agent-smith/dispatches`)
-  - Method: `POST`
-  - Headers: `Authorization: Bearer <BOT_GITHUB_TOKEN>`, `Accept: application/vnd.github+json`
-  - Body → Custom data:
-    ```json
-    { "event_type": "jira-task-assigned", "client_payload": { "jira_key": "{{issue.key}}" } }
-    ```
-
-Test the GitHub side without Jira (should return `204`, then check the Actions tab):
-```bash
-curl -X POST -H "Authorization: Bearer <BOT_GITHUB_TOKEN>" \
-  -H "Accept: application/vnd.github+json" \
-  https://api.github.com/repos/unra73d/agent-smith/dispatches \
-  -d '{"event_type":"jira-task-assigned","client_payload":{"jira_key":"KAN-2"}}'
+npm install -g opencode-ai @fission-ai/openspec
+opencode auth login
 ```
 
-Notes:
-- `repository_dispatch` only runs workflows from the **default branch** (`main`) —
-  `virtual-worker.yml` is there. ✓
-- The `BOT_GITHUB_TOKEN` PAT must be able to trigger dispatch: **classic** PAT with
-  `repo` scope, or **fine-grained** with *Contents: Read and write* on this repo.
-- Using your own account as `JIRA_USERNAME` means assigning any ticket to yourself
-  fires the agent. For production, use a dedicated `virtual-dev` account.
+The repository uses the `opencode-go/deepseek-v4-flash` provider. Select that
+provider during `opencode auth login`.
 
-### 5. Confluence publishing (already wired — nothing to configure)
-`openspec-sync.yml` injects the required frontmatter automatically: for each
-changed `spec.md` it derives a unique `connie-title` from the capability folder
-name and sets `connie-publish: true`, then publishes only those staged files
-under `CONFLUENCE_PARENT_ID`. Pages are matched by title under the parent, so the
-first publish of a capability creates its page and later publishes update it. No
-`.markdown-confluence.json` or per-file frontmatter is needed.
-
-**Confluence page titles = capability folder names.** `openspec/specs/user-auth/`
-publishes as page **"User Auth Spec"**. Keep capability slugs stable so pages
-update in place instead of forking a new page on rename.
-
-## Corrections applied vs. the original sdd.md
-
-- MCP: `@modelcontextprotocol/server-jira` (nonexistent) → `mcp-atlassian` (Jira + Confluence, API-token auth, headless-friendly).
-- Dropped the deprecated `@modelcontextprotocol/server-github` MCP — PRs are created with the `gh` CLI.
-- opencode.json: `"type": "stdio"` → `"type": "local"`; literal `ENV_*` values → `{env:...}` interpolation.
-- Model `claude-3-7-sonnet` → `opencode-go/deepseek-v4-flash` (the `go` OpenCode provider); provider key secret `OPENCODE_API_KEY`.
-- Confluence publish scoped to only the spec pages `archive` changed (was: whole-folder republish).
-- Specs never persist in git: hydrated from Confluence per feature branch, stripped from `main` on merge.
-- Jira trigger: legacy webhook JQL → Automation rule on issue-transitioned.
-- Removed release/version management — feature branches cut straight from `main`.
-- Split into CI (`jira-worker`, autonomous) and local (`jira-dev`, interactive, no side effects) agents.
-- Added Go build/test steps and `[skip ci]` loop guards.
-
-## Local development
-
-Provider auth is stored by `opencode auth login` (not an env var locally); only the
-Atlassian MCP needs shell env. `opencode-go` is the provider; docker must be running.
-Use the **`jira-dev`** agent — it reads the ticket, asks you when unclear, and makes
-no Jira/PR side effects. (Do **not** run `jira-worker` locally; that's the CI agent
-and it comments on Jira and opens PRs.)
+Create the local Atlassian MCP environment file:
 
 ```bash
-# One-time: authenticate the provider and make sure docker is up
-opencode auth login                # pick the opencode-go provider
-docker pull ghcr.io/sooperset/mcp-atlassian:latest
+make init_env
+```
 
-# Create and fill in .env (make targets auto-load it; no manual sourcing needed)
-make init_env                      # then edit .env: JIRA_* / CONFLUENCE_*
+Set these values in `.env`:
 
-# Hydrate the canonical specs from Confluence (baseline for OpenSpec)
-make init_spec
+```dotenv
+ATLASSIAN_DOMAIN=your-site.atlassian.net
+ATLASSIAN_EMAIL=you@example.com
+ATLASSIAN_API_TOKEN=your-api-token
+```
 
-# Work a ticket with the interactive jira-dev agent — asks you when unclear
+Create the token at
+<https://id.atlassian.com/manage-profile/security/api-tokens>. The file is
+gitignored and is loaded automatically by Make targets.
+
+Check the local setup:
+
+```bash
+make check
+```
+
+## Work A Ticket
+
+Start the workflow with a Jira key:
+
+```bash
 make dev JIRA_KEY=KAN-1
 ```
 
-Running `opencode` directly (outside make) instead? It reads the process env and
-does **not** auto-load `.env`, so load it into your shell first:
+Or start OpenCode directly after loading `.env` into the shell, then select the
+`implement` agent and provide the Jira key:
+
 ```bash
 set -a; . ./.env; set +a
-opencode                           # TUI — switch to the `jira-dev` agent
-# quick read-only connectivity check:
-opencode run "Fetch Jira issue KAN-1 via the atlassian MCP and print its summary."
+opencode
 ```
+
+The `implement` agent follows this sequence:
+
+1. Reads the ticket, then creates or switches to a concise
+   `feature/<short-kebab-summary>` branch derived from its Jira summary, without
+   discarding unrelated local work.
+2. Uses the `ticket-system` skill to read the ticket, comments, and relevant
+   linked Jira items. It uses the `knowledgebase` skill to read relevant
+   Confluence pages and related pages when they clarify the change.
+3. Explores the repository and existing OpenSpec files, then asks the developer
+   about any material ambiguity.
+4. Runs OpenSpec exploration and proposes a change under
+   `openspec/changes/<JIRA-KEY>/`. The developer reviews and explicitly approves
+   the proposal before implementation begins.
+5. Delegates production changes to `coder`, automated test coverage to
+   `test-writer`, and independent checks to `validator`.
+6. When validation fails, returns the actionable findings to `coder` and repeats
+   implementation, test writing, and validation. It pauses for developer
+   direction after five repair cycles.
+7. When validation passes, presents the evidence and asks the developer to
+   approve finalization.
+8. After approval, syncs the delta into `openspec/specs/`, then archives the
+   completed change. Canonical specs remain tracked in Git.
+9. Asks whether to create a local commit with code, tests, and canonical specs.
+   It never commits, pushes, opens a pull request, or changes Jira without a
+   separate explicit request.
+
+## Agent Responsibilities
+
+`implement` is the sole primary agent. It owns user interaction, research,
+approvals, delegation, retry control, and finalization.
+
+- `coder` implements approved production tasks only.
+- `test-writer` adds focused automated Go tests from approved requirements and
+  implementation changes.
+- `validator` independently maps requirements to evidence and runs `go test
+  ./...`, `go vet ./...`, `go build ./...`, and applicable OpenSpec verification.
+
+The `ticket-system` and `knowledgebase` skills selectively follow Jira comments,
+Jira links, and Confluence links when they materially clarify requirements,
+dependencies, contracts, or prior decisions. They do not crawl unrelated items
+and never write to Atlassian.
+
+## OpenSpec Lifecycle
+
+`openspec/specs/` is the version-controlled canonical baseline. Work starts as
+a proposal and delta specs under `openspec/changes/<JIRA-KEY>/`. The primary
+agent syncs and archives only after the proposal is approved, implementation is
+validated, and the developer approves finalization.
+
+You can use the generated OpenSpec skills directly for a single step:
+
+- `/opsx-explore`
+- `/opsx-propose`
+- `/opsx-update`
+- `/opsx-apply`
+- `/opsx-verify`
+- `/opsx-sync`
+- `/opsx-archive`
+
+Use the `implement` agent for the full workflow; raw operations do not replace
+its approval and validation gates.
