@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 )
 
 type AgentAction string
@@ -121,7 +122,7 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 		}
 
 		modelResponseCh := make(chan string)
-		modelDoneCh := make(chan error)
+		modelDoneCh := make(chan streamResult)
 		toolCh := make(chan []*mcptools.ToolCallRequest)
 
 		session.AddMessage(ai.MessageOriginUser, query, nil)
@@ -143,7 +144,8 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 
 		chatCompletion := func() {
 			model.Provider.WaitForAllowance()
-			err := model.Provider.ChatCompletionStream(
+			started := time.Now()
+			completionTokens, err := model.Provider.ChatCompletionStream(
 				ctx,
 				session.Messages[:len(session.Messages)-1],
 				sysPrompt,
@@ -152,7 +154,7 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 				modelResponseCh,
 				toolCh,
 			)
-			modelDoneCh <- err
+			modelDoneCh <- streamResult{completionTokens: completionTokens, err: err, elapsed: time.Since(started)}
 		}
 
 		go chatCompletion()
@@ -162,15 +164,19 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 			case msg := <-modelResponseCh:
 				session.UpdateLastMessage(msg)
 			case toolCalls = <-toolCh:
-			case err := <-modelDoneCh:
+			case result := <-modelDoneCh:
 				log.D("Model response done")
-				session.Save()
+				if result.err != nil && !session.temporary {
+					if err := session.Save(); err != nil {
+						log.W("Failed to save completed session:", err)
+					}
+				}
 
 				var action AgentAction
 				var mcp *mcptools.MCPServer
 				var callRequest *mcptools.ToolCallRequest
 
-				if err != nil {
+				if result.err != nil {
 					action = AgentActionError
 				} else {
 					if len(toolCalls) > 0 {
@@ -189,6 +195,13 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 					return
 				case AgentActionAnswer:
 					log.D("Model will answer ")
+					outputTokens := result.completionTokens
+					if outputTokens <= 0 {
+						outputTokens = ai.EstimateOutputTokens(session.Messages[len(session.Messages)-1].Text)
+					}
+					if err := session.RecordResponseStatistics(outputTokens, result.elapsed); err != nil {
+						log.W("Failed to record response statistics:", err)
+					}
 					session.MaybeGenerateTitle(model)
 					streamDoneCh <- true
 					return
@@ -199,6 +212,7 @@ func ToolChatStreaming(ctx context.Context, sessionID string, modelID string, ro
 						session.UpdateLastMessage("")
 
 						var toolResult string
+						var err error
 						if callRequest.Name == "lua_code_runner" {
 							toolResult = mcptools.RunLua(callRequest)
 						} else {

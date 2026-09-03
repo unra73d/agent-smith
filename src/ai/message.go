@@ -12,8 +12,10 @@ const (
 )
 
 type Message struct {
-	ID           string                      `json:"id"`
-	Origin       MessageOrigin               `json:"origin"`
-	Text         string                      `json:"text"`
-	ToolRequests []*mcptools.ToolCallRequest `json:"toolRequests"`
+	ID                  string                      `json:"id"`
+	Origin              MessageOrigin               `json:"origin"`
+	Text                string                      `json:"text"`
+	ToolRequests        []*mcptools.ToolCallRequest `json:"toolRequests"`
+	OutputTokens        int                         `json:"outputTokens,omitempty"`
+	ElapsedMilliseconds int64                       `json:"elapsedMilliseconds,omitempty"`
 }

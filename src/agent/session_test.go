@@ -294,3 +294,61 @@ func TestMaybeGenerateTitle_PersistsAndBroadcasts(t *testing.T) {
 		t.Fatalf("expected persisted summary = %q, got %q", "Trip Planning", summary)
 	}
 }
+
+func TestResponseStatisticsPersistAndBroadcastFinalMessage(t *testing.T) {
+	setupTestDB(t)
+	previousSSECh := sseCh
+	sseCh = make(chan *SSEMessage, 1)
+	t.Cleanup(func() { sseCh = previousSSECh })
+
+	session := &Session{
+		ID:       "statistics-session",
+		Date:     time.Now(),
+		Messages: []*ai.Message{{ID: "answer", Origin: ai.MessageOriginAI, Text: "final answer"}},
+	}
+	if err := session.RecordResponseStatistics(12, 1500*time.Millisecond); err != nil {
+		t.Fatalf("RecordResponseStatistics() error = %v", err)
+	}
+
+	msg := <-sseCh
+	if msg.Type != SSEMessageLastMessageUpdate {
+		t.Fatalf("SSE type = %q, want %q", msg.Type, SSEMessageLastMessageUpdate)
+	}
+	payload := msg.Data.(map[string]any)
+	updated := payload["message"].(*ai.Message)
+	if updated.OutputTokens != 12 || updated.ElapsedMilliseconds != 1500 {
+		t.Fatalf("SSE message statistics = (%d, %d), want (12, 1500)", updated.OutputTokens, updated.ElapsedMilliseconds)
+	}
+
+	loaded := LoadSessions()
+	if len(loaded) != 1 || len(loaded[0].Messages) != 1 {
+		t.Fatalf("loaded sessions = %+v, want one session with one message", loaded)
+	}
+	persisted := loaded[0].Messages[0]
+	if persisted.OutputTokens != 12 || persisted.ElapsedMilliseconds != 1500 {
+		t.Fatalf("persisted statistics = (%d, %d), want (12, 1500)", persisted.OutputTokens, persisted.ElapsedMilliseconds)
+	}
+}
+
+func TestLegacyMessageLoadsWithoutResponseStatistics(t *testing.T) {
+	setupTestDB(t)
+	db, err := sql.Open("sqlite3", os.Getenv("AS_AGENT_DB_FILE"))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer db.Close()
+
+	legacyMessages := `[{"id":"legacy-answer","origin":"assistant","text":"old answer","toolRequests":null}]`
+	if _, err := db.Exec("INSERT INTO sessions (session_id, date, summary, data) VALUES (?, ?, ?, ?)", "legacy-session", time.Now().Format(time.RFC3339), "", legacyMessages); err != nil {
+		t.Fatalf("failed to insert legacy session: %v", err)
+	}
+
+	loaded := LoadSessions()
+	if len(loaded) != 1 || len(loaded[0].Messages) != 1 {
+		t.Fatalf("loaded sessions = %+v, want one session with one message", loaded)
+	}
+	message := loaded[0].Messages[0]
+	if message.OutputTokens != 0 || message.ElapsedMilliseconds != 0 {
+		t.Fatalf("legacy response statistics = (%d, %d), want unavailable", message.OutputTokens, message.ElapsedMilliseconds)
+	}
+}

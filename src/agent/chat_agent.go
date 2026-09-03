@@ -4,7 +4,14 @@ import (
 	"agentsmith/src/ai"
 	"agentsmith/src/mcptools"
 	"context"
+	"time"
 )
+
+type streamResult struct {
+	completionTokens int
+	err              error
+	elapsed          time.Duration
+}
 
 func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, roleID string, query string, streamDoneCh chan bool) {
 	model := findModel(modelID)
@@ -34,16 +41,28 @@ func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, 
 		}
 
 		modelResponseCh := make(chan string)
-		modelDoneCh := make(chan bool)
+		modelDoneCh := make(chan streamResult)
+		statisticsRecordedCh := make(chan struct{})
 		go func() {
 			for {
 				select {
 				case msg := <-modelResponseCh:
 					session.UpdateLastMessage(msg)
-				case <-modelDoneCh:
-					session.Save()
-					return
-				case <-ctx.Done():
+				case result := <-modelDoneCh:
+					if result.err == nil {
+						outputTokens := result.completionTokens
+						if outputTokens <= 0 {
+							outputTokens = ai.EstimateOutputTokens(session.Messages[len(session.Messages)-1].Text)
+						}
+						if err := session.RecordResponseStatistics(outputTokens, result.elapsed); err != nil {
+							log.W("Failed to record response statistics:", err)
+						}
+					} else if !session.temporary {
+						if err := session.Save(); err != nil {
+							log.W("Failed to save completed session:", err)
+						}
+					}
+					close(statisticsRecordedCh)
 					return
 				}
 			}
@@ -53,7 +72,8 @@ func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, 
 		err := session.AddMessage(ai.MessageOriginAI, "", nil)
 		log.CheckW(err, "Failed to add new message in agent")
 
-		model.Provider.ChatCompletionStream(
+		started := time.Now()
+		completionTokens, err := model.Provider.ChatCompletionStream(
 			ctx,
 			session.Messages[:len(session.Messages)-1],
 			sysPrompt,
@@ -62,7 +82,12 @@ func DirectChatStreaming(ctx context.Context, sessionID string, modelID string, 
 			modelResponseCh,
 			nil,
 		)
-		modelDoneCh <- true
+		modelDoneCh <- streamResult{completionTokens: completionTokens, err: err, elapsed: time.Since(started)}
+		<-statisticsRecordedCh
+		if err != nil {
+			streamDoneCh <- false
+			return
+		}
 		session.MaybeGenerateTitle(model)
 		streamDoneCh <- true
 	} else {

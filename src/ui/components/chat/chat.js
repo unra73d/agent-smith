@@ -124,7 +124,9 @@ class ChatView extends HTMLElement {
                 const thinkContent = messageElement.querySelector('.thinking-content');
                 const toolContent = messageElement.querySelector('.tool-content');
                 const messageContent = messageElement.querySelector('.message-content')
-                this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, this.chatSession.messages[this.chatSession.messages.length - 1].text, this.chatSession.messages[this.chatSession.messages.length - 1].toolRequests)
+                const message = this.chatSession.messages[this.chatSession.messages.length - 1]
+                this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, message.text, message.toolRequests)
+                this.setResponseStatistics(messageElement.querySelector('.response-statistics'), message)
                 this.reapplySearch()
             } catch {
                 console.error(`Trying to update last message in chat but it doesnt exist, session: ${sessionId} `)
@@ -233,6 +235,20 @@ class ChatView extends HTMLElement {
                 hljs.highlightElement(block);
             } catch { }
         });
+    }
+
+    setResponseStatistics(element, message) {
+        const outputTokens = message.outputTokens
+        const elapsedMilliseconds = message.elapsedMilliseconds
+        if (!element || !Number.isFinite(outputTokens) || outputTokens <= 0 || !Number.isFinite(elapsedMilliseconds) || elapsedMilliseconds <= 0) {
+            if (element) element.hidden = true
+            return
+        }
+
+        const seconds = Math.max(1, Math.floor(elapsedMilliseconds / 1000))
+        const duration = seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`
+        element.textContent = `${Math.floor(outputTokens / seconds)}t/s ${duration}`
+        element.hidden = false
     }
 
     onDocumentKeydown(event) {
@@ -405,7 +421,8 @@ class ChatView extends HTMLElement {
             <div class="tool-summary"><span class="icon">&#xe02a;</span> Tool call...</div>
             <div class="tool-content tool-content-empty"></div>
         </div>
-        <div class="message-content"></div>`;
+        <div class="message-content"></div>
+        <div class="response-statistics" hidden></div>`;
 
         const thinkBlock = messageElement.querySelector('.thinking-block');
         const thinkSummary = messageElement.querySelector('.thinking-summary');
@@ -433,6 +450,7 @@ class ChatView extends HTMLElement {
         if (message.origin === 'assistant') {
             const { messageContent, thinkContent, thinkSummary, toolContent } = this.initAssisstantMessageElement(messageInnerContent);
             this.setAssistantMessageContent(messageContent, thinkContent, thinkSummary, toolContent, message.text, message.toolRequests);
+            this.setResponseStatistics(messageInnerContent.querySelector('.response-statistics'), message)
         } else if (message.origin === 'tool') {
             messageInnerContent.innerHTML = `
                 <div class="tool-block">

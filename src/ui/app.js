@@ -197,8 +197,7 @@ function updateLastMessage(sessionId, message) {
                 return
             }
 
-            session.messages[session.messages.length - 1].text = message.text
-            session.messages[session.messages.length - 1].toolRequests = message.toolRequests
+            Object.assign(session.messages[session.messages.length - 1], message)
             sendEvent('chat:last-message-update', { sessionId: sessionId })
             break
         }

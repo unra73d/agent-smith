@@ -17,7 +17,17 @@ last message until completion.
 ### REQ-AGO-002: Direct chat session semantics
 Direct chat MUST append a user message and an empty assistant message to the session, stream
 text into the assistant message, persist the session, and trigger title generation on
-completion. It MUST signal stream completion/failure to the caller via a completion channel.
+completion. After a successful completion, it MUST record response statistics on that assistant
+answer; on failure or context cancellation, it MUST not record response statistics. It MUST
+signal stream completion/failure to the caller via a completion channel.
+
+#### Scenario: Successful direct answer
+- **WHEN** a direct chat response completes successfully
+- **THEN** the system MUST record and persist response statistics on its assistant answer before notifying connected clients of the final message update
+
+#### Scenario: Failed or cancelled direct answer
+- **WHEN** a direct chat response fails or its context is cancelled
+- **THEN** the system MUST not record response statistics for its assistant message
 
 ### REQ-AGO-003: Model resolution
 The system MUST resolve a model by ID across all providers and MUST abort the chat operation
@@ -62,8 +72,14 @@ When the model requests a tool that cannot be resolved to a server (except the b
 runner), the system MUST signal stream failure and abort.
 
 ### REQ-AGO-012: Answer termination
-When the model decides to answer directly, the system MUST trigger title generation, signal
-successful stream completion, and stop the tool loop.
+When the model decides to answer directly, the system MUST record response statistics only for
+that successful final assistant answer, trigger title generation, signal successful stream
+completion, and stop the tool loop. It MUST not record or display response statistics for
+assistant turns that result in tool calls.
+
+#### Scenario: Tool-assisted final answer
+- **WHEN** a tool chat contains one or more intermediate assistant tool-call turns followed by a successful final answer
+- **THEN** the system MUST record response statistics only on the final answer
 
 ### REQ-AGO-013: Thinking content stripping
 Before parsing tool calls or persisting tool results, the system MUST strip thinking/reasoning

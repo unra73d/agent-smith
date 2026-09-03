@@ -241,6 +241,17 @@ mark.chat-search-match.active { background: #d49b35; color: #171717; }
                     background-color: #fff;
                 }
             }
+
+            .response-statistics {
+                color: #8b8d91;
+                font-size: 0.8em;
+                height: 1em;
+                line-height: 1em;
+                margin: 4px 0 8px;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.15s ease-in-out;
+            }
         }
 
         &.tool .message-inner-content {
@@ -349,6 +360,11 @@ mark.chat-search-match.active { background: #d49b35; color: #171717; }
 
         &:hover .copy-delete-buttons {
             display: flex;
+        }
+
+        &.assistant:hover .response-statistics:not([hidden]) {
+            opacity: 1;
+            visibility: visible;
         }
     }
 }

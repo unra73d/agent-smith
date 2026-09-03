@@ -510,14 +510,17 @@ async function apiAgentConnect() {
                 const session = Storage.sessions[i]
                 if (session.id == parsedData.sessionId) {
                     session.messages.push({
+                        id: parsedData.message.id,
                         text: parsedData.message.text,
                         origin: parsedData.message.origin,
-                        toolRequests: parsedData.message.toolRequests
+                        toolRequests: parsedData.message.toolRequests,
+                        outputTokens: parsedData.message.outputTokens,
+                        elapsedMilliseconds: parsedData.message.elapsedMilliseconds
                     })
                     break
                 }
             }
-            sendEvent('chat:new-message', { text: parsedData.message.text, origin: parsedData.message.origin, toolRequests: parsedData.message.toolRequests, sessionId: parsedData.sessionId })
+            sendEvent('chat:new-message', { ...parsedData.message, sessionId: parsedData.sessionId })
         } catch (error) {
             console.error(error)
         }

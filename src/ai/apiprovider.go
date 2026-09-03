@@ -331,6 +331,7 @@ type OpenAIStreamChatResponse struct {
 	Model             string                           `json:"model"`
 	SystemFingerprint string                           `json:"system_fingerprint"`
 	Choices           []OpenAIStreamChatResponseChoice `json:"choices"`
+	Usage             *OpenAIChatCompletionUsage       `json:"usage,omitempty"`
 }
 
 func (self *APIProvider) ChatCompletionStream(
@@ -341,7 +342,7 @@ func (self *APIProvider) ChatCompletionStream(
 	tools []*mcptools.Tool,
 	writeCh chan string,
 	toolCh chan []*mcptools.ToolCallRequest,
-) (err error) {
+) (completionTokens int, err error) {
 	defer logger.BreakOnError()
 	log.D("OpenAI chat completion streaming")
 
@@ -380,6 +381,8 @@ func (self *APIProvider) ChatCompletionStream(
 
 	var toolCallsMutex sync.Mutex
 	toolCallBuilders := make(map[int]map[string]any)
+	var streamMutex sync.Mutex
+	streamComplete := false
 
 	conn := sse.NewConnection(r)
 
@@ -390,6 +393,9 @@ func (self *APIProvider) ChatCompletionStream(
 
 		if eventData == "[DONE]" {
 			log.D("Provider closing streaming ([DONE] received)")
+			streamMutex.Lock()
+			streamComplete = true
+			streamMutex.Unlock()
 			cancel()
 			return
 		}
@@ -397,6 +403,11 @@ func (self *APIProvider) ChatCompletionStream(
 		var response OpenAIStreamChatResponse
 		err := json.Unmarshal([]byte(eventData), &response)
 		log.CheckE(err, nil, "failed to parse OpenAI JSON chunk")
+		if response.Usage != nil {
+			streamMutex.Lock()
+			completionTokens = response.Usage.CompletionTokens
+			streamMutex.Unlock()
+		}
 
 		if len(response.Choices) == 0 {
 			log.D("Received chunk with no choices, skipping.")
@@ -455,19 +466,24 @@ func (self *APIProvider) ChatCompletionStream(
 	log.D("Connecting to SSE stream...")
 	err = conn.Connect()
 
-	// Check connection error type
-	if err != nil {
-		// SSE library might return specific errors on context cancellation or normal closure
-		// Check if the error is due to context cancellation (which is expected on [DONE])
-		if err == context.Canceled {
-			log.D("SSE connection closed gracefully by context cancellation.")
-			err = nil
-		} else {
-			log.E("SSE connection error:", err)
-		}
-	} else {
-		log.D("SSE connection closed without error.")
+	streamMutex.Lock()
+	completed := streamComplete
+	streamMutex.Unlock()
+	if ctx.Err() != nil {
+		return 0, ctx.Err()
 	}
+	if !completed {
+		if err != nil {
+			log.E("SSE connection error:", err)
+			return 0, err
+		}
+		return 0, errors.New("stream ended without [DONE]")
+	}
+	if err != nil && err != context.Canceled {
+		log.E("SSE connection error:", err)
+		return 0, err
+	}
+	log.D("SSE connection closed gracefully after [DONE]")
 
 	toolRequests := make([]*mcptools.ToolCallRequest, len(toolCallBuilders))
 	for i, toolCall := range toolCallBuilders {
@@ -502,7 +518,7 @@ func (self *APIProvider) ChatCompletionStream(
 	}
 
 	log.D("Finished processing stream. Accumulated tool calls:", len(toolRequests))
-	return
+	return completionTokens, nil
 }
 
 func prepareMessages(messages []*Message, sysPrompt string) *[]map[string]any {

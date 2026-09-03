@@ -7,6 +7,7 @@ import (
 	"agentsmith/src/util"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"time"
@@ -167,6 +168,34 @@ func (s *Session) UpdateLastMessage(newText string) {
 			}}
 	}
 
+}
+
+// RecordResponseStatistics stores the final assistant response measurements
+// and delivers them through the existing last-message update path.
+func (s *Session) RecordResponseStatistics(outputTokens int, elapsed time.Duration) error {
+	if len(s.Messages) == 0 || outputTokens <= 0 || elapsed <= 0 {
+		return errors.New("invalid response statistics")
+	}
+
+	message := s.Messages[len(s.Messages)-1]
+	if message.Origin != ai.MessageOriginAI {
+		return errors.New("response statistics require an assistant message")
+	}
+
+	elapsedMilliseconds := elapsed.Milliseconds()
+	if elapsedMilliseconds == 0 {
+		elapsedMilliseconds = 1
+	}
+
+	message.OutputTokens = outputTokens
+	message.ElapsedMilliseconds = elapsedMilliseconds
+	if !s.temporary {
+		if err := s.Save(); err != nil {
+			return err
+		}
+	}
+	sseCh <- &SSEMessage{Type: SSEMessageLastMessageUpdate, Data: map[string]any{"sessionId": s.ID, "message": message}}
+	return nil
 }
 
 func (s *Session) ClearMessages() {
