@@ -7,10 +7,20 @@ context: |
 
 rules:
   proposal:
-    - State unresolved decisions explicitly; do not infer material requirements. Design proposal always must include automation tests.
+    - State unresolved decisions explicitly; do not infer material requirements.
     - For changes to interfaces, state ownership, concurrency, or data flow, explain the existing design intent, why it is insufficient, and why the proposal does not create a parallel path or duplicate ownership.
+  design:
+    - Include a "## Test Strategy" section.
+    - Enumerate every automated test case. For each test, state the test file and function name, setup/inputs/mocks, action under test, expected observable result, and requirement or scenario verified.
+    - Cover successful behavior, relevant failure and edge cases, and regression risks found during exploration.
+    - Do not use generic entries such as "add tests" or "test the feature". Explain why any accepted requirement has no automated test.
   tasks:
     - Separate production implementation tasks from automated test tasks.
+    - Break work into small, ordered, independently verifiable steps. Do not use broad tasks such as "implement feature", "update backend", or "add tests".
+    - Every task must identify the owning package or UI component, files to create or modify when known, the concrete implementation action, and its completion evidence.
+    - Production tasks must name the behavior, state change, API/event/channel contract, or persistence change they implement and reference the design or requirement they satisfy.
+    - Create one automated-test task per test case in the design Test Strategy. Each test task must reference its test file and function name and state the expected assertion.
+    - End with explicit validation tasks for the relevant focused tests, `go test ./...`, `go vet ./...`, `go build ./...`, and OpenSpec verification.
 
 operations:
   apply:
